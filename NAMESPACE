@@ -1,0 +1,2 @@
+useDynLib(cuRious, .registration=TRUE)
+exportPattern("^[[:alpha:]]+")

@@ -3,7 +3,7 @@ library( cuRious )
 
 # Create a vector
 n <- 10
-test.vect <- rnorm( n ) * 10^6
+test.vect <- rnorm( n ) * 10^9
 
 # "Dive" the object to the GPU memory. Keep in mind that this results in a
 # conversion from double to float, thereby losing precision
@@ -14,3 +14,8 @@ surface( test.vect.pointer )
 
 # Should actually see some precision loss
 print( test.vect )
+
+# Watch for the message from finalization
+rm(test.vect.pointer)
+gc()
+

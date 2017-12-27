@@ -8,11 +8,12 @@
 #include <Rinternals.h>
 
 void finalize_num_vect(SEXP ptr){
-  float* vect_cu = (float*)R_ExternalPtrAddr(ptr);
+  float* vect_dev = (float*)R_ExternalPtrAddr(ptr);
+
+  Rprintf( "Finalizing object at <%p>\n", (void*) vect_dev );
 
   // Free memory
-  // cudaFree(vect_cu);
-  delete[] vect_cu;
+  cudaFree(vect_dev);
   R_ClearExternalPtr(ptr);
 }
 
@@ -24,23 +25,27 @@ SEXP dive_num_vect( SEXP vect_r ) {
   // Store length of array
   int L = Rf_length(vect_r);
 
-  // Allocate unified memory
-  float* vect_cu;
-  //cudaMallocManaged((void**)&vect_cu, L*sizeof(float));
-  vect_cu = new float[L];
+  // Allocate memory on the host
+  float* vect_host;
+  vect_host = new float[L];
 
-  // Copy to unified memory
+  // Convert to float in host memory
   for (int i = 0; i < L; i++){
-    vect_cu[i] = (float)vect_c[i];
+    vect_host[i] = (float)vect_c[i];
   }
 
-  // // Prefetch the data to the GPU
-  // int device = -1;
-  // cudaGetDevice(&device);
-  // cudaMemPrefetchAsync(vect_cu, L*sizeof(float), device, NULL);
+  // Allocate device memory and copy host vector
+  float* vect_dev;
+  cudaMalloc((void**)&vect_dev, L*sizeof(float));
+  cudaMemcpy(vect_dev, vect_host, L*sizeof(float), cudaMemcpyHostToDevice);
+
+  Rprintf( "Created object at <%p>\n", (void*) vect_dev );
+
+  // Free the host memory
+  delete[] vect_host;
 
   // Return to R with an external pointer SEXP
-  SEXP ptr = Rf_protect( R_MakeExternalPtr( vect_cu, R_NilValue, R_NilValue ) );
+  SEXP ptr = Rf_protect( R_MakeExternalPtr( vect_dev, R_NilValue, R_NilValue ) );
   R_RegisterCFinalizerEx( ptr, finalize_num_vect, TRUE );
 
   Rf_unprotect(1);
@@ -52,8 +57,13 @@ SEXP surface_num_vect( SEXP ptr, SEXP l ) {
   // Save vector length
   int L = Rf_asInteger(l);
 
-  // Create pointer to the unified memory object
-  float* vect_cu = (float*)R_ExternalPtrAddr(ptr);
+  // Create pointer to the device memory object
+  float* vect_dev = (float*)R_ExternalPtrAddr(ptr);
+
+  // Allocate host memory and copy back content from device
+  float* vect_host;
+  vect_host = new float[L];
+  cudaMemcpy(vect_host, vect_dev, L*sizeof(float), cudaMemcpyDeviceToHost);
 
   // Create vector R object
   SEXP vect_r = Rf_protect( Rf_allocVector( REALSXP, L ) );
@@ -63,8 +73,11 @@ SEXP surface_num_vect( SEXP ptr, SEXP l ) {
 
   // Fill the SEXP with data
   for (int i = 0; i < L; i++){
-    vect_c[i] = (double)vect_cu[i];
+    vect_c[i] = (double)vect_host[i];
   }
+
+  // Free host memory, device memory will be taken care of with finalize
+  delete[] vect_host;
 
   Rf_unprotect(1);
   return vect_r;

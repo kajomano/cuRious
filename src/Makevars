@@ -34,15 +34,15 @@ PKG_LIBS  = -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart
 #ALL_LIBS  = -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -L$(R_HOME)/bin/x64 -lR
 
 ### Define objects
-#h_srcs    = $(wildcard *.h)
+h_srcs    = $(wildcard *.h)
 
-cpp_srcs  = $(wildcard *.cpp)
-cpp_objs  = $(patsubst %.cpp, %.o, $(cpp_srcs))
+c_srcs  = $(wildcard *.c)
+c_objs  = $(patsubst %.c, %.o, $(c_srcs))
 
 #cu_srcs   = $(wildcard *.cc)
 #cu_objs   = $(patsubst %.cc, %.o, $(cu_srcs))
 
-all_objs  = $(cpp_objs) #$(cu_objs)
+all_objs  = $(c_objs) #$(cu_objs)
 
 all: cuRious.so
 
@@ -52,7 +52,7 @@ cuRious.so: $(all_objs)
 
 #-I$(VC_INC)
 #-Xcompiler -fPIC
-%.o: %.cpp
+%.o: %.c $(h_srcs)
 	$(NVCC) -ccbin $(VC_BIN) -I$(R_INC) -I$(CUDA_INC) -c $< -o $@
 
 #-Xcompiler -fPIC

@@ -21,6 +21,7 @@ void finalize_num_vect(SEXP ptr){
   R_ClearExternalPtr(ptr);
 }
 
+extern "C"
 SEXP dive_num_vect( SEXP vect_r, SEXP l ) {
   // Create pointer to the actual data in the SEXP
   double* vect_c = REAL( vect_r );
@@ -29,8 +30,7 @@ SEXP dive_num_vect( SEXP vect_r, SEXP l ) {
   int L = Rf_asInteger(l);
 
   // Allocate memory on the host
-  float* vect_host;
-  vect_host = (float*)malloc(L*sizeof(float));
+  float* vect_host = new float[L];
 
   // Convert to float in host memory
   for (int i = 0; i < L; i++){
@@ -47,7 +47,7 @@ SEXP dive_num_vect( SEXP vect_r, SEXP l ) {
   #endif
 
   // Free the host memory
-  free( vect_host );
+  delete[] vect_host;
 
   // Return to R with an external pointer SEXP
   SEXP ptr = Rf_protect( R_MakeExternalPtr( vect_dev, R_NilValue, R_NilValue ) );
@@ -57,6 +57,7 @@ SEXP dive_num_vect( SEXP vect_r, SEXP l ) {
   return ptr;
 }
 
+extern "C"
 SEXP surface_num_vect( SEXP ptr, SEXP l ) {
   // Save vector length
   int L = Rf_asInteger(l);
@@ -65,8 +66,7 @@ SEXP surface_num_vect( SEXP ptr, SEXP l ) {
   float* vect_dev = (float*)R_ExternalPtrAddr(ptr);
 
   // Allocate host memory and copy back content from device
-  float* vect_host;
-  vect_host = (float*)malloc(L*sizeof(float));
+  float* vect_host = new float[L];
   cudaMemcpy(vect_host, vect_dev, L*sizeof(float), cudaMemcpyDeviceToHost);
 
   // Create vector R object
@@ -81,12 +81,13 @@ SEXP surface_num_vect( SEXP ptr, SEXP l ) {
   }
 
   // Free host memory, device memory will be taken care of with finalize
-  free( vect_host );
+  delete[] vect_host;
 
   Rf_unprotect(1);
   return vect_r;
 }
 
+extern "C"
 SEXP push_num_vect( SEXP vect_r, SEXP l, SEXP ptr ) {
   // Create pointer to the actual data in the vect_r
   // and to the device memory object
@@ -97,8 +98,7 @@ SEXP push_num_vect( SEXP vect_r, SEXP l, SEXP ptr ) {
   int L = Rf_asInteger(l);
 
   // Allocate memory on the host
-  float* vect_host;
-  vect_host = (float*)malloc(L*sizeof(float));
+  float* vect_host = new float[L];
 
   // Convert to float in host memory
   for (int i = 0; i < L; i++){
@@ -113,7 +113,7 @@ SEXP push_num_vect( SEXP vect_r, SEXP l, SEXP ptr ) {
   #endif
 
   // Free the host memory
-  free( vect_host );
+  delete[] vect_host;
 
   return R_NilValue;
 }

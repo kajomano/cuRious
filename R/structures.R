@@ -46,7 +46,7 @@ math.struct <- R6Class(
 
   active = list(
     is.under  = function( val ){
-      if( missing(value) ) return( private$under )
+      if( missing(val) ) return( private$under )
     },
     # l is not necessary the length of a vector, it is the number of
     # elements in the data; this is important for the c pointers
@@ -106,7 +106,7 @@ vect <- R6Class(
         self$obj <- obj
       }
 
-      invisible( TRUE )
+      invisible( NULL )
     },
 
     pull = function(){
@@ -124,7 +124,7 @@ vect <- R6Class(
 
   active = list(
     l = function( val ){
-      if( missing(value) ) return( private$length )
+      if( missing(val) ) return( private$length )
     }
   )
 )

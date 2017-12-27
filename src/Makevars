@@ -18,14 +18,12 @@ CUDA_INC  = $(CUDA_HOME)/include
 # -x cu: even though the files have .c extensions, should understand them as .cu
 # -arch=sm_30 -gencode=arch=compute_30,code=sm_30: what type of machine code to
 # generate, dependent on your graphics card
-#
-NVCC_ARGS = -x cu -arch=sm_30 -gencode=arch=compute_30,code=sm_30
+NVCC_ARGS = -x=cu -arch=sm_30 -gencode=arch=compute_30,code=sm_30
 
 # NVCC uses the VC compiler on windows, but PATH is usually buggy, needs explicit
 # location to work, also the common includes are there
 VC_HOME   = "C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC"
-VC_BIN    = $(VC_HOME)/bin
-VC_INC    = $(VC_HOME)/include
+VC_BIN    = $(VC_HOME)/bin/amd64
 
 ## Extra libraries for the linker
 # Linux (untested)
@@ -37,25 +35,23 @@ PKG_LIBS  = -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart
 ### Define objects
 h_srcs    = $(wildcard *.h)
 
-c_srcs  = $(wildcard *.c)
-c_objs  = $(patsubst %.c, %.o, $(c_srcs))
+cpp_srcs  = $(wildcard *.cpp)
+cpp_objs  = $(patsubst %.cpp, %.o, $(cpp_srcs))
 
-#cu_srcs   = $(wildcard *.cc)
-#cu_objs   = $(patsubst %.cc, %.o, $(cu_srcs))
+cu_srcs   = $(wildcard *.cc)
+cu_objs   = $(patsubst %.cc, %.o, $(cu_srcs))
 
-all_objs  = $(c_objs) #$(cu_objs)
+all_objs  = $(cpp_objs) $(cu_objs)
 
 all: cuRious.so
 
-# $(ALL_LIBS)
 cuRious.so: $(all_objs)
-	#$(NVCC) -ccbin $(VC_BIN) -shared $^ -o $@
 
-#-I$(VC_INC)
+# Somehow fPIC
 #-Xcompiler -fPIC
-%.o: %.c $(h_srcs)
-	$(NVCC) -ccbin $(VC_BIN) $(NVCC_ARGS) -I$(R_INC) -I$(CUDA_INC) -c $< -o $@
+%.o: %.cpp $(h_srcs)
+	$(NVCC) -ccbin=$(VC_BIN) -I$(R_INC) -I$(CUDA_INC) -c $< -o $@
 
 #-Xcompiler -fPIC
-#%.o: %.cpp $(h_srcs)
-	#$(NVCC) $(CC_BIN) $(NVCC_ARGS) -I$(R_INC) -I$(CUDA_INC) -c $< -o $@
+%.o: %.cc $(h_srcs)
+	$(NVCC) -ccbin=$(VC_BIN) $(NVCC_ARGS) -I$(CUDA_INC) -c $< -o $@

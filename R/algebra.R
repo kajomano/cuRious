@@ -17,5 +17,7 @@ vect.add <- function( obj.l, obj.r, obj.res ){
     stop( "Not all vectors are under" )
   }
 
-  .Call()
+  .Call( "elem_wise_add", obj.l$obj, obj.r$obj, obj.l$l, obj.res$obj )
+
+  invisible( NULL )
 }

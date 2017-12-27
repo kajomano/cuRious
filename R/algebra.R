@@ -1,16 +1,21 @@
-op.fallback <- function( obj.l, obj.r, op ){
-  if( is.under(obj.l) ) obj.l <- surface( obj.l )
-  if( is.under(obj.r) ) obj.r <- surface( obj.r )
-
-  op( obj.l, obj.r )
-}
+# .Calls: src/algebra.c
 
 vect.add <- function( obj.l, obj.r, obj.res ){
-  if( is.under(obj.l) && is.under(obj.r) ){
-    bowser()
+  if( !is.struct(obj.l) || !is.struct(obj.r) || !is.struct(obj.res) ){
+    stop( "Not all objects are mathematical structures" )
   }
 
-  stop( "Not all objects are under" )
+  if( !is.vect(obj.l) || !is.vect(obj.r) || !is.vect(obj.res) ){
+    stop( "Not all objects are vectors" )
+  }
 
-  return( op.fallback( obj.l, obj.r, `+` ) )
+  if( obj.l$l != obj.r$l || obj.l$l != obj.res$l ){
+    stop( "Not all vectors are the same length" )
+  }
+
+  if( !is.under(obj.l) || !is.under(obj.r) || !is.under(obj.res) ){
+    stop( "Not all vectors are under" )
+  }
+
+  .Call()
 }

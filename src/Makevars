@@ -18,6 +18,7 @@ CUDA_INC  = $(CUDA_HOME)/include
 # -x cu: even though the files have .c extensions, should understand them as .cu
 # -arch=sm_30 -gencode=arch=compute_30,code=sm_30: what type of machine code to
 # generate, dependent on your graphics card
+#
 NVCC_ARGS = -x cu -arch=sm_30 -gencode=arch=compute_30,code=sm_30
 
 # NVCC uses the VC compiler on windows, but PATH is usually buggy, needs explicit
@@ -53,7 +54,7 @@ cuRious.so: $(all_objs)
 #-I$(VC_INC)
 #-Xcompiler -fPIC
 %.o: %.c $(h_srcs)
-	$(NVCC) -ccbin $(VC_BIN) -I$(R_INC) -I$(CUDA_INC) -c $< -o $@
+	$(NVCC) -ccbin $(VC_BIN) $(NVCC_ARGS) -I$(R_INC) -I$(CUDA_INC) -c $< -o $@
 
 #-Xcompiler -fPIC
 #%.o: %.cpp $(h_srcs)

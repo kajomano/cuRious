@@ -14,6 +14,11 @@ is.under <- function( obj ){
   }
 }
 
+error.undef.op <- function(){
+  stop( "Undefined operation" )
+}
+
+# math.struct ====
 # Parent structure to any mathematical structure
 math.struct <- R6Class(
   "math.struct",
@@ -36,16 +41,20 @@ math.struct <- R6Class(
   ),
 
   private = list(
-    under     = NULL
+    under   = NULL
   ),
 
   active = list(
     is.under  = function( val ){
       if( missing(value) ) return( private$under )
-    }
+    },
+    # l is not necessary the length of a vector, it is the number of
+    # elements in the data; this is important for the c pointers
+    l = error.undef.op
   )
 )
 
+# vect ====
 # Test if cuRious vect object
 is.vect <- function( obj ){
   "vect" %in% class(obj)
@@ -58,7 +67,7 @@ vect <- R6Class(
   public = list(
     initialize = function( obj ){
       # Check for correct R type
-      if(!is.vector( obj )) error.inv.type()
+      if(!is.vector( obj )) stop( "Invalid R object" )
 
       # Call parent's init
       super$initialize( obj )
@@ -84,7 +93,7 @@ vect <- R6Class(
     push = function( obj ){
       # Check for correct R type, length
       if( !is.vector( obj ) ) error.inv.type()
-      if( private$length != length(obj) ) error.unmatch.dim()
+      if( private$length != length(obj) ) stop( "Dimensions do not match" )
 
       # Set correct storage type
       storage.mode( obj ) <- "double"

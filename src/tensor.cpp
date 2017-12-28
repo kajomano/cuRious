@@ -8,7 +8,7 @@ void finalize_tensor(SEXP ptr){
 #endif
 
   // Free memory
-  cudaFree( tens_dev );
+  cudaTry( cudaFree( tens_dev ) );
   R_ClearExternalPtr(ptr);
 }
 
@@ -31,7 +31,7 @@ SEXP dive_tensor( SEXP tens_r, SEXP n_dims_r, SEXP dims_r ) {
   // Allocate device memory and copy host vector
   float* tens_dev;
   cudaTry( cudaMalloc( (void**)&tens_dev, l*sizeof(float) ) );
-  cudaMemcpy( tens_dev, tens_host, l*sizeof(float), cudaMemcpyHostToDevice );
+  cudaTry( cudaMemcpy( tens_dev, tens_host, l*sizeof(float), cudaMemcpyHostToDevice ) );
 
 #ifdef DEBUG_PRINTS
   Rprintf( "Created object at <%p>\n", (void*)tens_dev );
@@ -60,7 +60,7 @@ SEXP surface_tensor( SEXP ptr, SEXP n_dims_r, SEXP dims_r ) {
 
   // Allocate host memory and copy back content from device
   float* tens_host = new float[l];
-  cudaMemcpy(tens_host, tens_dev, l*sizeof(float), cudaMemcpyDeviceToHost);
+  cudaTry( cudaMemcpy(tens_host, tens_dev, l*sizeof(float), cudaMemcpyDeviceToHost) );
 
   // Create the correct R object
   SEXP tens_r;
@@ -107,7 +107,7 @@ SEXP push_tensor( SEXP ptr, SEXP tens_r, SEXP n_dims_r, SEXP dims_r ) {
   }
 
   // Copy host vector to device
-  cudaMemcpy(tens_dev, tens_host, l*sizeof(float), cudaMemcpyHostToDevice);
+  cudaTry( cudaMemcpy(tens_dev, tens_host, l*sizeof(float), cudaMemcpyHostToDevice) );
 
 #ifdef DEBUG_PRINTS
   Rprintf( "Copied data to <%p>\n", (void*) tens_dev );

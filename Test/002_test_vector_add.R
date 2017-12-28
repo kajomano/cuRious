@@ -10,7 +10,6 @@ tens.x$dive()
 vect.y <- rnorm( n )
 tens.y <- tensor$new( vect.y )
 tens.y$dive()
-tens.y$pull()
 
 # Create a vector in the device memory to store the results
 vect.res <- rep( 0, times = n )

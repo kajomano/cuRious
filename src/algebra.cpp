@@ -13,6 +13,8 @@ SEXP ewop( SEXP ptr_l, SEXP ptr_r, SEXP ptr_res, SEXP op_r, SEXP n_dims_r, SEXP 
 
   return R_NilValue;
 
+  // TODO: continue from here, switch statement and correct kernel function call
+
   // // Calculate vector length
   // int l = get_tensor_length( Rf_asInteger(n_dims_r), INTEGER(dims_r) );
   //

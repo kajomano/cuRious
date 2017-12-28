@@ -9,7 +9,6 @@ void elem_wise_add_global( float* dev_l, float* dev_r, int l, float* dev_res )
     dev_res[i] = dev_l[i] + dev_r[i];
 }
 
-extern "C"
 void elem_wise_add_host(  float* dev_l, float* dev_r, int l, float* dev_res ){
 
   int blockSize = 256;

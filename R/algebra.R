@@ -7,7 +7,7 @@
 ewop <- function( tens.l, tens.r, tens.res, op = "+" ){
   op.choices <- c( "+", "-", "*", "/" )
   op <- match.arg( op, op.choices )
-  browser()
+  op.int <- which( op.choices == op )
 
   # Sanity checks
   if( !all( is.under( tens.l, tens.r, tens.res ) ) ){
@@ -19,13 +19,11 @@ ewop <- function( tens.l, tens.r, tens.res, op = "+" ){
     stop( "Not all dimensions match" )
   }
 
-  browser()
-
   .Call( "ewop",
          tens.l$tensor,
          tens.r$tensor,
          tens.res$tensor,
-         op,
+         op.int,
          length(tens.l$get.dims),
          tens.l$get.dims )
 

@@ -9,20 +9,8 @@
 
 #include "common.h"
 
-#define cudaTry(ans) { cudaError_t code = (ans);                         \
-  if( code == cudaSuccess ){                                              \
-    Rprintf( "GPU win: %s %s %d\n", cudaGetErrorString(code), __FILE__, __LINE__ );\
-  }}
-// #define cudaTry(ans) { cudaAssert((ans), __FILE__, __LINE__); }
-// inline void cudaAssert( cudaError_t code, char* file, int line ){
-//   if( code != cudaSuccess ){
-//     //Rprintf( "GPU assert: %s %s %d\n", cudaGetErrorString(code), file, line );
-//     //exit( code );
-//   }else{
-//     //Rprintf( "GPU win: %s %s %d\n", cudaGetErrorString(code), file, line );
-//   }
-// }
+#define cudaTry(ans) { cudaAssert((ans), __FILE__, __LINE__); }
+void cudaAssert( cudaError_t code, char* file, int line );
 
-extern "C"{
-  int get_tensor_length( int n_dims, int* dims );
-}
+int get_tensor_length( int n_dims, int* dims );
+

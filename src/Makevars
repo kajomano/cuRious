@@ -5,8 +5,7 @@
 ### The file is made to mimic the Makeconf calls found in $(R_HOME)/etc/x64/
 
 ### Define variables
-## R and Rcpp related
-RCPP_INC  = "C:/Users/Mano/Documents/R/win-library/3.4/Rcpp/include"
+## R related
 R_INC     = $(R_HOME)/include
 
 ## CUDA related
@@ -50,8 +49,8 @@ cuRious.so: $(all_objs)
 # Somehow fPIC
 #-Xcompiler -fPIC
 %.o: %.cpp $(h_srcs)
-	$(NVCC) -ccbin=$(VC_BIN) -I$(R_INC) -I$(CUDA_INC) -c $< -o $@
+	$(NVCC) -ccbin=$(VC_BIN) -I=$(R_INC) -I=$(CUDA_INC) -c $< -o $@
 
 #-Xcompiler -fPIC
 %.o: %.cc $(h_srcs)
-	$(NVCC) -ccbin=$(VC_BIN) $(NVCC_ARGS) -I$(CUDA_INC) -c $< -o $@
+	$(NVCC) -ccbin=$(VC_BIN) $(NVCC_ARGS) -I=$(CUDA_INC) -c $< -o $@

@@ -20,5 +20,5 @@ R.add <- function(){ vect.x + vect.y }
 cuda.add <- function(){ vect.add( vect.x.obj, vect.y.obj, vect.res.obj ) }
 
 # Check the speeds
-microbenchmark( R.add(), times = 100 )
-microbenchmark( cuda.add(), times = 100 )
+microbenchmark( R.add(), times = 1000 )
+microbenchmark( cuda.add(), times = 1000 )

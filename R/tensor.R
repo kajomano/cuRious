@@ -26,6 +26,13 @@ tensor <- R6Class(
 
     dive = function(){
       if( !private$under ){
+        if( self$get.l > 2^32-1 ){
+          # TODO ====
+          # Use long int or the correct R type to remove this constraint
+          message( "Tensor is too large to be stored on the GPU" )
+          return( invisible( FALSE ) )
+        }
+
         private$under  <- TRUE
         private$tensor <- .Call( "dive_tensor",
                                  private$tensor,
@@ -33,7 +40,7 @@ tensor <- R6Class(
                                  private$dims )
       }
 
-      invisible( NULL )
+      invisible( TRUE )
     },
 
     surface = function(){
@@ -98,6 +105,10 @@ tensor <- R6Class(
       if( missing(val) ) return( private$dims )
     },
 
+    get.l = function( val ){
+      if( missing(val) ) return( prod( private$dims ) )
+    },
+
     is.under = function( val ){
       if( missing(val) ) return( private$under )
     }
@@ -109,6 +120,10 @@ tensor <- R6Class(
 # This function checks for validity too!
 # The order of dims is super important!
 get.dims <- function( obj ){
+  if( is.tensor( obj ) ){
+    return( obj$get.dims )
+  }
+
   if( is.vector( obj ) ){
     return( length( obj ) )
   }else if( is.matrix( obj )){
@@ -118,6 +133,20 @@ get.dims <- function( obj ){
   }
 }
 
-is.tensor <- function( obj ){
-  "tensor" %in% class( obj )
+is.tensor <- function( ... ){
+  objs <- list( ... )
+  sapply( objs, function( obj ){
+    "tensor" %in% class( obj )
+  })
+}
+
+is.under <- function( ... ){
+  if( !all( is.tensor( ... ) ) ){
+    stop( "Not all objects are tensors" )
+  }
+
+  tenss <- list( ... )
+  sapply( tenss, function( tens ){
+    tens$is.under
+  })
 }

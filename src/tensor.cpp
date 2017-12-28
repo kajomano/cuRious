@@ -1,13 +1,4 @@
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-
-#include "common.h"
-
-#define R_NO_REMAP 1
-//#define R_NO_REMAP_RMATH 1
-
-#include <R.h>
-#include <Rinternals.h>
+#include "common_cpp.h"
 
 void finalize_tensor(SEXP ptr){
   float* tens_dev = (float*)R_ExternalPtrAddr(ptr);
@@ -17,7 +8,7 @@ void finalize_tensor(SEXP ptr){
 #endif
 
   // Free memory
-  cudaFree(tens_dev);
+  cudaFree( tens_dev );
   R_ClearExternalPtr(ptr);
 }
 
@@ -39,11 +30,11 @@ SEXP dive_tensor( SEXP tens_r, SEXP n_dims_r, SEXP dims_r ) {
 
   // Allocate device memory and copy host vector
   float* tens_dev;
-  cudaMalloc((void**)&tens_dev, l*sizeof(float));
-  cudaMemcpy(tens_dev, tens_host, l*sizeof(float), cudaMemcpyHostToDevice);
+  cudaTry( cudaMalloc( (void**)&tens_dev, l*sizeof(float) ) );
+  cudaMemcpy( tens_dev, tens_host, l*sizeof(float), cudaMemcpyHostToDevice );
 
 #ifdef DEBUG_PRINTS
-  Rprintf( "Created object at <%p>\n", (void*) tens_dev );
+  Rprintf( "Created object at <%p>\n", (void*)tens_dev );
 #endif
 
   // Free the host memory
@@ -99,7 +90,7 @@ SEXP surface_tensor( SEXP ptr, SEXP n_dims_r, SEXP dims_r ) {
 
 extern "C"
 SEXP push_tensor( SEXP ptr, SEXP tens_r, SEXP n_dims_r, SEXP dims_r ) {
-  // Create pointer to the actual data in the vect_r
+  // Create pointer to the actual data in the tens_r
   // and to the device memory object
   double* tens_c = REAL( tens_r );
   float* tens_dev = (float*)R_ExternalPtrAddr(ptr);

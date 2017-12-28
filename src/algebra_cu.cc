@@ -1,9 +1,4 @@
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-
-#include <stdio.h>
-
-#include "common.h"
+#include "common_cu.h"
 
 __global__
 void elem_wise_add_global( float* dev_l, float* dev_r, int l, float* dev_res )

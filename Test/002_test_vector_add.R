@@ -4,22 +4,23 @@ library( cuRious )
 # Create vectors and store them in the device memory
 n <- 10
 vect.x <- rnorm( n )
-vect.x.obj <- vect$new( vect.x )
-vect.x.obj$dive()
+tens.x <- tensor$new( vect.x )
+tens.x$dive()
 
 vect.y <- rnorm( n )
-vect.y.obj <- vect$new( vect.y )
-vect.y.obj$dive()
+tens.y <- tensor$new( vect.y )
+tens.y$dive()
+tens.y$pull()
 
 # Create a vector in the device memory to store the results
 vect.res <- rep( 0, times = n )
-vect.res.obj <- vect$new( vect.res )
-vect.res.obj$dive()
+tens.res <- tensor$new( vect.res )
+tens.res$dive()
 
 # Add the two vectors
-vect.add( vect.x.obj, vect.y.obj, vect.res.obj )
+ewop( tens.x, tens.y, tens.res )
 
 # Check if we got a correct result: it should be mostly equal :D
-vect.res.obj$pull()
+tens.res$pull()
 print( vect.x + vect.y )
 

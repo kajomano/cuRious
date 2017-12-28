@@ -1,23 +1,33 @@
 # .Calls: src/algebra.c
 
-vect.add <- function( obj.l, obj.r, obj.res ){
-  if( !is.struct(obj.l) || !is.struct(obj.r) || !is.struct(obj.res) ){
-    stop( "Not all objects are mathematical structures" )
+# Element-wise operations of 2 tensors, the result ending up in a 3rd (in-place)
+# The resulting tensor can be one of the other 2, or all 3 can be the same
+# Currently supported operations:
+# +, -, *, /
+ewop <- function( tens.l, tens.r, tens.res, op = "+" ){
+  op.choices <- c( "+", "-", "*", "/" )
+  op <- match.arg( op, op.choices )
+  browser()
+
+  # Sanity checks
+  if( !all( is.under( tens.l, tens.r, tens.res ) ) ){
+    stop( "Not all tensors are under" )
   }
 
-  if( !is.vect(obj.l) || !is.vect(obj.r) || !is.vect(obj.res) ){
-    stop( "Not all objects are vectors" )
+  if( !identical( tens.l$get.dims, tens.r$get.dims ) ||
+      !identical( tens.l$get.dims, tens.res$get.dims ) ){
+    stop( "Not all dimensions match" )
   }
 
-  if( obj.l$l != obj.r$l || obj.l$l != obj.res$l ){
-    stop( "Not all vectors are the same length" )
-  }
+  browser()
 
-  if( !is.under(obj.l) || !is.under(obj.r) || !is.under(obj.res) ){
-    stop( "Not all vectors are under" )
-  }
-
-  .Call( "elem_wise_add", obj.l$obj, obj.r$obj, obj.l$l, obj.res$obj )
+  .Call( "ewop",
+         tens.l$tensor,
+         tens.r$tensor,
+         tens.res$tensor,
+         op,
+         length(tens.l$get.dims),
+         tens.l$get.dims )
 
   invisible( NULL )
 }

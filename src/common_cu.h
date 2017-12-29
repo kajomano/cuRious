@@ -3,6 +3,6 @@
 
 #include <stdio.h>
 
-#include "common.h"
+#include "debug.h"
 
 // TODO: write cudaTry for .cu files

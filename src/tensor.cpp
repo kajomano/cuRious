@@ -1,6 +1,7 @@
 #include "common_cpp.h"
 
-void finalize_tensor(SEXP ptr){
+
+void finalize_tensor( SEXP ptr ){
   float* tens_dev = (float*)R_ExternalPtrAddr(ptr);
 
 #ifdef DEBUG_PRINTS

@@ -1,6 +1,6 @@
 # .Calls: src/tensor.cpp
 #
-# cuRious currently supports 1D and 2D tensors, 3D tensors will be implemented
+# cuRious currently supports 1D and 2D tensors, 3D tensors might be implemented
 # later for convolutional networks and/or Dropout/connect. Scalar values can be
 # easily passed to the GPU as function arguments, no need to use the tensor
 # framework for them.

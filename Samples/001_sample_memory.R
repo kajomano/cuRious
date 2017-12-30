@@ -6,7 +6,7 @@ library( cuRious )
 n <- 10
 vect.x <- rnorm( n ) * 10^9
 
-# Create a vect object, and move the information to the GPU
+# Create a tensor, and move the information to the GPU
 tens.x <- tensor$new( vect.x )
 tens.x$dive()
 
@@ -14,7 +14,7 @@ tens.x$dive()
 tens.x$pull()
 # Should actually see some precision loss:
 print( vect.x )
-# This operation does not move the data out of the GPU memory, as you can see:
+# This operation does not remove the data from GPU memory, as you can see:
 tens.x$get.tensor
 
 # Push new values into the stored vector on the GPU. This operation is preferred
@@ -29,11 +29,11 @@ tens.x2$get.tensor
 
 # Move the data back to the CPU memory. Let's also check what happens to the
 # copy. The soft copying mechanism of R6 causes the copy to also surface. This
-# is the intended and correct bahavior.
+# is the intended and correct behavior.
 tens.x$surface()
 tens.x2$get.tensor
 
-# Surfacing does not call the finalizer on the GPU object. This is up to the
+# Surfacing does not call the finalizer on the GPU object. This task is up to the
 # R garbage collector. Watch for the message from finalizing.
 gc()
 

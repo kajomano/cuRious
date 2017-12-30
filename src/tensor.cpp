@@ -44,14 +44,15 @@ SEXP cuR_dive_tensor( SEXP tens_r, SEXP n_dims_r, SEXP dims_r ) {
   // Allocate memory on the host
   float* tens_host = new float[l];
 
+  // TODO: it would be nice to remove this step everywhere
   // Convert to float in host memory
   for (int i = 0; i < l; i++){
     tens_host[i] = (float)tens_c[i];
   }
 
   // Allocate device memory and copy host vector
-  // As cuBLAS does not seem to support pitched memory, so we are not bothering
-  // with that, everything uses cudaMemcpy
+  // As cuBLAS does not seem to support pitched memory, we are not bothering
+  // with that, everything uses cudaMemcpy (even matrices)
   float* tens_dev;
   cudaError_t cuda_stat;
   cudaTry( cudaMalloc( (void**)&tens_dev, l*sizeof(float) ) )

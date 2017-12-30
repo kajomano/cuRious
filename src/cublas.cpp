@@ -19,25 +19,27 @@ void cuR_finalize_cublas_handle( SEXP ptr ){
   // Destroy context and free memory!
   // Clear R object too
   if( handle ){
+#ifdef DEBUG_PRINTS
+    Rprintf( "Finalizing handle at <%p>\n", (void*)handle );
+#endif
+
     cublasDestroy( *handle );
     delete[] handle;
     R_ClearExternalPtr( ptr );
-
-#ifdef DEBUG_PRINTS
-    Rprintf( "Finalized cublas handle\n" );
-#endif
   }
 }
 
 extern "C"
 SEXP cuR_create_cublas_handle(){
   cublasHandle_t* handle = new cublasHandle_t;
-  cublasStatus_t stat = cublasCreate( handle );
+#ifdef DEBUG_PRINTS
+  Rprintf( "Creating handle at <%p>\n", (void*)handle );
+#endif
 
-  // Trying to do error handling
-  if( stat != CUBLAS_STATUS_SUCCESS ){
-    return R_NilValue;
-  }
+  // cublasTry is a macro defined in debug.h, you need to create the variable
+  // 'stat' beforehand
+  cublasStatus_t stat;
+  cublasTry( cublasCreate( handle ) )
 
   // Return to R with an external pointer SEXP
   SEXP ptr = Rf_protect( R_MakeExternalPtr( handle, R_NilValue, R_NilValue ) );
@@ -45,4 +47,25 @@ SEXP cuR_create_cublas_handle(){
 
   Rf_unprotect(1);
   return ptr;
+}
+
+extern "C"
+SEXP cuR_cublas_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP handle_r ){
+  // Recover handle
+  cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
+
+  // Recover tensors, the length and the scalar
+  int l = Rf_asInteger( l_r );
+  float* tens_x = (float*)R_ExternalPtrAddr( tens_x_r );
+  float* tens_y = (float*)R_ExternalPtrAddr( tens_y_r );
+  float al = (float)Rf_asReal( al_r );
+
+  // Do the operation, the results go into tens_y
+  cublasStatus_t stat;
+  cublasTry( cublasSaxpy( *handle, l, &al, tens_x, 1, tens_y, 1 ) )
+
+  // Return something that is not null
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
 }

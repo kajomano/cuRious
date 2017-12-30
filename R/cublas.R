@@ -24,3 +24,31 @@ cublas.handle <- R6Class(
     }
   )
 )
+
+# cuBLAS linear algebra operations ====
+
+# y = alpha*x + y
+cublas.saxpy <- function( tens.x, tens.y, alpha, handle ){
+  # Sanity checks
+  if( !all( is.under( tens.x, tens.y ) ) ){
+    stop( "Not all tensors are under" )
+  }
+
+  if( !identical( tens.x$get.l, tens.y$get.l ) ){
+    stop( "Not all tensor lengths match" )
+  }
+
+  # Results go into tens.y
+  ret <- .Call( "cuR_cublas_saxpy",
+                tens.x$get.tensor,
+                tens.y$get.tensor,
+                tens.x$get.l,
+                alpha,
+                handle$get.handle )
+
+  if( is.null( ret ) ) stop( "Tensors could not be added" )
+
+  invisible( NULL )
+}
+
+

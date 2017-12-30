@@ -29,27 +29,30 @@ tensor <- R6Class(
         if( self$get.l > 2^32-1 ){
           # TODO ====
           # Use long int or the correct R type to remove this constraint
-          message( "Tensor is too large to be stored on the GPU" )
-          return( invisible( FALSE ) )
+          stop( "Tensor is too large to be stored on the GPU" )
         }
 
         private$under  <- TRUE
-        private$tensor <- .Call( "dive_tensor",
+        private$tensor <- .Call( "cuR_dive_tensor",
                                  private$tensor,
                                  length(private$dims),
                                  private$dims )
+
+        if( is.null( private$tensor ) ) stop( "Tensor could not dive" )
       }
 
-      invisible( TRUE )
+      invisible( NULL )
     },
 
     surface = function(){
       if( private$under ){
         private$under  <- FALSE
-        private$tensor <- .Call( "surface_tensor",
+        private$tensor <- .Call( "cuR_surface_tensor",
                                  private$tensor,
                                  length(private$dims),
                                  private$dims )
+
+        if( is.null( private$tensor ) ) stop( "Tensor could not surface" )
       }
 
       invisible( NULL )
@@ -64,15 +67,17 @@ tensor <- R6Class(
       storage.mode( obj ) <- "double"
 
       if( private$under ){
-        .Call( "push_tensor",
-               private$tensor,
-               obj,
-               length(private$dims),
-               private$dims )
+        ret <- .Call( "cuR_push_tensor",
+                      private$tensor,
+                      obj,
+                      length(private$dims),
+                      private$dims )
+
+        if( is.null( ret ) ) stop( "Tensor could not be pushed" )
       }else{
         # Here you could theoretically set an object with different dimensions,
         # but meh
-        self$obj <- obj
+        self$tensor <- obj
       }
 
       invisible( NULL )
@@ -80,10 +85,13 @@ tensor <- R6Class(
 
     pull = function(){
       if( private$under ){
-        .Call( "surface_tensor",
-               private$tensor,
-               length(private$dims),
-               private$dims )
+        ret <- .Call( "cuR_surface_tensor",
+                      private$tensor,
+                      length(private$dims),
+                      private$dims )
+
+        if( is.null( ret ) ) stop( "Tensor could not be pulled" )
+        ret
       }else{
         self$obj
       }

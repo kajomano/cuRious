@@ -3,6 +3,7 @@ library( cuRious )
 
 # Create vectors and store them in the device memory
 n <- 10
+
 vect.x <- rnorm( n )
 tens.x <- tensor$new( vect.x )
 tens.x$dive()
@@ -11,15 +12,10 @@ vect.y <- rnorm( n )
 tens.y <- tensor$new( vect.y )
 tens.y$dive()
 
-# Create a vector in the device memory to store the results
-vect.res <- rep( 0, times = n )
-tens.res <- tensor$new( vect.res )
-tens.res$dive()
+# Create a cublas handle and add the two vectors, the result ending up in tens.y
+handle <- cublas.handle$new()
+cublas.saxpy( tens.x, tens.y, 1, handle )
 
-# Add the two vectors
-ewop( tens.x, tens.y, tens.res )
-
-# Check if we got a correct result: it should be mostly equal :D
-tens.res$pull()
+# Check if we got a correct result: it should be mostly equal
+tens.y$pull()
 print( vect.x + vect.y )
-

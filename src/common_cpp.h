@@ -12,6 +12,3 @@
 // TODO: Maybe just write this whole thing in a macro
 #define cudaTry(ans) { cudaAssert((ans), __FILE__, __LINE__); }
 void cudaAssert( cudaError_t code, char* file, int line );
-
-int get_tensor_length( int n_dims, int* dims );
-

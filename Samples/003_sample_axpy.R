@@ -1,4 +1,4 @@
-# This script shows a simple addition operation on the GPU
+# This script shows a simple vector addition operation on the GPU
 library( cuRious )
 
 # Create vectors and store them in the device memory

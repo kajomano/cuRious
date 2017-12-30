@@ -69,3 +69,38 @@ SEXP cuR_cublas_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP h
   Rf_unprotect(1);
   return ret_r;
 }
+
+// The number of arguments is too damn high!
+extern "C"
+SEXP cuR_cublas_sgemv( SEXP tens_A_r, SEXP tens_x_r, SEXP tens_y_r, SEXP dims_r, SEXP al_r, SEXP be_r, SEXP op_r, SEXP handle_r ){
+  // Recover handle
+  cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
+
+  // Recover tensors, the dims and the scalars
+  int* dims  = INTEGER( dims_r );
+  float* tens_A = (float*)R_ExternalPtrAddr( tens_A_r );
+  float* tens_x = (float*)R_ExternalPtrAddr( tens_x_r );
+  float* tens_y = (float*)R_ExternalPtrAddr( tens_y_r );
+  float al = (float)Rf_asReal( al_r );
+  float be = (float)Rf_asReal( be_r );
+
+  // Recover the operation
+  cublasOperation_t op;
+  int op_int = Rf_asInteger( op_r );
+  if( op_int == 2 ){
+    op = CUBLAS_OP_T;
+  }else if( op_int == 3 ){
+    op = CUBLAS_OP_C;
+  }else{
+    op = CUBLAS_OP_N;
+  }
+
+  // Do the operation, the results go into tens_y
+  cublasStatus_t stat;
+  cublasTry( cublasSgemv( *handle, op, dims[0], dims[1], &al, tens_A, dims[0], tens_x, 1, &be, tens_y, 1 ) )
+
+  // Return something that is not null
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}

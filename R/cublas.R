@@ -28,6 +28,8 @@ cublas.handle <- R6Class(
 # cuBLAS linear algebra operations ====
 
 # y = alpha*x + y
+# The trick here is that element-wise addition can be this way done also on
+# matrices, even though thats not the intended use
 cublas.saxpy <- function( tens.x, tens.y, alpha, handle ){
   # Sanity checks
   if( !all( is.under( tens.x, tens.y ) ) ){
@@ -46,7 +48,46 @@ cublas.saxpy <- function( tens.x, tens.y, alpha, handle ){
                 alpha,
                 handle$get.handle )
 
-  if( is.null( ret ) ) stop( "Tensors could not be added" )
+  if( is.null( ret ) ) stop( "Subroutine failed" )
+
+  invisible( NULL )
+}
+
+# y = alpha*op(A)*x + beta*y
+# op:
+# 'N' - nothing
+# 'T' - transpose
+# 'H' - conjugate transpose
+cublas.sgemv <- function( tens.A, tens.x, tens.y, alpha, beta, op = c( 'N', 'T', 'H' ), handle ){
+  op.choices = c( 'N', 'T', 'H' )
+  op <- match.arg( op, op.choices )
+  op.int <- which( op.choices == op )
+
+  # Sanity checks
+  if( !all( is.under( tens.A, tens.x, tens.y ) ) ){
+    stop( "Not all tensors are under" )
+  }
+
+  if( length( tens.A$get.dims ) != 2 || length( tens.x$get.dims ) != 1 || length( tens.y$get.dims ) != 1 ){
+    stop( "Not all tensor have the correct number of dimensions" )
+  }
+
+  if( tens.A$get.dims[2] != tens.x$get.dims || tens.A$get.dims[1] != tens.y$get.dims ){
+    stop( "Not all tensor have matching dimensions" )
+  }
+
+  # Results go into tens.y
+  ret <- .Call( "cuR_cublas_sgemv",
+                tens.A$get.tensor,
+                tens.x$get.tensor,
+                tens.y$get.tensor,
+                tens.A$get.dims,
+                alpha,
+                beta,
+                op.int,
+                handle$get.handle )
+
+  if( is.null( ret ) ) stop( "Subroutine failed" )
 
   invisible( NULL )
 }

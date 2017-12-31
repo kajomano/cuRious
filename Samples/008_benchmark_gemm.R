@@ -1,0 +1,37 @@
+library( cuRious )
+library( microbenchmark )
+
+# Create tensors and store them in GPU memory
+# A( m, k ) * B( k, n ) + C( m, n )
+m <- 2000
+n <- 1000
+k <- 1500
+
+mat.A <- matrix( rnorm(m*k), ncol = k )
+tens.A <- tensor$new( mat.A )
+tens.A$dive()
+
+mat.B <- matrix( rnorm(k*n), ncol = n )
+tens.B <- tensor$new( mat.B )
+tens.B$dive()
+
+mat.C <- matrix( rnorm(m*n), ncol = n )
+tens.C <- tensor$new( mat.C )
+tens.C$dive()
+
+alpha <- -1.5
+beta  <- 0.5
+
+# Create a cublas handle and add the two vectors, the result ending up in tens.y
+handle <- cublas.handle$new()
+handle$create()
+
+# Define functions for a better microbenchmark print
+R.dgemm    <- function(){ ( mat.A %*% mat.B ) * alpha + mat.C * beta }
+cuda.sgemm <- function(){ cublas.sgemm( tens.A, tens.B, tens.C, alpha, beta, 'N', 'N', handle ) }
+
+# Check the speeds
+microbenchmark( R.dgemm(),    times = 100 )
+microbenchmark( cuda.sgemm(), times = 100 )
+
+clean.global()

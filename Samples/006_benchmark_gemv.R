@@ -1,22 +1,20 @@
-# Gemv is a more involved computation than axpy, so we should see a bigger
-# speedup here
 library( cuRious )
 library( microbenchmark )
 
-# Create tensors and store them in memory
-# A( nrow, ncol ) * x( ncol ) + y( nrow )
-n.row <- 10000
-n.col <- 1000
+# Create tensors and store them in GPU memory
+# A( m, n ) * x( n ) + y( m)
+m <- 1500
+n <- 1000
 
-mat.A <- matrix( rnorm( n.row*n.col ), ncol = n.col )
+mat.A <- matrix( 1:(m*n), ncol = n )
 tens.A <- tensor$new( mat.A )
 tens.A$dive()
 
-vect.x <- rnorm( n.col )
+vect.x <- 1:n
 tens.x <- tensor$new( vect.x )
 tens.x$dive()
 
-vect.y <- rnorm( n.row )
+vect.y <- 1:m
 tens.y <- tensor$new( vect.y )
 tens.y$dive()
 

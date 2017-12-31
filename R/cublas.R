@@ -3,7 +3,7 @@
 # A cublas context handle needs to be created and passed to each cublas call.
 # The R finalizer is writte so that upon removal of the handle object, the
 # context will be also destroyed. Keeping a single handle through multiple
-# cublas call, or even thorugh the whole session is advisable.
+# cublas calls (through the whole session) is advisable.
 
 # cuBLAS handle class ====
 cublas.handle <- R6Class(
@@ -65,6 +65,9 @@ cublas.saxpy <- function( tens.x, tens.y, alpha, handle ){
   invisible( NULL )
 }
 
+# TODO ====
+# Add the scaling function from cuBLAS!
+
 # y = alpha*op(A)*x + beta*y
 # op:
 # 'N' - nothing
@@ -84,6 +87,8 @@ cublas.sgemv <- function( tens.A, tens.x, tens.y, alpha, beta, op = c( 'N', 'T',
     stop( "Not all tensor have the correct number of dimensions" )
   }
 
+  # TODO ====
+  # Rewrite these checks in case of other op choices
   if( tens.A$get.dims[2] != tens.x$get.dims || tens.A$get.dims[1] != tens.y$get.dims ){
     stop( "Not all tensor have matching dimensions" )
   }
@@ -97,6 +102,53 @@ cublas.sgemv <- function( tens.A, tens.x, tens.y, alpha, beta, op = c( 'N', 'T',
                 alpha,
                 beta,
                 op.int,
+                handle$get.handle )
+
+  if( is.null( ret ) ) stop( "Subroutine failed" )
+
+  invisible( NULL )
+}
+# C = alpha*op.a(A)*op.b(B) + beta*C
+# op.x:
+# 'N' - nothing
+# 'T' - transpose
+# 'H' - conjugate transpose
+cublas.sgemm <- function( tens.A, tens.B, tens.C, alpha, beta, op.a = c( 'N', 'T', 'H' ), op.b = op.a, handle ){
+  op.choices = c( 'N', 'T', 'H' )
+  op.a <- match.arg( op.a, op.choices )
+  op.b <- match.arg( op.b, op.choices )
+  op.a.int <- which( op.choices == op.a )
+  op.b.int <- which( op.choices == op.b )
+
+  # Sanity checks
+  if( !all( is.under( tens.A, tens.B, tens.C ) ) ){
+    stop( "Not all tensors are under" )
+  }
+
+  if( length( tens.A$get.dims ) != 2 || length( tens.B$get.dims ) != 2 || length( tens.C$get.dims ) != 2 ){
+    stop( "Not all tensor have the correct number of dimensions" )
+  }
+
+  # TODO ====
+  # Rewrite these checks in case of other op choices
+  # UGHH, this is brain wrecking
+  if( tens.A$get.dims[2] != tens.B$get.dims[1] ||
+      tens.B$get.dims[2] != tens.C$get.dims[2] ||
+      tens.A$get.dims[1] != tens.C$get.dims[1] ){
+    stop( "Not all tensor have matching dimensions" )
+  }
+
+  # Results go into tens.y
+  ret <- .Call( "cuR_cublas_sgemm",
+                tens.A$get.tensor,
+                tens.B$get.tensor,
+                tens.C$get.tensor,
+                tens.A$get.dims,
+                tens.B$get.dims,
+                alpha,
+                beta,
+                op.a.int,
+                op.b.int,
                 handle$get.handle )
 
   if( is.null( ret ) ) stop( "Subroutine failed" )

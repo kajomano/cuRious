@@ -9,10 +9,16 @@
 cublas.handle <- R6Class(
   "cublas.handle",
   public = list(
-    initialize = function(){
+    create = function(){
       private$handle <- .Call( "cuR_create_cublas_handle" )
       # Check for errors
-      if( is.null( private$handle ) ) stop( "cuBLAS handle could not be created" )
+      if( is.null( private$handle ) ) stop( "The cuBLAS handle could not be created" )
+    },
+    destroy = function(){
+      ret <- .Call( "cuR_destroy_cublas_handle", private$handle )
+      # Check for errors
+      if( is.null( ret ) ) stop( "The cuBLAS handle could not be destroyed" )
+      private$handle <- NULL
     }
   ),
   private = list(
@@ -20,7 +26,13 @@ cublas.handle <- R6Class(
   ),
   active = list(
     get.handle = function( val ){
-      if( missing(val) ) return( private$handle )
+      if( missing(val) ){
+        if( self$is.created ) stop( "The cuBLAS handle is not yet created" )
+        private$handle
+      }
+    },
+    is.created = function(){
+      is.null( private$handle )
     }
   )
 )

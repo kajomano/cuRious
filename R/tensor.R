@@ -85,7 +85,7 @@ tensor <- R6Class(
 
     pull = function(){
       if( private$under ){
-        ret <- .Call( "cuR_surface_tensor",
+        ret <- .Call( "cuR_pull_tensor",
                       private$tensor,
                       length(private$dims),
                       private$dims )

@@ -30,6 +30,29 @@ void cuR_finalize_cublas_handle( SEXP ptr ){
 }
 
 extern "C"
+SEXP cuR_destroy_cublas_handle( SEXP ptr ){
+  cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( ptr );
+
+  // Destroy context and free memory!
+  // Clear R object too
+  if( handle ){
+#ifdef DEBUG_PRINTS
+    Rprintf( "Finalizing handle at <%p>\n", (void*)handle );
+#endif
+
+    cublasStatus_t stat;
+    cublasTry( cublasDestroy( *handle ) )
+    delete[] handle;
+    R_ClearExternalPtr( ptr );
+  }
+
+  // Return something that is not null
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
+
+extern "C"
 SEXP cuR_create_cublas_handle(){
   cublasHandle_t* handle = new cublasHandle_t;
 #ifdef DEBUG_PRINTS

@@ -25,6 +25,7 @@ beta  <- 0.5
 
 # Create a cublas handle and add the two vectors, the result ending up in tens.y
 handle <- cublas.handle$new()
+handle$create()
 
 # Define functions for a better microbenchmark print
 R.dgemv    <- function(){ ( mat.A %*% vect.x ) * alpha + vect.y * beta }
@@ -33,3 +34,5 @@ cuda.sgemv <- function(){ cublas.sgemv( tens.A, tens.x, tens.y, alpha, beta, 'N'
 # Check the speeds
 microbenchmark( R.dgemv(),    times = 1000 )
 microbenchmark( cuda.sgemv(), times = 1000 )
+
+clean.global()

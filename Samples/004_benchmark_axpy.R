@@ -14,6 +14,7 @@ tens.y$dive()
 
 # Create cuBLAS handle
 handle <- cublas.handle$new()
+handle$create()
 
 # Define functions for a better microbenchmark print
 R.daxpy    <- function(){ vect.x * 0.5 + vect.y }
@@ -22,3 +23,5 @@ cuda.saxpy <- function(){ cublas.saxpy( tens.x, tens.y, 0.5, handle ) }
 # Check the speeds
 microbenchmark( R.daxpy(),    times = 1000 )
 microbenchmark( cuda.saxpy(), times = 1000 )
+
+clean.global()

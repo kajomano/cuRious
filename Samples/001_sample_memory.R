@@ -29,13 +29,9 @@ tens.x2$get.tensor
 
 # Move the data back to the CPU memory. Let's also check what happens to the
 # copy. The soft copying mechanism of R6 causes the copy to also surface. This
-# is the intended and correct behavior.
+# is the intended and correct behavior. You can alos see that the $push() call
+# did change the actual content
 tens.x$surface()
 tens.x2$get.tensor
 
-# Surfacing does not call the finalizer on the GPU object. This task is up to the
-# R garbage collector. Watch for the message from finalizing.
-gc()
-
-# Check if the values actually changed with $push()
-tens.x$get.tensor
+clean.global()

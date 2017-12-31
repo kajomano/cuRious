@@ -20,7 +20,10 @@ tens.y$dive()
 
 # Create a cublas handle and add the two vectors, the result ending up in tens.y
 handle <- cublas.handle$new()
+handle$create()
 cublas.sgemv( tens.A, tens.x, tens.y, 1, 1, 'N', handle )
+
+clean.global()
 
 # Check if we got a correct result: it should be equal, as we used whole numbers
 tens.y$pull()

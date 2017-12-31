@@ -14,8 +14,11 @@ tens.y$dive()
 
 # Create a cublas handle and add the two vectors, the result ending up in tens.y
 handle <- cublas.handle$new()
+handle$create()
 cublas.saxpy( tens.x, tens.y, 1, handle )
 
 # Check if we got a correct result: it should be mostly equal
 tens.y$pull()
 print( vect.x + vect.y )
+
+clean.global()

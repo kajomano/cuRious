@@ -107,8 +107,9 @@ SEXP cuR_surface_tensor( SEXP ptr, SEXP n_dims_r, SEXP dims_r ) {
     tens_c[i] = (double)tens_host[i];
   }
 
-  // Free host memory, device memory will be taken care of with finalize
+  // Free host and device memory
   delete[] tens_host;
+  cuR_finalize_tensor( ptr );
 
   Rf_unprotect(1);
   return tens_r;
@@ -147,4 +148,45 @@ SEXP cuR_push_tensor( SEXP ptr, SEXP tens_r, SEXP n_dims_r, SEXP dims_r ) {
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
   Rf_unprotect(1);
   return ret_r;
+}
+
+// This function is 99% cuR_pull_tensor(), except does not call finalize on ptr
+extern "C"
+SEXP cuR_pull_tensor( SEXP ptr, SEXP n_dims_r, SEXP dims_r ) {
+  // Dimensions and tensor length
+  int n_dims = Rf_asInteger(n_dims_r);
+  int* dims  = INTEGER( dims_r );
+  int l      = cuR_get_tensor_length( n_dims, dims );
+
+  // Create pointer to the device memory object
+  float* tens_dev = (float*)R_ExternalPtrAddr(ptr);
+
+  // Allocate host memory and copy back content from device
+  float* tens_host = new float[l];
+  cudaError_t cuda_stat;
+  cudaTry( cudaMemcpy(tens_host, tens_dev, l*sizeof(float), cudaMemcpyDeviceToHost) );
+
+  // Create the correct R object
+  SEXP tens_r;
+  if( n_dims == 1 ){
+    tens_r = Rf_protect( Rf_allocVector( REALSXP, dims[0] ) );
+  }else if( n_dims == 2 ){
+    tens_r = Rf_protect( Rf_allocMatrix( REALSXP, dims[0], dims[1] ) );
+  }else{
+    return R_NilValue;
+  }
+
+  // Create a pointer to the actual data in the SEXP
+  double* tens_c = REAL( tens_r );
+
+  // Fill the SEXP with data
+  for (int i = 0; i < l; i++){
+    tens_c[i] = (double)tens_host[i];
+  }
+
+  // Free host and device memory
+  delete[] tens_host;
+
+  Rf_unprotect(1);
+  return tens_r;
 }

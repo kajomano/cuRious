@@ -24,3 +24,5 @@ memory.read  <- function(){ tens.x$pull() }
 # to the overall transfer times.
 microbenchmark( memory.write(), times = 100 )
 microbenchmark( memory.read(),  times = 100 )
+
+clean.global()

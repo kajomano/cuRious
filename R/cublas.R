@@ -1,7 +1,7 @@
 # .Calls: src/cublas.cpp
 #
 # A cublas context handle needs to be created and passed to each cublas call.
-# The R finalizer is writte so that upon removal of the handle object, the
+# The R finalizer is written so that upon removal of the handle object, the
 # context will be also destroyed. Keeping a single handle through multiple
 # cublas calls (through the whole session) is advisable.
 
@@ -40,7 +40,7 @@ cublas.handle <- R6Class(
 # cuBLAS linear algebra operations ====
 
 # y = alpha*x + y
-# The trick here is that element-wise addition can be this way done also on
+# The trick here is that element-wise addition can be done this way also on
 # matrices, even though thats not the intended use
 cublas.saxpy <- function( tens.x, tens.y, alpha, handle ){
   # Sanity checks
@@ -83,13 +83,13 @@ cublas.sgemv <- function( tens.A, tens.x, tens.y, alpha, beta, op = c( 'N', 'T',
     stop( "Not all tensors are under" )
   }
 
-  if( length( tens.A$get.dims ) != 2 || length( tens.x$get.dims ) != 1 || length( tens.y$get.dims ) != 1 ){
-    stop( "Not all tensor have the correct number of dimensions" )
+  if( tens.x$get.dims[2] != 1 || tens.y$get.dims[2] != 1 ){
+    stop( "Not all tensors have the correct number of dimensions" )
   }
 
   # TODO ====
   # Rewrite these checks in case of other op choices
-  if( tens.A$get.dims[2] != tens.x$get.dims || tens.A$get.dims[1] != tens.y$get.dims ){
+  if( tens.A$get.dims[2] != tens.x$get.dims[1] || tens.A$get.dims[1] != tens.y$get.dims[1] ){
     stop( "Not all tensor have matching dimensions" )
   }
 
@@ -123,10 +123,6 @@ cublas.sgemm <- function( tens.A, tens.B, tens.C, alpha, beta, op.a = c( 'N', 'T
   # Sanity checks
   if( !all( is.under( tens.A, tens.B, tens.C ) ) ){
     stop( "Not all tensors are under" )
-  }
-
-  if( length( tens.A$get.dims ) != 2 || length( tens.B$get.dims ) != 2 || length( tens.C$get.dims ) != 2 ){
-    stop( "Not all tensor have the correct number of dimensions" )
   }
 
   # TODO ====

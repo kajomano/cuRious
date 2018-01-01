@@ -35,7 +35,6 @@ tensor <- R6Class(
         private$under  <- TRUE
         private$tensor <- .Call( "cuR_dive_tensor",
                                  private$tensor,
-                                 length(private$dims),
                                  private$dims )
 
         if( is.null( private$tensor ) ) stop( "Tensor could not dive" )
@@ -49,7 +48,6 @@ tensor <- R6Class(
         private$under  <- FALSE
         private$tensor <- .Call( "cuR_surface_tensor",
                                  private$tensor,
-                                 length(private$dims),
                                  private$dims )
 
         if( is.null( private$tensor ) ) stop( "Tensor could not surface" )
@@ -70,7 +68,6 @@ tensor <- R6Class(
         ret <- .Call( "cuR_push_tensor",
                       private$tensor,
                       obj,
-                      length(private$dims),
                       private$dims )
 
         if( is.null( ret ) ) stop( "Tensor could not be pushed" )
@@ -87,7 +84,6 @@ tensor <- R6Class(
       if( private$under ){
         ret <- .Call( "cuR_pull_tensor",
                       private$tensor,
-                      length(private$dims),
                       private$dims )
 
         if( is.null( ret ) ) stop( "Tensor could not be pulled" )
@@ -133,7 +129,8 @@ get.dims <- function( obj ){
   }
 
   if( is.vector( obj ) ){
-    return( length( obj ) )
+    # R vectors are functionally as single column many row matrices, thats why
+    return( c( length( obj ), 1L ) )
   }else if( is.matrix( obj )){
     return( c( nrow( obj ), ncol( obj ) ) )
   }else{

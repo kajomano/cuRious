@@ -9,15 +9,6 @@
 
 #include "debug.h"
 
-int cuR_get_tensor_length( int n_dims, int* dims ){
-  int l = dims[0];
-  for( int i = 1; i < n_dims; i++ ){
-    l *= dims[i];
-  }
-
-  return l;
-}
-
 void cuR_finalize_tensor( SEXP ptr ){
   float* tens_dev = (float*)R_ExternalPtrAddr(ptr);
 
@@ -33,10 +24,10 @@ void cuR_finalize_tensor( SEXP ptr ){
 }
 
 extern "C"
-SEXP cuR_dive_tensor( SEXP tens_r, SEXP n_dims_r, SEXP dims_r ) {
+SEXP cuR_dive_tensor( SEXP tens_r, SEXP dims_r ) {
   // Calculate tensor length
-  // Dimensions and tensor length
-  int l = cuR_get_tensor_length( Rf_asInteger(n_dims_r), INTEGER( dims_r ) );
+  int* dims = INTEGER( dims_r );
+  int l = dims[0]*dims[1];
 
   // Create pointer to the actual data in the SEXP
   double* tens_c = REAL( tens_r );
@@ -75,11 +66,10 @@ SEXP cuR_dive_tensor( SEXP tens_r, SEXP n_dims_r, SEXP dims_r ) {
 }
 
 extern "C"
-SEXP cuR_surface_tensor( SEXP ptr, SEXP n_dims_r, SEXP dims_r ) {
+SEXP cuR_surface_tensor( SEXP ptr, SEXP dims_r ) {
   // Dimensions and tensor length
-  int n_dims = Rf_asInteger(n_dims_r);
   int* dims  = INTEGER( dims_r );
-  int l      = cuR_get_tensor_length( n_dims, dims );
+  int l = dims[0]*dims[1];
 
   // Create pointer to the device memory object
   float* tens_dev = (float*)R_ExternalPtrAddr(ptr);
@@ -91,12 +81,10 @@ SEXP cuR_surface_tensor( SEXP ptr, SEXP n_dims_r, SEXP dims_r ) {
 
   // Create the correct R object
   SEXP tens_r;
-  if( n_dims == 1 ){
+  if( dims[1] == 1 ){
     tens_r = Rf_protect( Rf_allocVector( REALSXP, dims[0] ) );
-  }else if( n_dims == 2 ){
-    tens_r = Rf_protect( Rf_allocMatrix( REALSXP, dims[0], dims[1] ) );
   }else{
-    return R_NilValue;
+    tens_r = Rf_protect( Rf_allocMatrix( REALSXP, dims[0], dims[1] ) );
   }
 
   // Create a pointer to the actual data in the SEXP
@@ -116,14 +104,15 @@ SEXP cuR_surface_tensor( SEXP ptr, SEXP n_dims_r, SEXP dims_r ) {
 }
 
 extern "C"
-SEXP cuR_push_tensor( SEXP ptr, SEXP tens_r, SEXP n_dims_r, SEXP dims_r ) {
+SEXP cuR_push_tensor( SEXP ptr, SEXP tens_r, SEXP dims_r ) {
   // Create pointer to the actual data in the tens_r
   // and to the device memory object
   double* tens_c = REAL( tens_r );
   float* tens_dev = (float*)R_ExternalPtrAddr(ptr);
 
-  // Calculate vector length
-  int l = cuR_get_tensor_length( Rf_asInteger(n_dims_r), INTEGER(dims_r) );
+  // Calculate tensor length
+  int* dims  = INTEGER( dims_r );
+  int l = dims[0]*dims[1];
 
   // Allocate memory on the host
   float* tens_host = new float[l];
@@ -154,9 +143,8 @@ SEXP cuR_push_tensor( SEXP ptr, SEXP tens_r, SEXP n_dims_r, SEXP dims_r ) {
 extern "C"
 SEXP cuR_pull_tensor( SEXP ptr, SEXP n_dims_r, SEXP dims_r ) {
   // Dimensions and tensor length
-  int n_dims = Rf_asInteger(n_dims_r);
   int* dims  = INTEGER( dims_r );
-  int l      = cuR_get_tensor_length( n_dims, dims );
+  int l = dims[0]*dims[1];
 
   // Create pointer to the device memory object
   float* tens_dev = (float*)R_ExternalPtrAddr(ptr);
@@ -168,12 +156,10 @@ SEXP cuR_pull_tensor( SEXP ptr, SEXP n_dims_r, SEXP dims_r ) {
 
   // Create the correct R object
   SEXP tens_r;
-  if( n_dims == 1 ){
+  if( dims[1] == 1 ){
     tens_r = Rf_protect( Rf_allocVector( REALSXP, dims[0] ) );
-  }else if( n_dims == 2 ){
-    tens_r = Rf_protect( Rf_allocMatrix( REALSXP, dims[0], dims[1] ) );
   }else{
-    return R_NilValue;
+    tens_r = Rf_protect( Rf_allocMatrix( REALSXP, dims[0], dims[1] ) );
   }
 
   // Create a pointer to the actual data in the SEXP

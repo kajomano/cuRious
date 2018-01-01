@@ -12,7 +12,7 @@
 
 // This is a good example how to access the handle in other functions
 // Also a good example how to finalize things, this function can be called
-// from other functions without fear double-finalization
+// from other functions without the fear of double-finalization
 void cuR_finalize_cublas_handle( SEXP ptr ){
   cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( ptr );
 

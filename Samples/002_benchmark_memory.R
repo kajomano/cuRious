@@ -25,7 +25,6 @@ memory.read  <- function(){ tens.x$pull() }
 microbenchmark( memory.write(), times = 100 )
 microbenchmark( memory.read(),  times = 100 )
 
-# TODO ====
 # Make tens.x staged. This creates a page-locked buffer for the tensor
 # that can accelerate all push and pull calls for the cost
 # of taking up memory in non-swappable address space. This is useful for

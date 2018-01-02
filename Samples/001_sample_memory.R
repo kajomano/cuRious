@@ -11,7 +11,7 @@ tens.x <- tensor$new( vect.x )
 tens.x$dive()
 
 # Recover (copy out) the vector
-tens.x$pull()
+print( tens.x$pull() )
 # Should actually see some precision loss:
 print( vect.x )
 # This operation does not remove the data from GPU memory, as you can see:

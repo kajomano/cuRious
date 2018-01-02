@@ -35,9 +35,11 @@ tensor <- R6Class(
       private$tensor <- .Call( "cuR_push_tensor",
                                NULL,
                                private$tensor,
-                               private$dims )
+                               private$dims,
+                               private$stage )
 
       if( is.null( private$tensor ) ) stop( "Tensor could not dive" )
+
       private$under  <- TRUE
 
       invisible( NULL )
@@ -48,13 +50,16 @@ tensor <- R6Class(
         stop( "Tensor is not under" )
       }
 
-      private$under  <- FALSE
       private$tensor <- .Call( "cuR_pull_tensor",
                                private$tensor,
                                private$dims,
-                               TRUE )
+                               TRUE,
+                               private$stage )
 
       if( is.null( private$tensor ) ) stop( "Tensor could not surface" )
+
+      private$under  <- FALSE
+      self$destroy.stage()
 
       invisible( NULL )
     },
@@ -71,7 +76,8 @@ tensor <- R6Class(
         ret <- .Call( "cuR_push_tensor",
                       private$tensor,
                       obj,
-                      private$dims )
+                      private$dims,
+                      private$stage )
 
         if( is.null( ret ) ) stop( "Tensor could not be pushed" )
       }else{
@@ -88,7 +94,8 @@ tensor <- R6Class(
         ret <- .Call( "cuR_pull_tensor",
                       private$tensor,
                       private$dims,
-                      FALSE )
+                      FALSE,
+                      private$stage )
 
         if( is.null( ret ) ) stop( "Tensor could not be pulled" )
         ret
@@ -102,7 +109,7 @@ tensor <- R6Class(
         stop( "Tensor is already staged" )
       }
 
-      # private$stage <- .Call( ... )
+      private$stage <- .Call( "cuR_create_stage", private$dims )
 
       if( is.null( private$stage ) ){
         stop( "Tensor could not be staged" )
@@ -111,12 +118,12 @@ tensor <- R6Class(
       invisible( NULL )
     },
 
-    remove.stage = function(){
+    destroy.stage = function(){
       if( !self$is.staged ){
         stop( "Tensor is not staged" )
       }
 
-      # .Call(  )
+      .Call( "cuR_destroy_stage", private$stage )
       private$stage <- NULL
     }
   ),
@@ -146,7 +153,7 @@ tensor <- R6Class(
     },
 
     is.staged = function( val ){
-      if( missing(val) ) return( is.null( private$stage ) )
+      if( missing(val) ) return( !is.null( private$stage ) )
     }
   )
 )

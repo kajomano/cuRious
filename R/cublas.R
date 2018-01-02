@@ -68,7 +68,7 @@ cublas.handle <- R6Class(
 # B = alpha*A + B
 # The trick here is that element-wise addition can be done this way also on
 # matrices, even though thats not the intended use
-cublas.saxpy <- function( tens.A, tens.B, alpha, handle ){
+cublas.saxpy <- function( handle, tens.A, tens.B, alpha = 1 ){
   # Sanity checks
   if( !all( is.under( tens.A, tens.B ) ) ){
     stop( "Not all tensors are under" )
@@ -93,7 +93,7 @@ cublas.saxpy <- function( tens.A, tens.B, alpha, handle ){
 
 # C = alpha*tp.a(A)*tp.b(B) + beta*C
 # tp = transpose
-cublas.sgemm <- function( tens.A, tens.B, tens.C, alpha, beta, tp.A = FALSE, tp.B = FALSE, handle ){
+cublas.sgemm <- function( handle, tens.A, tens.B, tens.C, alpha = 1, beta = 1, tp.A = FALSE, tp.B = FALSE ){
   # Sanity checks
   if( !all( is.under( tens.A, tens.B, tens.C ) ) ){
     stop( "Not all tensors are under" )

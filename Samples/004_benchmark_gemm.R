@@ -27,11 +27,17 @@ handle <- cublas.handle$new()
 handle$create()
 
 # Define functions for a better microbenchmark print
-R.dgemm    <- function(){ ( mat.A %*% mat.B ) * alpha + mat.C * beta }
-cuda.sgemm <- function(){ cublas.sgemm( tens.A, tens.B, tens.C, alpha, beta, handle = handle ) }
+# cuBLAS calls are asynchronous, for a proper timing we need to call sync.streams()
+R.dgemm <- function(){
+  mat.C <<- ( mat.A %*% mat.B ) * alpha + mat.C * beta
+}
+cuda.sgemm <- function(){
+  cublas.sgemm( handle, tens.A, tens.B, tens.C )
+  cuda.streams.sync()
+}
 
 # Check the speeds
-microbenchmark( R.dgemm(),    times = 100 )
-microbenchmark( cuda.sgemm(), times = 1000 )
+microbenchmark( R.dgemm(),    times = 10 )
+microbenchmark( cuda.sgemm(), times = 10 )
 
 clean.global()

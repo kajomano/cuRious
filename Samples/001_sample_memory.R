@@ -29,7 +29,7 @@ tens.x2$get.tensor
 
 # Move the data back to the CPU memory. Let's also check what happens to the
 # copy. The soft copying mechanism of R6 causes the copy to also surface. This
-# is the intended and correct behavior. You can alos see that the $push() call
+# is the intended and correct behavior. You can also see that the $push() call
 # did change the actual content
 tens.x$surface()
 tens.x2$get.tensor

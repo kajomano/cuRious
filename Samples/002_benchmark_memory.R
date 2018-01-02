@@ -25,4 +25,16 @@ memory.read  <- function(){ tens.x$pull() }
 microbenchmark( memory.write(), times = 100 )
 microbenchmark( memory.read(),  times = 100 )
 
+# TODO ====
+# Make tens.x staged. This creates a page-locked buffer for the tensor
+# that can accelerate all push and pull calls for the cost
+# of taking up memory in non-swappable address space. This is useful for
+# tensors that will act as IO points between the CPU and GPU with regular
+# push or pull operations. Use sparingly!
+tens.x$create.stage()
+
+# Let's check the speed with the staged tensor
+microbenchmark( memory.write(), times = 100 )
+microbenchmark( memory.read(),  times = 100 )
+
 clean.global()

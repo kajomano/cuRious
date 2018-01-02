@@ -21,7 +21,14 @@ stream1$create()
 stream2 <- cuda.stream$new()
 stream2$create()
 
-# Define functions for a better microbenchmark print
+# Make tens.A staged. This creates a page-locked buffer for the tensor
+# that can accelerate all push, pull, dive and surface calls for the cost
+# of taking up memory in non-swappable address space. This is useful for
+# tensors that will act as IO points between the CPU and GPU with regular
+# push or pull operations. Use sparingly!
+tens.A$create.stage()
+
+# Define functions
 single.stream <- function(){
   tens.A$push( mat )
   cublas.sgemm( handle, tens.B, tens.B, tens.C, 1, 0 )

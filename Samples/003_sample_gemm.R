@@ -25,7 +25,7 @@ handle$create()
 cublas.sgemm( handle, tens.A, tens.B, tens.C )
 
 # Check if we got a correct result: it should be equal, as we used whole numbers
-tens.C$pull()
+print( tens.C$pull() )
 print( mat.A %*% mat.B + mat.C )
 
 clean.global()

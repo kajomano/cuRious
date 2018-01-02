@@ -37,25 +37,8 @@ void cuR_finalize_cuda_stream( SEXP ptr ){
 
 extern "C"
 SEXP cuR_destroy_cuda_stream( SEXP ptr ){
-  cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( ptr );
-
-  // Destroy context and free memory!
-  // Clear R object too
-  if( stream ){
-#ifdef DEBUG_PRINTS
-    Rprintf( "Finalizing stream at <%p>\n", (void*)stream );
-#endif
-
-    cudaError_t cuda_stat;
-    cudaTry( cudaStreamDestroy( *stream ) )
-    delete[] stream;
-    R_ClearExternalPtr( ptr );
-  }
-
-  // Return something that is not null
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
+  cuR_finalize_cuda_stream( ptr );
+  return R_NilValue;
 }
 
 extern "C"

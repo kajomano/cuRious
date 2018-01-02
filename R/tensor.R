@@ -19,39 +19,42 @@ tensor <- R6Class(
       # Store tensor, force storage type
       private$tensor <- obj
       storage.mode( private$tensor ) <- "double"
-
-      # Set info
-      private$under <- FALSE
     },
 
     dive = function(){
-      if( !private$under ){
-        if( self$get.l > 2^32-1 ){
-          # TODO ====
-          # Use long int or the correct R type to remove this constraint
-          stop( "Tensor is too large to be stored on the GPU" )
-        }
-
-        private$under  <- TRUE
-        private$tensor <- .Call( "cuR_dive_tensor",
-                                 private$tensor,
-                                 private$dims )
-
-        if( is.null( private$tensor ) ) stop( "Tensor could not dive" )
+      if( private$under ){
+        stop( "Tensor is already under" )
       }
+
+      if( self$get.l > 2^32-1 ){
+        # TODO ====
+        # Use long int or the correct R type to remove this constraint
+        stop( "Tensor is too large to be stored on the GPU" )
+      }
+
+      private$tensor <- .Call( "cuR_push_tensor",
+                               NULL,
+                               private$tensor,
+                               private$dims )
+
+      if( is.null( private$tensor ) ) stop( "Tensor could not dive" )
+      private$under  <- TRUE
 
       invisible( NULL )
     },
 
     surface = function(){
-      if( private$under ){
-        private$under  <- FALSE
-        private$tensor <- .Call( "cuR_surface_tensor",
-                                 private$tensor,
-                                 private$dims )
-
-        if( is.null( private$tensor ) ) stop( "Tensor could not surface" )
+      if( !private$under ){
+        stop( "Tensor is not under" )
       }
+
+      private$under  <- FALSE
+      private$tensor <- .Call( "cuR_pull_tensor",
+                               private$tensor,
+                               private$dims,
+                               TRUE )
+
+      if( is.null( private$tensor ) ) stop( "Tensor could not surface" )
 
       invisible( NULL )
     },
@@ -72,7 +75,7 @@ tensor <- R6Class(
 
         if( is.null( ret ) ) stop( "Tensor could not be pushed" )
       }else{
-        # Here you could theoretically set an object with different dimensions,
+        # Here you could theoretically push an object with different dimensions,
         # but meh
         self$tensor <- obj
       }
@@ -84,20 +87,45 @@ tensor <- R6Class(
       if( private$under ){
         ret <- .Call( "cuR_pull_tensor",
                       private$tensor,
-                      private$dims )
+                      private$dims,
+                      FALSE )
 
         if( is.null( ret ) ) stop( "Tensor could not be pulled" )
         ret
       }else{
         self$obj
       }
+    },
+
+    create.stage = function(){
+      if( self$is.staged ){
+        stop( "Tensor is already staged" )
+      }
+
+      # private$stage <- .Call( ... )
+
+      if( is.null( private$stage ) ){
+        stop( "Tensor could not be staged" )
+      }
+
+      invisible( NULL )
+    },
+
+    remove.stage = function(){
+      if( !self$is.staged ){
+        stop( "Tensor is not staged" )
+      }
+
+      # .Call(  )
+      private$stage <- NULL
     }
   ),
 
   private = list(
-    tensor  = NULL,
-    dims    = NULL,
-    under   = NULL
+    tensor = NULL,
+    dims   = NULL,
+    stage  = NULL,
+    under  = FALSE
   ),
 
   active = list(
@@ -115,6 +143,10 @@ tensor <- R6Class(
 
     is.under = function( val ){
       if( missing(val) ) return( private$under )
+    },
+
+    is.staged = function( val ){
+      if( missing(val) ) return( is.null( private$stage ) )
     }
   )
 )

@@ -39,102 +39,87 @@ cublas.handle <- R6Class(
 
 # cuBLAS linear algebra operations ====
 
-# y = alpha*x + y
+# TODO ====
+# Add scopy from cuBLAS!
+
+# TODO ====
+# Add sswap from cuBLAS!
+
+# TODO ====
+# Add sscal from cuBLAS!
+
+# TODO ====
+# Add sasum from cuBLAS!
+
+# TODO ====
+# Add samin/max from cuBLAS!
+
+# TODO ====
+# Add sgeam from cuBLAS!
+
+# TODO ====
+# Add sdgmm from cuBLAS!
+
+# TODO BIG ====
+# Add reuse to functions when using tensors with fewer dimensions( scalar with
+# vectors, scalar and vector with matrices)
+# This might be a tradeoff
+
+# B = alpha*A + B
 # The trick here is that element-wise addition can be done this way also on
 # matrices, even though thats not the intended use
-cublas.saxpy <- function( tens.x, tens.y, alpha, handle ){
+cublas.saxpy <- function( tens.A, tens.B, alpha, handle ){
   # Sanity checks
-  if( !all( is.under( tens.x, tens.y ) ) ){
+  if( !all( is.under( tens.A, tens.B ) ) ){
     stop( "Not all tensors are under" )
   }
 
-  if( !identical( tens.x$get.l, tens.y$get.l ) ){
+  if( !identical( tens.A$get.l, tens.B$get.l ) ){
     stop( "Not all tensor lengths match" )
   }
 
-  # Results go into tens.y
+  # Results go into tens.B
   ret <- .Call( "cuR_cublas_saxpy",
-                tens.x$get.tensor,
-                tens.y$get.tensor,
-                tens.x$get.l,
-                alpha,
-                handle$get.handle )
-
-  if( is.null( ret ) ) stop( "Subroutine failed" )
-
-  invisible( NULL )
-}
-
-# TODO ====
-# Add the scaling function from cuBLAS!
-
-# y = alpha*op(A)*x + beta*y
-# op:
-# 'N' - nothing
-# 'T' - transpose
-# 'H' - conjugate transpose
-cublas.sgemv <- function( tens.A, tens.x, tens.y, alpha, beta, op = c( 'N', 'T', 'H' ), handle ){
-  op.choices = c( 'N', 'T', 'H' )
-  op <- match.arg( op, op.choices )
-  op.int <- which( op.choices == op )
-
-  # Sanity checks
-  if( !all( is.under( tens.A, tens.x, tens.y ) ) ){
-    stop( "Not all tensors are under" )
-  }
-
-  if( tens.x$get.dims[2] != 1 || tens.y$get.dims[2] != 1 ){
-    stop( "Not all tensors have the correct number of dimensions" )
-  }
-
-  # TODO ====
-  # Rewrite these checks in case of other op choices
-  if( tens.A$get.dims[2] != tens.x$get.dims[1] || tens.A$get.dims[1] != tens.y$get.dims[1] ){
-    stop( "Not all tensor have matching dimensions" )
-  }
-
-  # Results go into tens.y
-  ret <- .Call( "cuR_cublas_sgemv",
                 tens.A$get.tensor,
-                tens.x$get.tensor,
-                tens.y$get.tensor,
-                tens.A$get.dims,
+                tens.B$get.tensor,
+                tens.A$get.l,
                 alpha,
-                beta,
-                op.int,
                 handle$get.handle )
 
   if( is.null( ret ) ) stop( "Subroutine failed" )
 
   invisible( NULL )
 }
-# C = alpha*op.a(A)*op.b(B) + beta*C
-# op.x:
-# 'N' - nothing
-# 'T' - transpose
-# 'H' - conjugate transpose
-cublas.sgemm <- function( tens.A, tens.B, tens.C, alpha, beta, op.a = c( 'N', 'T', 'H' ), op.b = op.a, handle ){
-  op.choices = c( 'N', 'T', 'H' )
-  op.a <- match.arg( op.a, op.choices )
-  op.b <- match.arg( op.b, op.choices )
-  op.a.int <- which( op.choices == op.a )
-  op.b.int <- which( op.choices == op.b )
 
+# C = alpha*tp.a(A)*tp.b(B) + beta*C
+# tp = transpose
+cublas.sgemm <- function( tens.A, tens.B, tens.C, alpha, beta, tp.A = FALSE, tp.B = FALSE, handle ){
   # Sanity checks
   if( !all( is.under( tens.A, tens.B, tens.C ) ) ){
     stop( "Not all tensors are under" )
   }
 
-  # TODO ====
-  # Rewrite these checks in case of other op choices
-  # UGHH, this is brain wrecking
-  if( tens.A$get.dims[2] != tens.B$get.dims[1] ||
-      tens.B$get.dims[2] != tens.C$get.dims[2] ||
-      tens.A$get.dims[1] != tens.C$get.dims[1] ){
+  if( tp.A ){
+    A.dims <- rev(tens.A$get.dims)
+  }else{
+    A.dims <- tens.A$get.dims
+  }
+
+  if( tp.B ){
+    B.dims <- rev(tens.B$get.dims)
+  }else{
+    B.dims <- tens.B$get.dims
+  }
+
+  C.dims <- tens.C$get.dims
+
+  if( A.dims[2] != B.dims[1] ||
+      B.dims[2] != C.dims[2] ||
+      A.dims[1] != C.dims[1] ){
     stop( "Not all tensor have matching dimensions" )
   }
 
-  # Results go into tens.y
+  # Results go into tens.B
   ret <- .Call( "cuR_cublas_sgemm",
                 tens.A$get.tensor,
                 tens.B$get.tensor,
@@ -143,8 +128,8 @@ cublas.sgemm <- function( tens.A, tens.B, tens.C, alpha, beta, op.a = c( 'N', 'T
                 tens.B$get.dims,
                 alpha,
                 beta,
-                op.a.int,
-                op.b.int,
+                tp.A,
+                tp.B,
                 handle$get.handle )
 
   if( is.null( ret ) ) stop( "Subroutine failed" )

@@ -141,7 +141,7 @@ SEXP cuR_push_tensor( SEXP ptr, SEXP tens_r, SEXP dims_r ) {
 
 // This function is 99% cuR_surface_tensor(), except does not call finalize on ptr
 extern "C"
-SEXP cuR_pull_tensor( SEXP ptr, SEXP n_dims_r, SEXP dims_r ) {
+SEXP cuR_pull_tensor( SEXP ptr, SEXP dims_r ) {
   // Dimensions and tensor length
   int* dims  = INTEGER( dims_r );
   int l = dims[0]*dims[1];

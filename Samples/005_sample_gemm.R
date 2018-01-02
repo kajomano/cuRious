@@ -2,29 +2,30 @@
 library( cuRious )
 
 # Create tensors and store them in GPU memory
-# A( m, n ) * x( n ) + y( m)
-m <- 3
-n <- 2
+# A( m, k ) * B( k, n ) + C( m, n )
+m <- 6
+n <- 4
+k <- 5
 
-mat.A <- matrix( 1:(m*n), ncol = n )
+mat.A <- matrix( 1:(m*k), ncol = k )
 tens.A <- tensor$new( mat.A )
 tens.A$dive()
 
-vect.x <- 1:n
-tens.x <- tensor$new( vect.x )
-tens.x$dive()
+mat.B <- matrix( 1:(k*n), ncol = n )
+tens.B <- tensor$new( mat.B )
+tens.B$dive()
 
-vect.y <- 1:m
-tens.y <- tensor$new( vect.y )
-tens.y$dive()
+mat.C <- matrix( 1:(m*n), ncol = n )
+tens.C <- tensor$new( mat.C )
+tens.C$dive()
 
 # Create a cublas handle and add the two vectors, the result ending up in tens.y
 handle <- cublas.handle$new()
 handle$create()
-cublas.sgemv( tens.A, tens.x, tens.y, 1, 1, 'N', handle )
+cublas.sgemm( tens.A, tens.B, tens.C, 1, 1, handle = handle )
 
 # Check if we got a correct result: it should be equal, as we used whole numbers
-tens.y$pull()
-print( as.vector( mat.A %*% vect.x + vect.y ) )
+tens.C$pull()
+print( mat.A %*% mat.B + mat.C )
 
 clean.global()

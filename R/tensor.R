@@ -129,7 +129,7 @@ get.dims <- function( obj ){
   }
 
   if( is.vector( obj ) ){
-    # R vectors are functionally as single column many row matrices, thats why
+    # R vectors are functionally single column many row matrices, thats why
     return( c( length( obj ), 1L ) )
   }else if( is.matrix( obj )){
     return( c( nrow( obj ), ncol( obj ) ) )

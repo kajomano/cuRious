@@ -93,45 +93,16 @@ SEXP cuR_cublas_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP h
   return ret_r;
 }
 
-cublasOperation_t cuR_cublas_translate_op_int( int op_int ){
-  if( op_int == 2 ){
-    return CUBLAS_OP_T;
-  }else if( op_int == 3 ){
-    return CUBLAS_OP_C;
-  }else{
+cublasOperation_t cuR_cublas_generate_op( int op_int ){
+  if( op_int == 0 ){
     return CUBLAS_OP_N;
+  }else{
+    return CUBLAS_OP_T;
   }
 }
 
-// The number of arguments is too damn high!
 extern "C"
-SEXP cuR_cublas_sgemv( SEXP tens_A_r, SEXP tens_x_r, SEXP tens_y_r, SEXP dims_r, SEXP al_r, SEXP be_r, SEXP op_r, SEXP handle_r ){
-  // Recover handle
-  cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
-
-  // Recover tensors, the dims and the scalars
-  int* dims  = INTEGER( dims_r );
-  float* tens_A = (float*)R_ExternalPtrAddr( tens_A_r );
-  float* tens_x = (float*)R_ExternalPtrAddr( tens_x_r );
-  float* tens_y = (float*)R_ExternalPtrAddr( tens_y_r );
-  float al = (float)Rf_asReal( al_r );
-  float be = (float)Rf_asReal( be_r );
-
-  // Recover the operation
-  cublasOperation_t op = cuR_cublas_translate_op_int( Rf_asInteger( op_r ) );
-
-  // Do the operation, the results go into tens_y
-  cublasStatus_t stat;
-  cublasTry( cublasSgemv( *handle, op, dims[0], dims[1], &al, tens_A, dims[0], tens_x, 1, &be, tens_y, 1 ) )
-
-  // Return something that is not null
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_r, SEXP dims_B_r, SEXP al_r, SEXP be_r, SEXP op_A_r, SEXP op_B_r, SEXP handle_r ){
+SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_r, SEXP dims_B_r, SEXP al_r, SEXP be_r, SEXP tp_A_r, SEXP tp_B_r, SEXP handle_r ){
   // Recover handle
   cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
 
@@ -144,13 +115,30 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_
   float al = (float)Rf_asReal( al_r );
   float be = (float)Rf_asReal( be_r );
 
-  // Recover the operation
-  cublasOperation_t op_A = cuR_cublas_translate_op_int( Rf_asInteger( op_A_r ) );
-  cublasOperation_t op_B = cuR_cublas_translate_op_int( Rf_asInteger( op_B_r ) );
+  // Transposes
+  cublasOperation_t op_A, op_B;
+  int m, n, k;
+  if( Rf_asLogical( tp_A_r ) == 1 ){
+    op_A = CUBLAS_OP_T;
+    m = dims_A[1];
+    k = dims_A[0];
+  }else{
+    op_A = CUBLAS_OP_N;
+    m = dims_A[0];
+    k = dims_A[1];
+  }
 
-  // Do the operation, the results go into tens_y
+  if( Rf_asLogical( tp_B_r ) == 1 ){
+    op_B = CUBLAS_OP_T;
+    n = dims_B[0];
+  }else{
+    op_B = CUBLAS_OP_N;
+    n = dims_B[1];
+  }
+
+  // Do the operation, the results go into tens_C
   cublasStatus_t stat;
-  cublasTry( cublasSgemm( *handle, op_A, op_B, dims_A[0], dims_B[1], dims_A[1], &al, tens_A, dims_A[0], tens_B, dims_A[1], &be, tens_C, dims_A[0] ) )
+  cublasTry( cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m ) )
 
   // Return something that is not null
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );

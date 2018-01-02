@@ -28,7 +28,7 @@ handle$create()
 
 # Define functions for a better microbenchmark print
 R.dgemm    <- function(){ ( mat.A %*% mat.B ) * alpha + mat.C * beta }
-cuda.sgemm <- function(){ cublas.sgemm( tens.A, tens.B, tens.C, alpha, beta, 'N', 'N', handle ) }
+cuda.sgemm <- function(){ cublas.sgemm( tens.A, tens.B, tens.C, alpha, beta, handle = handle ) }
 
 # Check the speeds
 microbenchmark( R.dgemm(),    times = 100 )

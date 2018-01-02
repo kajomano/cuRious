@@ -93,14 +93,6 @@ SEXP cuR_cublas_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP h
   return ret_r;
 }
 
-cublasOperation_t cuR_cublas_generate_op( int op_int ){
-  if( op_int == 0 ){
-    return CUBLAS_OP_N;
-  }else{
-    return CUBLAS_OP_T;
-  }
-}
-
 extern "C"
 SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_r, SEXP dims_B_r, SEXP al_r, SEXP be_r, SEXP tp_A_r, SEXP tp_B_r, SEXP handle_r ){
   // Recover handle

@@ -3,9 +3,9 @@ library( microbenchmark )
 
 # Create tensors and store them in GPU memory
 # A( m, k ) * B( k, n ) + C( m, n )
-m <- 2000
-n <- 1000
-k <- 1500
+m <- 1000
+n <- 1500
+k <- 2000
 
 mat.A <- matrix( rnorm(m*k), ncol = k )
 tens.A <- tensor$new( mat.A )
@@ -27,11 +27,20 @@ handle <- cublas.handle$new()
 handle$create()
 
 # Define functions for a better microbenchmark print
-R.dgemm    <- function(){ ( mat.A %*% mat.B ) * alpha + mat.C * beta }
-cuda.sgemm <- function(){ cublas.sgemm( tens.A, tens.B, tens.C, alpha, beta, handle = handle ) }
+R.dgemm    <- function(){
+  for( i in 1:10 ){
+    mat.C <<- ( mat.A %*% mat.B ) * alpha + mat.C * beta
+  }
+}
+cuda.sgemm <- function(){
+  for( i in 1:10 ){
+    cublas.sgemm( tens.A, tens.B, tens.C, alpha, beta, handle = handle )
+  }
+  tens.C$pull()
+}
 
 # Check the speeds
-microbenchmark( R.dgemm(),    times = 100 )
-microbenchmark( cuda.sgemm(), times = 1000 )
+microbenchmark( R.dgemm(),    times = 1 )
+microbenchmark( cuda.sgemm(), times = 1 )
 
 clean.global()

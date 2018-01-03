@@ -21,11 +21,8 @@ stream1$create()
 stream2 <- cuda.stream$new()
 stream2$create()
 
-# Make tens.A staged. This creates a page-locked buffer for the tensor
-# that can accelerate all push, pull, dive and surface calls for the cost
-# of taking up memory in non-swappable address space. This is useful for
-# tensors that will act as IO points between the CPU and GPU with regular
-# push or pull operations. Use sparingly!
+# Make tens.A staged, a it will be used frequently for CPU<-->GPU data transfers
+# Asynchronous data transfers are only possible with staged tensors!
 tens.A$create.stage()
 
 # Define functions

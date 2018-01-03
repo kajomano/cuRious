@@ -32,6 +32,6 @@ tens.x2$get.tensor
 # is the intended and correct behavior. You can also see that the $push() call
 # did change the actual content
 tens.x$surface()
-tens.x2$get.tensor
+print( tens.x2$get.tensor )
 
 clean.global()

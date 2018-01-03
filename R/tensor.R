@@ -26,20 +26,16 @@ tensor <- R6Class(
         stop( "Tensor is already under" )
       }
 
-      if( self$get.l > 2^32-1 ){
-        # TODO ====
-        # Use long int or the correct R type to remove this constraint
-        stop( "Tensor is too large to be stored on the GPU" )
-      }
+      tensor <- private$create.tensor()
+      ret <- .Call( "cuR_push_tensor",
+                    tensor,
+                    private$tensor,
+                    self$get.l,
+                    private$stage )
 
-      private$tensor <- .Call( "cuR_push_tensor",
-                               NULL,
-                               private$tensor,
-                               private$dims,
-                               private$stage )
+      if( is.null( ret ) ) stop( "Tensor could not dive" )
 
-      if( is.null( private$tensor ) ) stop( "Tensor could not dive" )
-
+      private$tensor <- tensor
       private$under  <- TRUE
 
       invisible( NULL )
@@ -50,16 +46,17 @@ tensor <- R6Class(
         stop( "Tensor is not under" )
       }
 
-      private$tensor <- .Call( "cuR_pull_tensor",
-                               private$tensor,
-                               private$dims,
-                               TRUE,
-                               private$stage )
+      ret <- .Call( "cuR_pull_tensor",
+                    private$tensor,
+                    self$get.dims,
+                    private$stage )
 
-      if( is.null( private$tensor ) ) stop( "Tensor could not surface" )
+      if( is.null( ret ) ) stop( "Tensor could not surface" )
 
-      private$under  <- FALSE
+      private$destroy.tensor()
       self$destroy.stage()
+      private$tensor <- ret
+      private$under  <- FALSE
 
       invisible( NULL )
     },
@@ -76,7 +73,7 @@ tensor <- R6Class(
         ret <- .Call( "cuR_push_tensor",
                       private$tensor,
                       obj,
-                      private$dims,
+                      self$get.l,
                       private$stage )
 
         if( is.null( ret ) ) stop( "Tensor could not be pushed" )
@@ -93,8 +90,7 @@ tensor <- R6Class(
       if( private$under ){
         ret <- .Call( "cuR_pull_tensor",
                       private$tensor,
-                      private$dims,
-                      FALSE,
+                      self$get.dims,
                       private$stage )
 
         if( is.null( ret ) ) stop( "Tensor could not be pulled" )
@@ -106,7 +102,7 @@ tensor <- R6Class(
 
     create.stage = function(){
       if( self$is.staged ){
-        stop( "Tensor is already staged" )
+        return( invisible( NULL ) )
       }
 
       private$stage <- .Call( "cuR_create_stage", private$dims )
@@ -120,7 +116,7 @@ tensor <- R6Class(
 
     destroy.stage = function(){
       if( !self$is.staged ){
-        stop( "Tensor is not staged" )
+        return( invisible( NULL ) )
       }
 
       .Call( "cuR_destroy_stage", private$stage )
@@ -132,7 +128,23 @@ tensor <- R6Class(
     tensor = NULL,
     dims   = NULL,
     stage  = NULL,
-    under  = FALSE
+    under  = FALSE,
+
+    create.tensor = function(){
+      if( self$get.l > 2^32-1 ){
+        # TODO ====
+        # Use long int or the correct R type to remove this constraint
+        stop( "Tensor is too large to be stored on the GPU" )
+      }
+
+      ret <- .Call( "cuR_create_tensor", self$get.l )
+      if( is.null( ret ) ) stop( "Tensor could not be created" )
+      ret
+    },
+
+    destroy.tensor = function(){
+      .Call( "cuR_destroy_tensor", private$tensor )
+    }
   ),
 
   active = list(

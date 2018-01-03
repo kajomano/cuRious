@@ -77,7 +77,7 @@ SEXP cuR_cublas_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP h
 }
 
 extern "C"
-SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_r, SEXP dims_B_r, SEXP al_r, SEXP be_r, SEXP tp_A_r, SEXP tp_B_r, SEXP handle_r ){
+SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_r, SEXP dims_B_r, SEXP al_r, SEXP be_r, SEXP tp_A_r, SEXP tp_B_r, SEXP handle_r, SEXP stream_r ){
   // Recover handle
   cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
 
@@ -113,7 +113,21 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_
 
   // Do the operation, the results go into tens_C
   cublasStatus_t stat;
-  cublasTry( cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m ) )
+
+  // If a stream is given, set it before the calculation
+  if( stream_r != R_NilValue ){
+#ifdef DEBUG_PRINTS
+    Rprintf( "Async cublas call\n" );
+#endif
+
+    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
+    cublasTry( cublasSetStream( *handle, *stream ) )
+  }
+
+  // cublasTry( cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m ) )
+  stat = cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m );
+  if( stat == CUBLAS_STATUS_ALLOC_FAILED ) Rprintf("para\n");
+  if( stat == CUBLAS_STATUS_INTERNAL_ERROR ) Rprintf("para2\n");
 
   // Return something that is not null
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );

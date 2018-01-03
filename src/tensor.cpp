@@ -53,7 +53,7 @@ SEXP cuR_create_tensor( SEXP l_r ){
 // Pull/push ===============================================
 
 extern "C"
-SEXP cuR_push_tensor( SEXP tens_r, SEXP data_r, SEXP l_r, SEXP stage_r ){
+SEXP cuR_push_tensor( SEXP tens_r, SEXP data_r, SEXP l_r, SEXP stage_r, SEXP stream_r ){
   // Create pointer to the actual data in the tens_r
   double* data_c = REAL( data_r );
 
@@ -77,11 +77,21 @@ SEXP cuR_push_tensor( SEXP tens_r, SEXP data_r, SEXP l_r, SEXP stage_r ){
   cudaError_t cuda_stat;
   float* tens_dev = (float*)R_ExternalPtrAddr( tens_r );
 
+  // Do an async copy if both a stage and a stream is suported
+  if( stage_r != R_NilValue && stream_r != R_NilValue ){
+#ifdef DEBUG_PRINTS
+    Rprintf( "Async copying tensor to <%p>\n", (void*) tens_dev );
+#endif
+
+    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
+    cudaTry( cudaMemcpyAsync( tens_dev, tens_host, l*sizeof(float), cudaMemcpyHostToDevice, *stream ) )
+  }else{
 #ifdef DEBUG_PRINTS
     Rprintf( "Copying tensor to <%p>\n", (void*) tens_dev );
 #endif
 
-  cudaTry( cudaMemcpy(tens_dev, tens_host, l*sizeof(float), cudaMemcpyHostToDevice) );
+    cudaTry( cudaMemcpy(tens_dev, tens_host, l*sizeof(float), cudaMemcpyHostToDevice) )
+  }
 
   // Free the host memory
   if( stage_r == R_NilValue ){
@@ -95,7 +105,7 @@ SEXP cuR_push_tensor( SEXP tens_r, SEXP data_r, SEXP l_r, SEXP stage_r ){
 }
 
 extern "C"
-SEXP cuR_pull_tensor( SEXP tens_r, SEXP dims_r, SEXP stage_r ){
+SEXP cuR_pull_tensor( SEXP tens_r, SEXP dims_r, SEXP stage_r, SEXP stream_r ){
   // Tensor length
   int* dims  = INTEGER( dims_r );
   int l = dims[0]*dims[1];

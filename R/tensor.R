@@ -31,7 +31,8 @@ tensor <- R6Class(
                     tensor,
                     private$tensor,
                     self$get.l,
-                    private$stage )
+                    private$stage,
+                    NULL )
 
       if( is.null( ret ) ) stop( "Tensor could not dive" )
 
@@ -49,7 +50,8 @@ tensor <- R6Class(
       ret <- .Call( "cuR_pull_tensor",
                     private$tensor,
                     self$get.dims,
-                    private$stage )
+                    private$stage,
+                    NULL )
 
       if( is.null( ret ) ) stop( "Tensor could not surface" )
 
@@ -61,9 +63,17 @@ tensor <- R6Class(
       invisible( NULL )
     },
 
-    push = function( obj ){
+    push = function( obj, stream = NULL ){
       if( !identical( private$dims, get.dims( obj ) ) ){
         stop( "Dimensions do not match" )
+      }
+
+      if( !is.null( stream ) ){
+        if( !is.cuda.stream.created( stream ) ){
+          stop( "The CUDA stream is not created" )
+        }
+
+        stream <- stream$get.stream
       }
 
       # Set correct storage type
@@ -74,7 +84,8 @@ tensor <- R6Class(
                       private$tensor,
                       obj,
                       self$get.l,
-                      private$stage )
+                      private$stage,
+                      stream )
 
         if( is.null( ret ) ) stop( "Tensor could not be pushed" )
       }else{
@@ -91,7 +102,8 @@ tensor <- R6Class(
         ret <- .Call( "cuR_pull_tensor",
                       private$tensor,
                       self$get.dims,
-                      private$stage )
+                      private$stage,
+                      NULL )
 
         if( is.null( ret ) ) stop( "Tensor could not be pulled" )
         ret

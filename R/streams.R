@@ -37,7 +37,7 @@ cuda.stream <- R6Class(
   active = list(
     get.stream = function( val ){
       if( missing(val) ){
-        if( self$is.created ){
+        if( !self$is.created ){
           stop( "The CUDA stream is not yet created" )
         }
         private$stream
@@ -48,3 +48,21 @@ cuda.stream <- R6Class(
     }
   )
 )
+
+is.cuda.stream <- function( ... ){
+  objs <- list( ... )
+  sapply( objs, function( obj ){
+    "cuda.stream" %in% class( obj )
+  })
+}
+
+is.cuda.stream.created <- function( ... ){
+  if( !all( is.cuda.stream( ... ) ) ){
+    stop( "Object is not a CUDA stream" )
+  }
+
+  streams <- list( ... )
+  sapply( streams, function( stream ){
+    stream$is.created
+  })
+}

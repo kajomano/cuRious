@@ -11,7 +11,11 @@
 
 extern "C"
 SEXP cuR_sync_device(){
-  cudaTry( cudaDeviceSynchronize() )
+  cudaError_t cuda_stat;
+  // cudaTry( cudaDeviceSynchronize() )
+  cuda_stat = cudaDeviceSynchronize();
+
+  Rprintf( "%s\n", cudaGetErrorString(cuda_stat) );
 
   // Return something that is not null
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );

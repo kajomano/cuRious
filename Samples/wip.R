@@ -1,7 +1,7 @@
 library( cuRious )
 library( microbenchmark )
 
-n <- 10000
+n <- 1000
 mat <- matrix( rnorm(n*n), ncol = n )
 
 tens.A <- tensor$new( mat )
@@ -41,7 +41,7 @@ multiple.streams <- function(){
 }
 
 # Check the speeds
-microbenchmark( single.stream(),    times = 1 )
-microbenchmark( multiple.streams(), times = 1 )
+microbenchmark( single.stream(),    times = 10 )
+microbenchmark( multiple.streams(), times = 10 )
 
 clean.global()

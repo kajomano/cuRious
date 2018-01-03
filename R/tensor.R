@@ -77,7 +77,9 @@ tensor <- R6Class(
       }
 
       # Set correct storage type
-      storage.mode( obj ) <- "double"
+      if( storage.mode( obj ) != "double" ){
+        storage.mode( obj ) <- "double"
+      }
 
       if( private$under ){
         ret <- .Call( "cuR_push_tensor",

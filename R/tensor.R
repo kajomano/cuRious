@@ -27,7 +27,7 @@ tensor <- R6Class(
       }
 
       tensor <- private$create.tensor()
-      ret <- .Call( "cuR_push_tensor",
+      ret <- .Call( "cuR_push_tensor_exp",
                     tensor,
                     private$tensor,
                     self$get.l,

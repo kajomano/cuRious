@@ -27,7 +27,7 @@ tensor <- R6Class(
       }
 
       tensor <- private$create.tensor()
-      ret <- .Call( "cuR_push_tensor_exp",
+      ret <- .Call( "cuR_push_tensor",
                     tensor,
                     private$tensor,
                     self$get.l,
@@ -219,4 +219,10 @@ is.under <- function( ... ){
   sapply( tenss, function( tens ){
     tens$is.under
   })
+}
+
+check.tensor.under <- function( ... ){
+  if( !all( is.under( ... ) ) ){
+    stop( "Not all tensors are under" )
+  }
 }

@@ -21,7 +21,7 @@ tens.C$dive()
 
 # Create a cublas handle and add the two vectors, the result ending up in tens.y
 handle <- cublas.handle$new()
-handle$create()
+handle$activate()
 cublas.sgemm( handle, tens.A, tens.B, tens.C )
 
 # Check if we got a correct result: it should be equal, as we used whole numbers

@@ -24,7 +24,7 @@ beta  <- 0.5
 
 # Create a cublas handle and add the two vectors, the result ending up in tens.y
 handle <- cublas.handle$new()
-handle$create()
+handle$activate()
 
 # Define functions for a better microbenchmark print
 # cuBLAS calls are asynchronous, for a proper timing we need to call sync.streams()
@@ -33,11 +33,10 @@ R.dgemm <- function(){
 }
 cuda.sgemm <- function(){
   cublas.sgemm( handle, tens.A, tens.B, tens.C )
-  cuda.streams.sync()
 }
 
 # Check the speeds
-microbenchmark( R.dgemm(),    times = 10 )
-microbenchmark( cuda.sgemm(), times = 10 )
+print( microbenchmark( R.dgemm(),    times = 10 ) )
+print( microbenchmark( cuda.sgemm(), times = 10 ) )
 
 clean.global()

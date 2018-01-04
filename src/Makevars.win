@@ -48,8 +48,9 @@ cuRious.so: $(all_objs)
 
 # Somehow fPIC
 #-Xcompiler -fPIC
+#$(NVCC) -ccbin=$(VC_BIN) -I=$(R_INC) -I=$(CUDA_INC) -c $< -o $@
 %.o: %.cpp $(h_srcs)
-	$(NVCC) -ccbin=$(VC_BIN) -I=$(R_INC) -I=$(CUDA_INC) -c $< -o $@
+	$(CXX) -O3 -I$(R_INC) -I$(CUDA_INC) -c $< -o $@
 
 #-Xcompiler -fPIC
 %.o: %.cc $(h_srcs)

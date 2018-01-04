@@ -12,10 +12,7 @@
 extern "C"
 SEXP cuR_sync_device(){
   cudaError_t cuda_stat;
-  // cudaTry( cudaDeviceSynchronize() )
-  cuda_stat = cudaDeviceSynchronize();
-
-  Rprintf( "%s\n", cudaGetErrorString(cuda_stat) );
+  cudaTry( cudaDeviceSynchronize() )
 
   // Return something that is not null
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
@@ -40,13 +37,13 @@ void cuR_finalize_cuda_stream( SEXP ptr ){
 }
 
 extern "C"
-SEXP cuR_destroy_cuda_stream( SEXP ptr ){
+SEXP cuR_deactivate_cuda_stream( SEXP ptr ){
   cuR_finalize_cuda_stream( ptr );
   return R_NilValue;
 }
 
 extern "C"
-SEXP cuR_create_cuda_stream(){
+SEXP cuR_activate_cuda_stream(){
   cudaStream_t* stream = new cudaStream_t;
 #ifdef DEBUG_PRINTS
   Rprintf( "Creating stream at <%p>\n", (void*)stream );
@@ -61,4 +58,16 @@ SEXP cuR_create_cuda_stream(){
 
   Rf_unprotect(1);
   return ptr;
+}
+
+extern "C"
+SEXP cuR_sync_cuda_stream( SEXP stream_r ){
+  cudaError_t cuda_stat;
+  cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
+  cudaTry( cudaStreamSynchronize( *stream ) )
+
+  // Return something that is not null
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
 }

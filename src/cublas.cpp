@@ -30,13 +30,13 @@ void cuR_finalize_cublas_handle( SEXP ptr ){
 }
 
 extern "C"
-SEXP cuR_destroy_cublas_handle( SEXP ptr ){
+SEXP cuR_deactivate_cublas_handle( SEXP ptr ){
   cuR_finalize_cublas_handle( ptr );
   return R_NilValue;
 }
 
 extern "C"
-SEXP cuR_create_cublas_handle(){
+SEXP cuR_activate_cublas_handle(){
   cublasHandle_t* handle = new cublasHandle_t;
 #ifdef DEBUG_PRINTS
   Rprintf( "Creating handle at <%p>\n", (void*)handle );
@@ -53,27 +53,6 @@ SEXP cuR_create_cublas_handle(){
 
   Rf_unprotect(1);
   return ptr;
-}
-
-extern "C"
-SEXP cuR_cublas_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP handle_r ){
-  // Recover handle
-  cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
-
-  // Recover tensors, the length and the scalar
-  int l = Rf_asInteger( l_r );
-  float* tens_x = (float*)R_ExternalPtrAddr( tens_x_r );
-  float* tens_y = (float*)R_ExternalPtrAddr( tens_y_r );
-  float al = (float)Rf_asReal( al_r );
-
-  // Do the operation, the results go into tens_y
-  cublasStatus_t stat;
-  cublasTry( cublasSaxpy( *handle, l, &al, tens_x, 1, tens_y, 1 ) )
-
-  // Return something that is not null
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
 }
 
 extern "C"
@@ -134,3 +113,24 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_
   Rf_unprotect(1);
   return ret_r;
 }
+
+// extern "C"
+// SEXP cuR_cublas_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP handle_r ){
+//   // Recover handle
+//   cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
+//
+//   // Recover tensors, the length and the scalar
+//   int l = Rf_asInteger( l_r );
+//   float* tens_x = (float*)R_ExternalPtrAddr( tens_x_r );
+//   float* tens_y = (float*)R_ExternalPtrAddr( tens_y_r );
+//   float al = (float)Rf_asReal( al_r );
+//
+//   // Do the operation, the results go into tens_y
+//   cublasStatus_t stat;
+//   cublasTry( cublasSaxpy( *handle, l, &al, tens_x, 1, tens_y, 1 ) )
+//
+//     // Return something that is not null
+//     SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+//   Rf_unprotect(1);
+//   return ret_r;
+// }

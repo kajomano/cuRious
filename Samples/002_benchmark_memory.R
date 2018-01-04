@@ -22,8 +22,8 @@ memory.read  <- function(){ tens.x$pull() }
 # Check the speeds. Keep in mind, that if DEBUG_PRINTS are enabled, printing
 # to the R console can take up time as well. However, it is not much compared
 # to the overall transfer times.
-microbenchmark( memory.write(), times = 100 )
-microbenchmark( memory.read(),  times = 100 )
+print( microbenchmark( memory.write(), times = 100 ) )
+print( microbenchmark( memory.read(),  times = 100 ) )
 
 # Make tens.x staged. This creates a page-locked buffer for the tensor
 # that can accelerate all push and pull calls for the cost
@@ -33,7 +33,7 @@ microbenchmark( memory.read(),  times = 100 )
 tens.x$create.stage()
 
 # Let's check the speed with the staged tensor
-microbenchmark( memory.write(), times = 100 )
-microbenchmark( memory.read(),  times = 100 )
+print( microbenchmark( memory.write(), times = 100 ) )
+print( microbenchmark( memory.read(),  times = 100 ) )
 
 clean.global()

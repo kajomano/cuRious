@@ -1,9 +1,3 @@
-# Although the main idea is to have all the data residing in the GPU memory, and
-# not to have any CPU memory transfer during training, sometimes for rapid
-# prototyping it is much easier to first implement something in pure R. For this
-# case, cuRious tries to implement the data transfer as fast as possible. This
-# script gives you a general feel how much time it can take to transfer data to
-# and from the GPU.
 library( cuRious )
 library( microbenchmark )
 
@@ -14,6 +8,10 @@ vect.x <- rnorm( n )
 # Create a tensor, and move the information to the GPU
 tens.x <- tensor$new( vect.x )
 tens.x$dive()
+print( tens.x$pull() )
+
+tens.x$push( rep( 0, times = n ) )
+print( tens.x$pull() )
 
 # Define functions for a better microbenchmark print
 memory.write <- function(){ tens.x$push( vect.x ) }

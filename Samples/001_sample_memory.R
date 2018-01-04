@@ -6,7 +6,7 @@ library( cuRious )
 n <- 10
 vect.x <- rnorm( n ) * 10^9
 
-# Create a tensor, and move the information to the GPU
+# Create a tensor, and move (dive) the information to the GPU
 tens.x <- tensor$new( vect.x )
 tens.x$dive()
 
@@ -18,8 +18,8 @@ print( vect.x )
 tens.x$get.tensor
 
 # Push new values into the stored vector on the GPU. This operation is preferred
-# compared to reinitialization as it does not allocate new memory space, however
-# you can only push a vector with the same length as the original
+# compared to reinitialization as it does not allocate new memory space.
+# You can only push a vector with the same length as the original.
 tens.x$push( rnorm( n ) )
 
 # Let's copy the tensor. As you can see, it is a shallow copy, pointing to the
@@ -28,9 +28,9 @@ tens.x2 <- tens.x
 tens.x2$get.tensor
 
 # Move the data back to the CPU memory. Let's also check what happens to the
-# copy. The soft copying mechanism of R6 causes the copy to also surface. This
-# is the intended and correct behavior. You can also see that the $push() call
-# did change the actual content
+# copy. The soft copying mechanism of R6 causes the copy to also surface (this
+# was intended). You can also see that the $push() call did change the actual
+# content.
 tens.x$surface()
 print( tens.x2$get.tensor )
 

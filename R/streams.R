@@ -1,32 +1,45 @@
 # .Calls: src/streams.cpp
 
-cuda.streams.sync <- function(){
-  if( is.null( .Call( "cuR_sync_device" ) ) ) stop( "Streams could not be synced" )
+cuda.stream.sync.all <- function(){
+  if( is.null( .Call( "cuR_sync_device" ) ) ){
+    stop( "Streams could not be synced" )
+  }
+  invisible( TRUE )
+}
+
+cuda.stream.sync <- function( stream ){
+  check.cuda.stream.active( stream )
+  if( is.null( .Call( "cuR_sync_cuda_stream", stream$get.stream ) ) ){
+    stop( "Stream could not be synced" )
+  }
+  invisible( TRUE )
 }
 
 # CUDA stream class ====
 cuda.stream <- R6Class(
   "cuda.stream",
   public = list(
-    create = function(){
-      if( self$is.created ){
-        stop( "The CUDA stream has already been created" )
+    activate = function(){
+      if( self$is.active ){
+        stop( "The CUDA stream is already active" )
       }
-      private$stream <- .Call( "cuR_create_cuda_stream" )
+      private$stream <- .Call( "cuR_activate_cuda_stream" )
 
       if( is.null( private$stream ) ){
-        stop( "The CUDA stream could not be created" )
+        stop( "The CUDA stream could not be activated" )
       }
 
-      invisible( NULL )
+      invisible( TRUE )
     },
-    destroy = function(){
-      if( !self$is.created ){
-        stop( "The CUDA stream has not yet been created" )
+    deactivate = function(){
+      if( !self$is.active ){
+        stop( "The CUDA stream has not yet been activated" )
       }
 
-      .Call( "cuR_destroy_cuda_stream", private$stream )
+      .Call( "cuR_deactivate_cuda_stream", private$stream )
       private$stream <- NULL
+
+      invisible( TRUE )
     }
   ),
 
@@ -36,14 +49,9 @@ cuda.stream <- R6Class(
 
   active = list(
     get.stream = function( val ){
-      if( missing(val) ){
-        if( !self$is.created ){
-          stop( "The CUDA stream is not yet created" )
-        }
-        private$stream
-      }
+      if( missing(val) ) return( private$stream )
     },
-    is.created = function(){
+    is.active = function(){
       !is.null( private$stream )
     }
   )
@@ -56,13 +64,23 @@ is.cuda.stream <- function( ... ){
   })
 }
 
-is.cuda.stream.created <- function( ... ){
+check.cuda.stream <- function( ... ){
   if( !all( is.cuda.stream( ... ) ) ){
-    stop( "Object is not a CUDA stream" )
+    stop( "Not all objects are CUDA streams" )
   }
+}
+
+is.cuda.stream.active <- function( ... ){
+  check.cuda.stream( ... )
 
   streams <- list( ... )
   sapply( streams, function( stream ){
-    stream$is.created
+    stream$is.active
   })
+}
+
+check.cuda.stream.active <- function( ... ){
+  if( !all( is.cuda.stream.active( ... ) ) ){
+    stop( "Not all CUDA streams are active" )
+  }
 }

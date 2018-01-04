@@ -9,25 +9,27 @@
 cublas.handle <- R6Class(
   "cublas.handle",
   public = list(
-    create = function(){
-      if( self$is.created ){
-        stop( "The cuBLAS handle has already been created" )
+    activate = function(){
+      if( self$is.active ){
+        stop( "The cuBLAS handle has already been activated" )
       }
-      private$handle <- .Call( "cuR_create_cublas_handle" )
+      private$handle <- .Call( "cuR_activate_cublas_handle" )
 
       if( is.null( private$handle ) ){
-        stop( "The cuBLAS handle could not be created" )
+        stop( "The cuBLAS handle could not be activated" )
       }
 
-      invisible( NULL )
+      invisible( TRUE )
     },
-    destroy = function(){
-      if( !self$is.created ){
-        stop( "The cuBLAS handle has not yet been created" )
+    deactivate = function(){
+      if( !self$is.active ){
+        stop( "The cuBLAS handle is not active" )
       }
 
-      .Call( "cuR_destroy_cublas_handle", private$handle )
+      .Call( "cuR_deactivate_cublas_handle", private$handle )
       private$handle <- NULL
+
+      invisible( TRUE )
     }
   ),
 
@@ -38,13 +40,15 @@ cublas.handle <- R6Class(
   active = list(
     get.handle = function( val ){
       if( missing(val) ){
-        if( !self$is.created ){
-          stop( "The cuBLAS handle has not yet been created" )
+        # This produces an error because wherever you need a cublas handle it is
+        # not optional
+        if( !self$is.active ){
+          stop( "The cuBLAS handle has not yet been activated" )
         }
         private$handle
       }
     },
-    is.created = function(){
+    is.active = function(){
       !is.null( private$handle )
     }
   )
@@ -57,15 +61,25 @@ is.cublas.handle <- function( ... ){
   })
 }
 
-is.cublas.handle.created <- function( ... ){
+check.cublas.handle <- function( ... ){
   if( !all( is.cublas.handle( ... ) ) ){
-    stop( "Object is not a cublas handle" )
+    stop( "Not all objects are cuBLAS handles" )
   }
+}
+
+is.cublas.handle.active <- function( ... ){
+  check.cublas.handle( ... )
 
   handles <- list( ... )
   sapply( handles, function( handle ){
-    handle$is.created
+    handle$is.active
   })
+}
+
+check.cublas.handle.active <- function( ... ){
+  if( !all( is.cublas.handle.active( ... ) ) ){
+    stop( "Not all cuBLAS handles are active" )
+  }
 }
 
 # cuBLAS linear algebra operations ====
@@ -100,19 +114,10 @@ is.cublas.handle.created <- function( ... ){
 # tp = transpose
 cublas.sgemm <- function( handle, tens.A, tens.B, tens.C, alpha = 1, beta = 1, tp.A = FALSE, tp.B = FALSE, stream = NULL ){
   # Sanity checks
-  if( !is.cublas.handle.created( handle ) ){
-    stop( "Cublas handle is not created" )
-  }
-
-  if( !all( is.under( tens.A, tens.B, tens.C ) ) ){
-    stop( "Not all tensors are under" )
-  }
-
+  check.cublas.handle.active( handle )
+  check.tensor.under( tens.A, tens.B, tens.C )
   if( !is.null( stream ) ){
-    if( !is.cuda.stream.created( stream ) ){
-      stop( "The CUDA stream is not created" )
-    }
-
+    check.cuda.stream( stream )
     stream <- stream$get.stream
   }
 
@@ -152,11 +157,16 @@ cublas.sgemm <- function( handle, tens.A, tens.B, tens.C, alpha = 1, beta = 1, t
 
   if( is.null( ret ) ) stop( "Subroutine failed" )
 
-  invisible( NULL )
+  # If no stream is given, make this call blocking
+  if( is.null( stream ) ){
+    cuda.stream.sync.all()
+  }
+
+  invisible( TRUE )
 }
 
 # TODO ====
-# Update saxpy to current state (streams and sanity checks whatnot)
+# Update saxpy to current state (streams and sanity checks, blocking and whatnot)
 # # B = alpha*A + B
 # # The trick here is that element-wise addition can be done this way also on
 # # matrices, even though thats not the intended use

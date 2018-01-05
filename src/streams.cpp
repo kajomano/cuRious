@@ -27,7 +27,7 @@ void cuR_finalize_cuda_stream( SEXP ptr ){
   // Clear R object too
   if( stream ){
 #ifdef DEBUG_PRINTS
-    Rprintf( "Finalizing stream at <%p>\n", (void*)stream );
+    Rprintf( "<%p> Finalizing stream\n", (void*)stream );
 #endif
 
     cudaStreamDestroy( *stream );
@@ -46,7 +46,7 @@ extern "C"
 SEXP cuR_activate_cuda_stream(){
   cudaStream_t* stream = new cudaStream_t;
 #ifdef DEBUG_PRINTS
-  Rprintf( "Creating stream at <%p>\n", (void*)stream );
+  Rprintf( "<%p> Creating stream\n", (void*)stream );
 #endif
 
   cudaError_t cuda_stat;

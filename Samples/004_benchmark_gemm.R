@@ -22,7 +22,7 @@ tens.C$dive()
 alpha <- -1.5
 beta  <- 0.5
 
-# Create a cublas handle and add the two vectors, the result ending up in tens.y
+# Create a cublas handle
 handle <- cublas.handle$new()
 handle$activate()
 

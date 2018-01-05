@@ -20,7 +20,7 @@ void cuR_finalize_cublas_handle( SEXP ptr ){
   // Clear R object too
   if( handle ){
 #ifdef DEBUG_PRINTS
-    Rprintf( "Finalizing handle at <%p>\n", (void*)handle );
+    Rprintf( "<%p> Finalizing handle\n", (void*)handle );
 #endif
 
     cublasDestroy( *handle );
@@ -39,7 +39,7 @@ extern "C"
 SEXP cuR_activate_cublas_handle(){
   cublasHandle_t* handle = new cublasHandle_t;
 #ifdef DEBUG_PRINTS
-  Rprintf( "Creating handle at <%p>\n", (void*)handle );
+  Rprintf( "<%p> Creating handle\n", (void*)handle );
 #endif
 
   // cublasTry is a macro defined in debug.h, you need to create the variable
@@ -101,6 +101,10 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_
 
     cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
     cublasTry( cublasSetStream( *handle, *stream ) )
+  }else{
+#ifdef DEBUG_PRINTS
+    Rprintf( "Sync cublas call\n" );
+#endif
   }
 
   // cublasTry( cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m ) )

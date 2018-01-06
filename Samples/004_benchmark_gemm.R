@@ -1,3 +1,5 @@
+# This script compares the speeds of a native R GEMM routine with the cuRious
+# implementation that uses cuBLAS
 library( cuRious )
 library( microbenchmark )
 
@@ -27,7 +29,6 @@ handle <- cublas.handle$new()
 handle$activate()
 
 # Define functions for a better microbenchmark print
-# cuBLAS calls are asynchronous, for a proper timing we need to call sync.streams()
 R.dgemm <- function(){
   mat.C <<- ( mat.A %*% mat.B ) * alpha + mat.C * beta
 }
@@ -36,6 +37,8 @@ cuda.sgemm <- function(){
 }
 
 # Check the speeds
+# The R.dgemm() benchmark can take quite a while, that is why we only do 10
+# iterations of the measurement here
 print( microbenchmark( R.dgemm(),    times = 10 ) )
 print( microbenchmark( cuda.sgemm(), times = 10 ) )
 

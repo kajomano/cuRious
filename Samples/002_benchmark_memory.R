@@ -1,6 +1,7 @@
-# Although the main idea is to have all the data residing in the GPU memory, and
-# not to have any CPU memory transfer during training, sometimes for rapid
-# prototyping it is much easier to first implement something in pure R. For this
+# Although the main idea is to have most of the data residing in the GPU memory,
+# all the training data can probably not be expected to fit there. When
+# prototyping it is sometimes easier to first implement something in pure R,
+# which also requires data transfer between the host and the device. For this
 # case, cuRious tries to implement the data transfer as fast as possible. This
 # script gives you a general feel how much time it can take to transfer data to
 # and from the GPU.
@@ -21,7 +22,8 @@ memory.read  <- function(){ tens.x$pull() }
 
 # Check the speeds. Keep in mind, that if DEBUG_PRINTS are enabled, printing
 # to the R console can take up time as well. However, it is not much compared
-# to the overall transfer times.
+# to the overall transfer times. You can compile the package without the debug
+# prints by commenting out the #define DEBUG_PRINTS 1 line in the debug.h file.
 print( microbenchmark( memory.write(), times = 100 ) )
 print( microbenchmark( memory.read(),  times = 100 ) )
 

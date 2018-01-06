@@ -144,7 +144,7 @@ tensor <- R6Class(
         return( invisible( FALSE ) )
       }
 
-      private$stage <- .Call( "cuR_create_stage", private$dims )
+      private$stage <- .Call( "cuR_create_stage", self$get.l )
 
       if( is.null( private$stage ) ){
         stop( "Tensor could not be staged" )

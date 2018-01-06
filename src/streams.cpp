@@ -20,6 +20,18 @@ SEXP cuR_sync_device(){
   return ret_r;
 }
 
+extern "C"
+SEXP cuR_sync_cuda_stream( SEXP stream_r ){
+  cudaError_t cuda_stat;
+  cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
+  cudaTry( cudaStreamSynchronize( *stream ) )
+
+    // Return something that is not null
+    SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
+
 void cuR_finalize_cuda_stream( SEXP ptr ){
   cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( ptr );
 
@@ -58,16 +70,4 @@ SEXP cuR_activate_cuda_stream(){
 
   Rf_unprotect(1);
   return ptr;
-}
-
-extern "C"
-SEXP cuR_sync_cuda_stream( SEXP stream_r ){
-  cudaError_t cuda_stat;
-  cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
-  cudaTry( cudaStreamSynchronize( *stream ) )
-
-  // Return something that is not null
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
 }

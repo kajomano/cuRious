@@ -1,47 +1,45 @@
 library( cuRious )
 library( microbenchmark )
 
-n <- 1000
-mat <- matrix( rnorm(n*n), ncol = n )
+n     <- 1000
+mat   <- matrix( 1:n*n, ncol = n )
+tens1 <- tensor$new( mat )
+tens2 <- tensor$new( mat )
 
-tens.A <- tensor$new( mat )
-tens.A$dive()
+tens1$create.stage()
+tens1$dive()
 
-tens.B <- tensor$new( mat )
-tens.B$dive()
+tens2$create.stage()
+tens2$dive()
 
-tens.C <- tensor$new( mat )
-tens.C$dive()
-
-# Create a cublas handle
-handle <- cublas.handle$new()
-handle$create()
-
-# Create separate streams
 stream1 <- cuda.stream$new()
-stream1$create()
+stream1$activate()
+
 stream2 <- cuda.stream$new()
-stream2$create()
+stream2$activate()
 
-# Make tens.A staged, as it will be used frequently for CPU<-->GPU data transfers
-# Asynchronous data transfers are only possible with staged tensors!
-tens.A$create.stage()
-
-# Define functions
-single.stream <- function(){
-  # tens.A$push( mat )
-  cublas.sgemm( handle, tens.B, tens.B, tens.C, 1, 0 )
-  cuda.streams.sync()
+async.transfer <- function(){
+  tens1$pull.prefetch.async( stream1 )
+  tens2$push.preproc( mat )
+  tens2$push.fetch.async( stream2 )
+  cuda.stream.sync( stream1 )
+  tens1$pull.proc()
+  cuda.stream.sync( stream2 )
 }
 
-multiple.streams <- function(){
-  # tens.A$push( mat, stream1 )
-  cublas.sgemm( handle, tens.B, tens.B, tens.C, 1, 0, stream = stream2 )
-  cuda.streams.sync()
+sync.transfer <- function(){
+  tens1$pull()
+  tens2$push( mat )
 }
 
-# Check the speeds
-microbenchmark( single.stream(),    times = 10 )
-microbenchmark( multiple.streams(), times = 10 )
+microbenchmark( tens1$pull(), times = 100 )
+microbenchmark( tens1$pull.proc(), times = 100 )
+
+microbenchmark( tens2$push( mat ), times = 100 )
+microbenchmark( tens2$push.preproc( mat ), times = 100 )
+
+microbenchmark( sync.transfer(), times = 100 )
+profvis::profvis( sync.transfer(), interval = 0.001 )
+microbenchmark( async.transfer(), times = 100 )
 
 clean.global()

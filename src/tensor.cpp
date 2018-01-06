@@ -187,6 +187,9 @@ SEXP cuR_push_fetch_async( SEXP stage_r, SEXP l_r, SEXP tens_r, SEXP stream_r ){
 
   cudaTry( cudaMemcpyAsync( tens, stage, l*sizeof(float), cudaMemcpyHostToDevice, *stream ) )
 
+  // Flush for WDDM
+  cudaStreamQuery(0);
+
   // Return something that is not null
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
   Rf_unprotect(1);
@@ -229,6 +232,9 @@ SEXP cuR_pull_prefetch_async( SEXP stage_r, SEXP l_r, SEXP tens_r, SEXP stream_r
 
   cudaTry( cudaMemcpyAsync( stage, tens, l*sizeof(float), cudaMemcpyDeviceToHost, *stream ) );
 
+  // Flush for WDDM
+  cudaStreamQuery(0);
+
   // Return something that is not null
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
   Rf_unprotect(1);
@@ -256,104 +262,6 @@ SEXP cuR_pull_proc( SEXP dims_r, SEXP buff_r ){
   // Fill the SEXP with data
   for (int i = 0; i < l; i++){
     data[i] = (double)buff[i];
-  }
-
-  Rf_unprotect(1);
-  return data_r;
-}
-
-
-extern "C"
-SEXP cuR_push_tensor( SEXP tens_r, SEXP data_r, SEXP l_r, SEXP stage_r, SEXP stream_r ){
-  // Create pointer to the actual data in the tens_r
-  double* data_c = REAL( data_r );
-
-  // Tensor length
-  int l = Rf_asInteger( l_r );
-
-  // Allocate memory on the host
-  float* tens_host;
-  if( stage_r == R_NilValue ){
-    tens_host = new float[l];
-  }else{
-    tens_host = (float*)R_ExternalPtrAddr( stage_r );
-  }
-
-  // Convert to float in host memory
-  for (int i = 0; i < l; i++){
-    tens_host[i] = (float)data_c[i];
-  }
-
-  // Copy host vector to device
-  cudaError_t cuda_stat;
-  float* tens_dev = (float*)R_ExternalPtrAddr( tens_r );
-
-  // Do an async copy if both a stage and a stream is suported
-  if( stage_r != R_NilValue && stream_r != R_NilValue ){
-#ifdef DEBUG_PRINTS
-    Rprintf( "<%p> Async copying tensor\n", (void*) tens_dev );
-#endif
-
-    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
-    cudaTry( cudaMemcpyAsync( tens_dev, tens_host, l*sizeof(float), cudaMemcpyHostToDevice, *stream ) )
-  }else{
-#ifdef DEBUG_PRINTS
-    Rprintf( "<%p> Copying tensor\n", (void*) tens_dev );
-#endif
-
-    cudaTry( cudaMemcpy(tens_dev, tens_host, l*sizeof(float), cudaMemcpyHostToDevice) )
-  }
-
-  // Free the host memory
-  if( stage_r == R_NilValue ){
-    delete[] tens_host;
-  }
-
-  // Return something that is not null
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_pull_tensor( SEXP tens_r, SEXP dims_r, SEXP stage_r, SEXP stream_r ){
-  // Tensor length
-  int* dims  = INTEGER( dims_r );
-  int l = dims[0]*dims[1];
-
-  // Create pointer to the device memory object
-  float* tens_dev = (float*)R_ExternalPtrAddr( tens_r );
-
-  // Allocate host memory and copy back content from device
-  float* tens_host;
-  if( stage_r == R_NilValue ){
-    tens_host = new float[l];
-  }else{
-    tens_host = (float*)R_ExternalPtrAddr( stage_r );
-  }
-
-  cudaError_t cuda_stat;
-  cudaTry( cudaMemcpy(tens_host, tens_dev, l*sizeof(float), cudaMemcpyDeviceToHost) );
-
-  // Create the correct R object
-  SEXP data_r;
-  if( dims[1] == 1 ){
-    data_r = Rf_protect( Rf_allocVector( REALSXP, dims[0] ) );
-  }else{
-    data_r = Rf_protect( Rf_allocMatrix( REALSXP, dims[0], dims[1] ) );
-  }
-
-  // Create a pointer to the actual data in the SEXP
-  double* data_c = REAL( data_r );
-
-  // Fill the SEXP with data
-  for (int i = 0; i < l; i++){
-    data_c[i] = (double)tens_host[i];
-  }
-
-  // Free host and device memory
-  if( stage_r == R_NilValue ){
-    delete[] tens_host;
   }
 
   Rf_unprotect(1);

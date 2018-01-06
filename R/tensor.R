@@ -18,6 +18,7 @@ tensor <- R6Class(
       # Store tensor, force storage type
       private$tensor <- obj
       if( storage.mode( private$tensor ) != "double" ){
+        warning( "Supported object is not double precision" )
         storage.mode( private$tensor ) <- "double"
       }
     },
@@ -56,6 +57,7 @@ tensor <- R6Class(
 
       # Set correct storage type
       if( storage.mode( obj ) != "double" ){
+        warning( "Supported object is not double precision" )
         storage.mode( obj ) <- "double"
       }
 
@@ -84,6 +86,7 @@ tensor <- R6Class(
 
       # Set correct storage type
       if( storage.mode( obj ) != "double" ){
+        warning( "Supported object is not double precision" )
         storage.mode( obj ) <- "double"
       }
 
@@ -96,6 +99,37 @@ tensor <- R6Class(
 
       invisible( TRUE )
     },
+
+    # TODO ====
+    # Remove these, or maybe not?
+
+    push.fetch = function( ){
+      private$check.staged.under()
+
+      ret <- .Call( "cuR_push_fetch",
+                    private$stage,
+                    self$get.l,
+                    private$tensor )
+
+      if( is.null( ret ) ) stop( "Tensor could not be fetched" )
+
+      invisible( TRUE )
+    },
+
+    pull.prefetch = function( ){
+      private$check.staged.under()
+
+      ret <- .Call( "cuR_pull_prefetch",
+                    private$stage,
+                    self$get.l,
+                    private$tensor )
+
+      if( is.null( ret ) ) stop( "Tensor could not be prefetched" )
+
+      invisible( TRUE )
+    },
+
+    # --------------------------
 
     push.fetch.async = function( stream ){
       private$check.staged.under()

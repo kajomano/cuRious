@@ -1,8 +1,8 @@
 library( cuRious )
 library( microbenchmark )
 
-n     <- 1000
-mat   <- matrix( 1:n*n, ncol = n )
+n     <- 10000
+mat   <- matrix( as.double(1:(n*n)), ncol = n )
 tens1 <- tensor$new( mat )
 tens2 <- tensor$new( mat )
 
@@ -32,14 +32,7 @@ sync.transfer <- function(){
   tens2$push( mat )
 }
 
-microbenchmark( tens1$pull(), times = 100 )
-microbenchmark( tens1$pull.proc(), times = 100 )
-
-microbenchmark( tens2$push( mat ), times = 100 )
-microbenchmark( tens2$push.preproc( mat ), times = 100 )
-
-microbenchmark( sync.transfer(), times = 100 )
-profvis::profvis( sync.transfer(), interval = 0.001 )
-microbenchmark( async.transfer(), times = 100 )
+microbenchmark( sync.transfer(), times = 10 )
+microbenchmark( async.transfer(), times = 10 )
 
 clean.global()

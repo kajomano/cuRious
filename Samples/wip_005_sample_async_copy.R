@@ -110,32 +110,45 @@ async.transfer <- function(){
 }
 
 # Compare the time this takes to the sequential version. As you can see, the
-# transfer times are masked behind the CPU conversion
+# transfer times are masked behind the CPU conversion.
 sync.transfer <- function(){
   tens.in$push( mat.dummy )
   tens.out$pull()
 }
-
 print( microbenchmark( sync.transfer(), times = 10 ) )
 print( microbenchmark( async.transfer(), times = 10 ) )
 
-# ------------------------------------------------------------------------------
+# While the gain is not much as most of the time is spent processing the data in
+# the CPU anyway, async memory copies also allow us to do another thing:
 
 # Asynchronous processing ====
-# Current CUDA GPUs are also capable of running kernel perations parallel to
-# data transfers.
-
-# This means that at This parallel execution scheme is capable of
-# hiding the latency overhead from moving data to and from the GPU, removing the
+# Current CUDA GPUs are also capable of running kernel operations parallel to
+# data transfers. This parallel execution scheme is capable of entirely hiding
+# the latency overhead from moving data to and from the GPU, removing the
 # negative side effects of using the GPU for computation.
 
-trans.stream <- cuda.stream$new()
-trans.stream$activate()
+# For the parallel cuBLAS kernel we need another stream
+cublas.stream <- cuda.stream$new()
+cublas.stream$activate()
 
+# TODO ====
+# This is bullshit, explain better
 
+# To do a proper 3-way parallelization, a rotating 3-way bufferin needs to be
+# implemented. This requires 3 tensors that will all serve as both input, output
+# and processing points for the whole system. For this, we will define 3 new
+# tensors
+tens.list <- lapply( 1:3, function(...){
+  tens <- tensor$new( mat.dummy )
+  tens$create.stage()
+  tens$dive()
+  tens
+})
+
+# ------------------------------------------------------------------------------
 
 # Armed with this knowledge, let's define the async transformation function
-asynch.transform <- function(){
+asynch.process <- function(){
   out.mat.list <<- lapply( in.mat.list, function( mat ){
     # Transfer the matrix to the GPU memory
     tens.in$push( mat )

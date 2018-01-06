@@ -109,8 +109,9 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_
 
   // cublasTry( cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m ) )
   stat = cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m );
-  if( stat == CUBLAS_STATUS_ALLOC_FAILED ) Rprintf("para\n");
-  if( stat == CUBLAS_STATUS_INTERNAL_ERROR ) Rprintf("para2\n");
+
+  // Flush for WDDM
+  cudaStreamQuery(0);
 
   // Return something that is not null
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );

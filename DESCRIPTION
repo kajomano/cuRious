@@ -6,6 +6,6 @@ Author: Marton Kajo
 Maintainer: Marton Kajo <kajomano@hotmail.com>
 Description: A neural network framework implementing a direct interface to some
 Nvidia CUDA functionality from R.
-License: Apache 2.0
+License: MIT License
 Encoding: UTF-8
 LazyData: true

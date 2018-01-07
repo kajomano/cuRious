@@ -80,6 +80,9 @@ tensor <- R6Class(
       }
     },
 
+    # TODO ====
+    # Do multithreading for (pre)processing on the CPU
+
     push.preproc = function( obj ){
       private$check.staged.under()
       private$check.dims( obj )
@@ -99,37 +102,6 @@ tensor <- R6Class(
 
       invisible( TRUE )
     },
-
-    # TODO ====
-    # Remove these, or maybe not?
-
-    push.fetch = function( ){
-      private$check.staged.under()
-
-      ret <- .Call( "cuR_push_fetch",
-                    private$stage,
-                    self$get.l,
-                    private$tensor )
-
-      if( is.null( ret ) ) stop( "Tensor could not be fetched" )
-
-      invisible( TRUE )
-    },
-
-    pull.prefetch = function( ){
-      private$check.staged.under()
-
-      ret <- .Call( "cuR_pull_prefetch",
-                    private$stage,
-                    self$get.l,
-                    private$tensor )
-
-      if( is.null( ret ) ) stop( "Tensor could not be prefetched" )
-
-      invisible( TRUE )
-    },
-
-    # --------------------------
 
     push.fetch.async = function( stream ){
       private$check.staged.under()

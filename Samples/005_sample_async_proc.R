@@ -42,7 +42,7 @@ handle$activate()
 # fashion. You should already have a rough idea how long this could take
 # from the previous sample scripts.
 
-synch.process <- function(){
+sync.process <- function(){
   out.mat.list <<- lapply( in.mat.list, function( mat ){
     # Transfer the matrix to the GPU memory
     tens.in$push( mat )
@@ -62,7 +62,7 @@ print( microbenchmark( tens.out$pull(), times = 10 ) )
 
 # If you add the times from the previous function calls and multiply by
 # 10, you should come to the same values that you see here.
-print( microbenchmark( synch.process(), times = 10 ) )
+print( microbenchmark( sync.process(), times = 10 ) )
 
 # Asynchronous memory transfer ====
 # Current Nvidia GPUs are capable of moving data to and from the GPU memory
@@ -122,7 +122,7 @@ print( microbenchmark( async.transfer(), times = 10 ) )
 # the CPU anyway, async memory copies also allow us to do another thing:
 
 # Asynchronous processing ====
-# Current CUDA GPUs are also capable of running kernel operations parallel to
+# Current CUDA GPUs are also able to run kernel operations parallel to
 # data transfers. This parallel execution scheme is capable of entirely hiding
 # the latency overhead from moving data to and from the GPU, removing the
 # negative side effects of using the GPU for computation.
@@ -131,34 +131,88 @@ print( microbenchmark( async.transfer(), times = 10 ) )
 cublas.stream <- cuda.stream$new()
 cublas.stream$activate()
 
-# TODO ====
-# This is bullshit, explain better
-
-# To do a proper 3-way parallelization, a rotating 3-way bufferin needs to be
-# implemented. This requires 3 tensors that will all serve as both input, output
-# and processing points for the whole system. For this, we will define 3 new
-# tensors
-tens.list <- lapply( 1:3, function(...){
+# At any time, there will be always one push, one pull and one gemm operation.
+# The gemm operation requires separate memory as input and output areas (can not
+# be done in-place). This requires 4 tensors all together. These 4 tensors will
+# all be at some point input and output areas as well. For this, we will define
+# 4 tensors, all staged
+tens.list <- lapply( 1:4, function(...){
   tens <- tensor$new( mat.dummy )
   tens$create.stage()
   tens$dive()
   tens
 })
 
-# ------------------------------------------------------------------------------
+# To make this easier, here is the rotating scheme. The roles of the tesors will
+# be shifted up with each iteration, or the tensors shifted down.
+# tens1 : push( new.matrix )
+# tens2 : input to gemm
+# tens3 : output of gemm
+# tens4 : pull( processed.matrix )
 
-# Armed with this knowledge, let's define the async transformation function
-asynch.process <- function(){
-  out.mat.list <<- lapply( in.mat.list, function( mat ){
-    # Transfer the matrix to the GPU memory
-    tens.in$push( mat )
+# Let's keep the output separate from the synchonous case
+out.mat.list.async <- list()
 
-    # Do the matrix operation
-    cublas.sgemm( handle, tens.in, tens.trans, tens.out, 1, 0 )
+# Armed with the above knowledge, let's define the async function
+async.process <- function(){
+  # Spool up
+  # Iteration 1
+  tens.list[[1]]$push.preproc( in.mat.list[[1]] )
+  tens.list[[1]]$push.fetch.async( in.stream )
+  cuda.stream.sync.all()
 
-    # Return with the result
-    tens.out$pull()
-  })
+  # Iteration 2
+  cublas.sgemm( handle, tens.list[[1]], tens.trans, tens.list[[2]], 1, 0, stream = cublas.stream  )
+  tens.list[[4]]$push.preproc( in.mat.list[[2]] )
+  tens.list[[4]]$push.fetch.async( in.stream )
+  cuda.stream.sync.all()
+
+  # Iterations 3-10
+  for( i in 3:10 ){
+    tens.push     <- tens.list[[4 - ((i+2) %% 4)]]
+    tens.gemm.in  <- tens.list[[4 - ((i+1) %% 4)]]
+    tens.gemm.out <- tens.list[[4 - ((i)   %% 4)]]
+    tens.pull     <- tens.list[[4 - ((i+3) %% 4)]]
+
+    cublas.sgemm( handle, tens.gemm.in, tens.trans, tens.gemm.out, 1, 0, stream = cublas.stream )
+
+    tens.pull$pull.prefetch.async( out.stream )
+    tens.push$push.preproc( in.mat.list[[i]] )
+    tens.push$push.fetch.async( in.stream )
+    cuda.stream.sync( out.stream )
+    out.mat.list.async[[i-2]] <<- tens.pull$pull.proc()
+
+    cuda.stream.sync.all()
+  }
+
+  # Spool down
+  # Iteration 11
+  cublas.sgemm( handle, tens.list[[4]], tens.trans, tens.list[[1]], 1, 0, stream = cublas.stream )
+  tens.list[[2]]$pull.prefetch.async( out.stream )
+  cuda.stream.sync( out.stream )
+  out.mat.list.async[[9]] <<- tens.pull$pull.proc()
+
+  # Iteration 12
+  tens.list[[1]]$pull.prefetch.async( out.stream )
+  cuda.stream.sync( out.stream )
+  out.mat.list.async[[10]] <<- tens.list[[1]]$pull.proc()
 }
+
+# Let's check how much time we gained. For reference the pure gemm operation is
+# also included
+gemm.dummy <- function(){
+  for( i in 1:10 ){
+    cublas.sgemm( handle, tens.in, tens.trans, tens.out, 1, 0 )
+  }
+}
+print( microbenchmark( sync.process(), times = 10 ) )
+print( microbenchmark( async.process(), times = 10 ) )
+print( microbenchmark( gemm.dummy(), times = 10 ) )
+
+# As you can see, the data transfer times are almost completely hidden behind
+# the gemm computation, removing the negative side-effects of using the GPU
+
+# The two results are indeed the same
+print( identical( out.mat.list[[1]], out.mat.list.async[[1]] ) )
 
 clean.global()

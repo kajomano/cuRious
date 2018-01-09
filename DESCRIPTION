@@ -4,8 +4,7 @@ Title: Simple Neural Networks with CUDA and R
 Version: 0.1.0
 Author: Marton Kajo
 Maintainer: Marton Kajo <kajomano@hotmail.com>
-Description: A neural network framework implementing a direct interface to some
-Nvidia CUDA functionality from R.
+Description: A neural network framework implementing a direct interface to some Nvidia CUDA functionality from R.
 License: MIT License
 Encoding: UTF-8
 LazyData: true

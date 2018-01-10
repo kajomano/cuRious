@@ -2,6 +2,11 @@
 library( cuRious )
 library( microbenchmark )
 
+n.row = 10^6
+mat <- matrix( rnorm( 1000*n.row ), nrow = n.row )
+subset <- sample( 1:n.row, 1000 )
+microbenchmark(mat[ subset, ], times = 10 )
+
 # Create vectors and store them in the device memory
 n <- 10^6
 vect.x <- rep( 1, times = n )

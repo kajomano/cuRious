@@ -23,26 +23,26 @@ tensor <- R6Class(
       }
     },
 
-    dive = function(){
+    dive = function( threads = 4 ){
       if( private$under ){
         return( invisible( FALSE ) )
       }
 
       obj <- private$tensor
       private$tensor <- private$create.tensor()
-      private$push.sync( obj )
+      private$push.sync( obj, threads )
 
       private$under  <- TRUE
 
       invisible( TRUE )
     },
 
-    surface = function(){
+    surface = function( threads = 4 ){
       if( !private$under ){
         return( invisible( private$tensor ) )
       }
 
-      ret <- private$pull.sync()
+      ret <- private$pull.sync( threads )
 
       private$destroy.tensor()
       self$destroy.stage()
@@ -52,7 +52,7 @@ tensor <- R6Class(
       invisible( ret )
     },
 
-    push = function( obj ){
+    push = function( obj, threads = 4 ){
       private$check.dims( obj )
 
       # Set correct storage type
@@ -62,7 +62,7 @@ tensor <- R6Class(
       }
 
       if( self$is.under ){
-        private$push.sync( obj )
+        private$push.sync( obj, threads )
       }else{
         private$tensor <- obj
       }
@@ -70,9 +70,9 @@ tensor <- R6Class(
       invisible( TRUE )
     },
 
-    pull = function(){
+    pull = function( threads = 4 ){
       if( private$under ){
-        ret <- private$pull.sync()
+        ret <- private$pull.sync( threads )
         if( is.null( ret ) ) stop( "Tensor could not be pulled" )
         ret
       }else{
@@ -83,7 +83,7 @@ tensor <- R6Class(
     # TODO ====
     # Do multithreading for (pre)processing on the CPU
 
-    push.preproc = function( obj ){
+    push.preproc = function( obj, threads = 4 ){
       private$check.staged.under()
       private$check.dims( obj )
 
@@ -96,7 +96,8 @@ tensor <- R6Class(
       ret <- .Call( "cuR_push_preproc",
                     obj,
                     self$get.l,
-                    private$stage )
+                    private$stage,
+                    threads )
 
       if( is.null( ret ) ) stop( "Tensor could not be preprocessed" )
 
@@ -133,12 +134,13 @@ tensor <- R6Class(
       invisible( TRUE )
     },
 
-    pull.proc = function(){
+    pull.proc = function( threads = 4 ){
       private$check.staged.under()
 
       ret <- .Call( "cuR_pull_proc",
                     self$get.dims,
-                    private$stage )
+                    private$stage,
+                    threads )
 
       if( is.null( ret ) ) stop( "Tensor could not be processed" )
 
@@ -193,7 +195,7 @@ tensor <- R6Class(
       .Call( "cuR_destroy_tensor", private$tensor )
     },
 
-    push.sync = function( obj ){
+    push.sync = function( obj, threads = 4 ){
       if( self$is.staged ){
         buffer <- private$stage
       }else{
@@ -204,7 +206,8 @@ tensor <- R6Class(
       ret <- .Call( "cuR_push_preproc",
                     obj,
                     self$get.l,
-                    buffer )
+                    buffer,
+                    threads )
       if( is.null( ret ) ) stop( "Tensor could not be preprocessed" )
 
       ret <- .Call( "cuR_push_fetch",
@@ -218,7 +221,7 @@ tensor <- R6Class(
       }
     },
 
-    pull.sync = function(){
+    pull.sync = function( threads = 4 ){
       if( self$is.staged ){
         buffer <- private$stage
       }else{
@@ -234,7 +237,8 @@ tensor <- R6Class(
 
       ret <- .Call( "cuR_pull_proc",
                     self$get.dims,
-                    buffer )
+                    buffer,
+                    threads )
       if( is.null( ret ) ) stop( "Tensor could not be processed" )
 
       if( !self$is.staged ){

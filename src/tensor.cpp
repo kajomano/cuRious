@@ -138,17 +138,14 @@ SEXP cuR_destroy_buffer( SEXP buffer_r ){
 // Pull-push ================================================
 
 extern "C"
-SEXP cuR_push_preproc( SEXP data_r, SEXP l_r, SEXP buff_r ){
+SEXP cuR_push_preproc( SEXP data_r, SEXP l_r, SEXP buff_r, SEXP threads_r ){
   // Recover pointers and length
   double* data = REAL( data_r );
   int l        = Rf_asInteger( l_r );
+  int threads  = Rf_asInteger( threads_r );
   float* buff  = (float*)R_ExternalPtrAddr( buff_r );
 
-  // Convert to float in host memory
-  // for( int i = 0; i < l; i++ ){
-  //   buff[i] = (float)data[i];
-  // }
-  cuR_conv_2_float( data, buff, l, 1 );
+  cuR_conv_2_float( data, buff, l, threads );
 
   // Return something that is not null
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
@@ -244,10 +241,11 @@ SEXP cuR_pull_prefetch_async( SEXP stage_r, SEXP l_r, SEXP tens_r, SEXP stream_r
 }
 
 extern "C"
-SEXP cuR_pull_proc( SEXP dims_r, SEXP buff_r ){
+SEXP cuR_pull_proc( SEXP dims_r, SEXP buff_r, SEXP threads_r ){
   // Recover pointer and dims
   int* dims    = INTEGER( dims_r );
   int l        = dims[0]*dims[1];
+  int threads  = Rf_asInteger( threads_r );
   float* buff  = (float*)R_ExternalPtrAddr( buff_r );
 
   // Create the correct R object
@@ -265,7 +263,7 @@ SEXP cuR_pull_proc( SEXP dims_r, SEXP buff_r ){
   // for (int i = 0; i < l; i++){
   //   data[i] = (double)buff[i];
   // }
-  cuR_conv_2_double( buff, data, l, 1 );
+  cuR_conv_2_double( buff, data, l, threads );
 
   Rf_unprotect(1);
   return data_r;

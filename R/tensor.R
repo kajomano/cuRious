@@ -80,9 +80,6 @@ tensor <- R6Class(
       }
     },
 
-    # TODO ====
-    # Do multithreading for (pre)processing on the CPU
-
     push.preproc = function( obj, threads = 4 ){
       private$check.staged.under()
       private$check.dims( obj )

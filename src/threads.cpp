@@ -1,8 +1,6 @@
 #include <windows.h>
 #include <process.h>
 
-#include "debug.h"
-
 struct cuR_arg_list{
   double* data;
   float* buff;
@@ -28,16 +26,16 @@ void cuR_conv_2_float( double* data, float* buff, int l, int n_threads ){
     int threads = n_threads - 1;
     int span    = l / n_threads;
 
-    HANDLE* handles = new HANDLE[threads];
+    HANDLE* handles    = new HANDLE[threads];
+    cuR_arg_list* args = new cuR_arg_list[threads];
 
     // Launch threads
     for( int i = 0; i < threads; i++ ){
-      cuR_arg_list args;
-      args.data = data + i*span;
-      args.buff = buff + i*span;
-      args.l    = span;
+      args[i].data = data + i*span;
+      args[i].buff = buff + i*span;
+      args[i].l    = span;
 
-      handles[i] = (HANDLE)_beginthreadex(0, 0, cuR_conv_2_float_thread, &args, 0, 0);
+      handles[i] = (HANDLE)_beginthreadex(0, 0, cuR_conv_2_float_thread, args+i, 0, 0);
     }
 
     // Do the remainder of the processing
@@ -54,6 +52,7 @@ void cuR_conv_2_float( double* data, float* buff, int l, int n_threads ){
     }
 
     delete[] handles;
+    delete[] args;
   }
 }
 
@@ -75,16 +74,16 @@ void cuR_conv_2_double( float* buff, double* data, int l, int n_threads ){
     int threads = n_threads - 1;
     int span    = l / n_threads;
 
-    HANDLE* handles = new HANDLE[threads];
+    HANDLE* handles    = new HANDLE[threads];
+    cuR_arg_list* args = new cuR_arg_list[threads];
 
     // Launch threads
     for( int i = 0; i < threads; i++ ){
-      cuR_arg_list args;
-      args.data = data + i*span;
-      args.buff = buff + i*span;
-      args.l    = span;
+      args[i].data = data + i*span;
+      args[i].buff = buff + i*span;
+      args[i].l    = span;
 
-      handles[i] = (HANDLE)_beginthreadex(0, 0, cuR_conv_2_double_thread, &args, 0, 0);
+      handles[i] = (HANDLE)_beginthreadex(0, 0, cuR_conv_2_double_thread, args+i, 0, 0);
     }
 
     // Do the remainder of the processing
@@ -101,6 +100,7 @@ void cuR_conv_2_double( float* buff, double* data, int l, int n_threads ){
     }
 
     delete[] handles;
+    delete[] args;
   }
 }
 

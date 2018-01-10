@@ -145,6 +145,7 @@ SEXP cuR_push_preproc( SEXP data_r, SEXP l_r, SEXP buff_r, SEXP threads_r ){
   int threads  = Rf_asInteger( threads_r );
   float* buff  = (float*)R_ExternalPtrAddr( buff_r );
 
+  // Convert values to float
   cuR_conv_2_float( data, buff, l, threads );
 
   // Return something that is not null
@@ -249,20 +250,19 @@ SEXP cuR_pull_proc( SEXP dims_r, SEXP buff_r, SEXP threads_r ){
   float* buff  = (float*)R_ExternalPtrAddr( buff_r );
 
   // Create the correct R object
-  SEXP data_r;
-  if( dims[1] == 1 ){
-    data_r = Rf_protect( Rf_allocVector( REALSXP, dims[0] ) );
-  }else{
-    data_r = Rf_protect( Rf_allocMatrix( REALSXP, dims[0], dims[1] ) );
-  }
+  // if( data_r == R_NilValue ){
+    SEXP data_r;
+    if( dims[1] == 1 ){
+      data_r = Rf_protect( Rf_allocVector( REALSXP, dims[0] ) );
+    }else{
+      data_r = Rf_protect( Rf_allocMatrix( REALSXP, dims[0], dims[1] ) );
+    }
+  // }
 
   // Recover pointer to data in SEXP
   double* data = REAL( data_r );
 
-  // Fill the SEXP with data
-  // for (int i = 0; i < l; i++){
-  //   data[i] = (double)buff[i];
-  // }
+  // Convert values to double
   cuR_conv_2_double( buff, data, l, threads );
 
   Rf_unprotect(1);

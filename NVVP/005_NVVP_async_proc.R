@@ -6,8 +6,27 @@ n     <- 1000
 mat   <- matrix( as.double(1:(n*n)), ncol = n )
 
 in.mat.list <- lapply( 1:10, function( ... ){
-  matrix( rnorm(n*n), ncol = n )
+  mat
 })
+
+tens.trans <- tensor$new( t(diag(1, n, n)) )
+tens.trans$dive()
+
+tens.in <- tensor$new( mat )
+tens.in$create.stage()
+tens.in$dive()
+
+tens.out <- tensor$new( mat )
+tens.out$create.stage()
+tens.out$dive()
+
+sync.process <- function(){
+  out.mat.list <<- lapply( in.mat.list, function( mat ){
+    tens.in$push( mat )
+    cublas.sgemm( handle, tens.in, tens.trans, tens.out, 1, 0 )
+    tens.out$pull()
+  })
+}
 
 in.stream <- cuda.stream$new()
 in.stream$activate()
@@ -24,6 +43,9 @@ tens.list <- lapply( 1:4, function(...){
   tens$dive()
   tens
 })
+
+handle <- cublas.handle$new()
+handle$activate()
 
 out.mat.list.async <- list()
 
@@ -64,6 +86,7 @@ async.process <- function(){
   out.mat.list.async[[10]] <<- tens.list[[1]]$pull.proc()
 }
 
+# sync.process()
 async.process()
 
 print("Finished")

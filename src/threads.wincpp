@@ -1,0 +1,24 @@
+#include <windows.h>
+
+#include "debug.h"
+
+void cuR_conv_2_float( double* data, float* buff, int l, int n_threads ){
+
+  if( n_threads == 1 ){
+    for( int i = 0; i < l; i++ ){
+      buff[i] = (float)data[i];
+    }
+  }
+
+}
+
+void cuR_conv_2_double( float* buff, double* data, int l, int n_threads ){
+
+  if( n_threads == 1 ){
+    for (int i = 0; i < l; i++){
+      data[i] = (double)buff[i];
+    }
+  }
+
+}
+

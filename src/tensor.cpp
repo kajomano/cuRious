@@ -7,6 +7,7 @@
 #include <R.h>
 #include <Rinternals.h>
 
+#include "threads.h"
 #include "debug.h"
 
 // Various memory allocations/deallocations
@@ -144,9 +145,10 @@ SEXP cuR_push_preproc( SEXP data_r, SEXP l_r, SEXP buff_r ){
   float* buff  = (float*)R_ExternalPtrAddr( buff_r );
 
   // Convert to float in host memory
-  for( int i = 0; i < l; i++ ){
-    buff[i] = (float)data[i];
-  }
+  // for( int i = 0; i < l; i++ ){
+  //   buff[i] = (float)data[i];
+  // }
+  cuR_conv_2_float( data, buff, l, 1 );
 
   // Return something that is not null
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
@@ -260,9 +262,10 @@ SEXP cuR_pull_proc( SEXP dims_r, SEXP buff_r ){
   double* data = REAL( data_r );
 
   // Fill the SEXP with data
-  for (int i = 0; i < l; i++){
-    data[i] = (double)buff[i];
-  }
+  // for (int i = 0; i < l; i++){
+  //   data[i] = (double)buff[i];
+  // }
+  cuR_conv_2_double( buff, data, l, 1 );
 
   Rf_unprotect(1);
   return data_r;

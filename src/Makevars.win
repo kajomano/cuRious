@@ -16,20 +16,14 @@ CUDA_INC  = $(CUDA_HOME)/include
 ## NVCC arguments
 # -x cu: even though the files have .c extensions, should understand them as .cu
 # -arch=sm_30 -gencode=arch=compute_30,code=sm_30: what type of machine code to
-# generate, dependent on your graphics card
-NVCC_ARGS = -x=cu -arch=sm_30 -gencode=arch=compute_30,code=sm_30
+# generate, dependent on your graphics card, refer to:
+# http://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
+NVCC_ARGS = -x=cu -arch=sm_52 -gencode=arch=compute_52,code=sm_52
 
 # NVCC uses the VC compiler on windows, but PATH is usually buggy, needs explicit
 # location to work, also the common includes are there
 VC_HOME   = "C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC"
 VC_BIN    = $(VC_HOME)/bin/amd64
-
-## Extra libraries for the linker
-# Linux (untested)
-# PKG_LIBS  = "-L$(CUDA_HOME)/lib/x64 -Wl, -rpath, $(CUDA_HOME)/lib/x64 -lcuda -lcudart"
-# Windows
-PKG_LIBS  = -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas
-#ALL_LIBS  = -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -L$(R_HOME)/bin/x64 -lR
 
 ### Define objects
 h_srcs    = $(wildcard *.h)
@@ -40,18 +34,29 @@ cpp_objs  = $(patsubst %.cpp, %.o, $(cpp_srcs))
 cu_srcs   = $(wildcard *.cc)
 cu_objs   = $(patsubst %.cc, %.o, $(cu_srcs))
 
-all_objs  = $(cpp_objs) $(cu_objs)
+## Windows specific files
+wincpp_srcs  = $(wildcard *.wincpp)
+wincpp_objs  = $(patsubst %.wincpp, %.o, $(wincpp_srcs))
+
+all_objs  = $(cpp_objs) $(cu_objs) $(wincpp_objs)
+
+### Linker options
+# Linux (untested)
+# PKG_LIBS  = "-L$(CUDA_HOME)/lib/x64 -Wl, -rpath, $(CUDA_HOME)/lib/x64 -lcuda -lcudart"
+# Windows (also includes special windows .wincpp objects)
+PKG_LIBS  = $(wincpp_objs) -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas
+
+### Recipes
 
 all: cuRious.so
 
 cuRious.so: $(all_objs)
 
-# Somehow fPIC
-#-Xcompiler -fPIC
-#$(NVCC) -ccbin=$(VC_BIN) -I=$(R_INC) -I=$(CUDA_INC) -c $< -o $@
 %.o: %.cpp $(h_srcs)
-	$(CXX) -O3 -I$(R_INC) -I$(CUDA_INC) -c $< -o $@
+	$(CXX) -O3 -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
 
-#-Xcompiler -fPIC
+%.o: %.wincpp $(h_srcs)
+	$(CXX) -O3 -I$(R_INC) -I$(CUDA_INC) -x c++ $< -o $@ -c
+
 %.o: %.cc $(h_srcs)
-	$(NVCC) -ccbin=$(VC_BIN) $(NVCC_ARGS) -I=$(CUDA_INC) -c $< -o $@
+	$(NVCC) -ccbin=$(VC_BIN) $(NVCC_ARGS) -I=$(CUDA_INC) $< -o $@ -c

@@ -27,11 +27,30 @@ memory.read  <- function(){ tens.x$pull() }
 print( microbenchmark( memory.write(), times = 100 ) )
 print( microbenchmark( memory.read(),  times = 100 ) )
 
-# Make tens.x staged. This creates a page-locked buffer for the tensor
-# that can accelerate all push and pull calls for the cost
-# of taking up memory in non-swappable address space. This is useful for
-# tensors that will act as IO points between the CPU and GPU with regular
-# push or pull operations. Use sparingly!
+# It might have caugth your attention that the read operation is almost twice as
+# slow as the write. This is because memory needs to be allocated for a new
+# R object when the function returns. Another aspect of this is that sometimes
+# the memory allocation also triggers the R garbage collector, which takes
+# forever to finish, causing orders of magnitude higher max times than means.
+microbenchmark( gc(), times = 100 )
+
+# To counteract both aspects, we can supply an R object of the correct dimensions
+# which will serve as the output of the pull operation.
+vect.y <- rep( 0, times = n )
+memory.read  <- function(){ tens.x$pull( vect.y ) }
+
+# Now the two operations should take up roughly the same amount of time
+print( microbenchmark( memory.write(), times = 100 ) )
+print( microbenchmark( memory.read(),  times = 100 ) )
+
+# The placeholder vector also was overwritten
+print( vect.y )
+
+# Let's take things even further, and make tens.x staged. This creates a
+# page-locked buffer for the tensor that can accelerate all push and pull calls
+# for the cost of taking up memory in non-swappable address space. This is
+# useful for tensors that will act as IO points between the CPU and GPU with
+# regular push or pull operations. Use sparingly!
 tens.x$create.stage()
 
 # Let's check the speed with the staged tensor

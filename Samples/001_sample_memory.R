@@ -24,14 +24,14 @@ tens.x$push( rep( 0, times = n ) )
 
 # Let's copy the tensor. As you can see, it is a shallow copy, pointing to the
 # same memory adress as its predecessor
-tens.x2 <- tens.x
-tens.x2$get.tensor
+tens.y <- tens.x
+tens.y$get.tensor
 
 # Move the data back to the CPU memory. Let's also check what happens to the
 # copy. The soft copying mechanism of R6 causes the copy to also surface (this
 # is intended). You can also see that the $push() call did change the actual
 # content.
 tens.x$surface()
-print( tens.x2$get.tensor )
+tens.y$pull()
 
 clean.global()

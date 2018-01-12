@@ -4,7 +4,7 @@ library( cuRious )
 library( microbenchmark )
 
 # Create tensors and store them in GPU memory
-# A( m, k ) * B( k, n ) + C( m, n )
+# C = A( m, k ) * B( k, n ) * alpha + C( m, n ) * beta
 m <- 2000
 n <- 1000
 k <- 1500
@@ -37,8 +37,8 @@ cuda.sgemm <- function(){
 }
 
 # Check the speeds
-# The R.dgemm() benchmark can take quite a while, that is why we only do 10
-# iterations of the measurement here
+# The R.dgemm() benchmark can take quite a while if you don't have MRO installed
+# that is why we only do 10 iterations of the measurement here
 print( microbenchmark( R.dgemm(),    times = 10 ) )
 print( microbenchmark( cuda.sgemm(), times = 10 ) )
 

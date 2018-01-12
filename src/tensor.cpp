@@ -1,5 +1,6 @@
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+#include <cstring>
 
 #define R_NO_REMAP 1
 //#define R_NO_REMAP_RMATH 1
@@ -9,6 +10,19 @@
 
 #include "threads.h"
 #include "debug.h"
+
+extern "C"
+SEXP cuR_copy_blob( SEXP src_r, SEXP dest_r, SEXP l_r ){
+  double* src  = REAL( src_r );
+  double* dest = REAL( dest_r );
+  int l        = Rf_asInteger( l_r );
+
+  memcpy( dest, src, l*sizeof(double) );
+
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
 
 // Various memory allocations/deallocations
 // Tensor - device memory
@@ -41,18 +55,21 @@ SEXP cuR_create_tensor( SEXP l_r ){
     Rprintf( "<%p> Creating tensor\n", (void*)tens_dev );
 #endif
 
-    // Wrap pointer in a SEXP and register a finalizer
-    SEXP tens_r = Rf_protect( R_MakeExternalPtr( tens_dev, R_NilValue, R_NilValue ) );
-    R_RegisterCFinalizerEx( tens_r, cuR_finalize_tensor, TRUE );
+  // Wrap pointer in a SEXP and register a finalizer
+  SEXP tens_r = Rf_protect( R_MakeExternalPtr( tens_dev, R_NilValue, R_NilValue ) );
+  R_RegisterCFinalizerEx( tens_r, cuR_finalize_tensor, TRUE );
 
-    Rf_unprotect(1);
-    return tens_r;
+  Rf_unprotect(1);
+  return tens_r;
 }
 
 extern "C"
 SEXP cuR_destroy_tensor( SEXP tens_r ){
   cuR_finalize_tensor( tens_r );
-  return R_NilValue;
+
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
 }
 
 // ----------------------------------------------------------
@@ -84,17 +101,20 @@ SEXP cuR_create_stage( SEXP l_r ){
     Rprintf( "<%p> Creating stage\n", (void*) stage );
 #endif
 
-    SEXP ret_r = Rf_protect( R_MakeExternalPtr( stage, R_NilValue, R_NilValue ) );
-    R_RegisterCFinalizerEx( ret_r, cuR_finalize_stage, TRUE );
+  SEXP ret_r = Rf_protect( R_MakeExternalPtr( stage, R_NilValue, R_NilValue ) );
+  R_RegisterCFinalizerEx( ret_r, cuR_finalize_stage, TRUE );
 
-    Rf_unprotect(1);
-    return ret_r;
+  Rf_unprotect(1);
+  return ret_r;
 }
 
 extern "C"
 SEXP cuR_destroy_stage( SEXP stage_r ){
   cuR_finalize_stage( stage_r );
-  return R_NilValue;
+
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
 }
 
 // ----------------------------------------------------------
@@ -132,7 +152,10 @@ SEXP cuR_create_buffer( SEXP l_r ){
 extern "C"
 SEXP cuR_destroy_buffer( SEXP buffer_r ){
   cuR_finalize_buffer( buffer_r );
-  return R_NilValue;
+
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
 }
 
 // Pull-push ================================================
@@ -242,29 +265,18 @@ SEXP cuR_pull_prefetch_async( SEXP stage_r, SEXP l_r, SEXP tens_r, SEXP stream_r
 }
 
 extern "C"
-SEXP cuR_pull_proc( SEXP dims_r, SEXP buff_r, SEXP threads_r ){
-  // Recover pointer and dims
-  int* dims    = INTEGER( dims_r );
-  int l        = dims[0]*dims[1];
+SEXP cuR_pull_proc( SEXP data_r, SEXP l_r, SEXP buff_r, SEXP threads_r ){
+  // Recover pointers and length
+  double* data = REAL( data_r );
+  int l        = Rf_asInteger( l_r );
   int threads  = Rf_asInteger( threads_r );
   float* buff  = (float*)R_ExternalPtrAddr( buff_r );
-
-  // Create the correct R object
-  // if( data_r == R_NilValue ){
-    SEXP data_r;
-    if( dims[1] == 1 ){
-      data_r = Rf_protect( Rf_allocVector( REALSXP, dims[0] ) );
-    }else{
-      data_r = Rf_protect( Rf_allocMatrix( REALSXP, dims[0], dims[1] ) );
-    }
-  // }
-
-  // Recover pointer to data in SEXP
-  double* data = REAL( data_r );
 
   // Convert values to double
   cuR_conv_2_double( buff, data, l, threads );
 
+  // Return something that is not null
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
   Rf_unprotect(1);
-  return data_r;
+  return ret_r;
 }

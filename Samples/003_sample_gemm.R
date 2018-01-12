@@ -1,4 +1,6 @@
 # This script shows a simple matrix-matrix mutliplication (GEMM) using cuBLAS
+# GEMM stands for GEneral Matrix-Multiply, and is an often used function in
+# neural networks
 library( cuRious )
 
 # Create tensors and store them in GPU memory
@@ -19,13 +21,16 @@ mat.C <- matrix( 1:(m*n), ncol = n )
 tens.C <- tensor$new( mat.C )
 tens.C$dive()
 
-# Create a cublas handle and add the two matrices, the result ending up in
-# tens.C
+# Create a cublas handle and activate it. An activated cuBLAS handle is needed
+# for each cublas call. As it is costly to create a handle, it is advised to
+# reuse the handle throughout multiple calls, or even the whole session.
 handle <- cublas.handle$new()
 handle$activate()
+
+# Mutliply the two matrices, the result ending up in tens.C
 cublas.sgemm( handle, tens.A, tens.B, tens.C )
 
-# Check if we got a correct result: it should be equal, as we used whole numbers
+# Check if we got a correct result: they should be equal, as we used whole numbers
 print( tens.C$pull() )
 print( mat.A %*% mat.B + mat.C )
 

@@ -107,8 +107,7 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_
 #endif
   }
 
-  // cublasTry( cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m ) )
-  stat = cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m );
+  cublasTry( cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m ) )
 
   // Flush for WDDM
   cudaStreamQuery(0);
@@ -119,23 +118,40 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_
   return ret_r;
 }
 
-// extern "C"
-// SEXP cuR_cublas_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP handle_r ){
-//   // Recover handle
-//   cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
-//
-//   // Recover tensors, the length and the scalar
-//   int l = Rf_asInteger( l_r );
-//   float* tens_x = (float*)R_ExternalPtrAddr( tens_x_r );
-//   float* tens_y = (float*)R_ExternalPtrAddr( tens_y_r );
-//   float al = (float)Rf_asReal( al_r );
-//
-//   // Do the operation, the results go into tens_y
-//   cublasStatus_t stat;
-//   cublasTry( cublasSaxpy( *handle, l, &al, tens_x, 1, tens_y, 1 ) )
-//
-//     // Return something that is not null
-//     SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-//   Rf_unprotect(1);
-//   return ret_r;
-// }
+extern "C"
+SEXP cuR_cublas_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP handle_r, SEXP stream_r ){
+  // Recover handle
+  cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
+  cublasStatus_t stat;
+
+  // Recover tensors, the length and the scalar
+  int l = Rf_asInteger( l_r );
+  float* tens_x = (float*)R_ExternalPtrAddr( tens_x_r );
+  float* tens_y = (float*)R_ExternalPtrAddr( tens_y_r );
+  float al = (float)Rf_asReal( al_r );
+
+  // If a stream is given, set it before the calculation
+  if( stream_r != R_NilValue ){
+#ifdef DEBUG_PRINTS
+    Rprintf( "Async cublas call\n" );
+#endif
+
+    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
+    cublasTry( cublasSetStream( *handle, *stream ) )
+  }else{
+#ifdef DEBUG_PRINTS
+    Rprintf( "Sync cublas call\n" );
+#endif
+  }
+
+  // Do the operation, the results go into tens_y
+  cublasTry( cublasSaxpy( *handle, l, &al, tens_x, 1, tens_y, 1 ) )
+
+  // Flush for WDDM
+  cudaStreamQuery(0);
+
+  // Return something that is not null
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}

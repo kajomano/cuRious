@@ -165,34 +165,32 @@ cublas.sgemm <- function( handle, tens.A, tens.B, tens.C, alpha = 1, beta = 1, t
   invisible( TRUE )
 }
 
-# TODO ====
-# Update saxpy to current state (streams and sanity checks, blocking and whatnot)
-# # B = alpha*A + B
-# # The trick here is that element-wise addition can be done this way also on
-# # matrices, even though thats not the intended use
-# cublas.saxpy <- function( handle, tens.A, tens.B, alpha = 1 ){
-#   # Sanity checks
-#   if( !is.cublas.handle.created( handle ) ){
-#     stop( "Cublas handle is not created" )
-#   }
-#
-#   if( !all( is.under( tens.A, tens.B ) ) ){
-#     stop( "Not all tensors are under" )
-#   }
-#
-#   if( !identical( tens.A$get.l, tens.B$get.l ) ){
-#     stop( "Not all tensor lengths match" )
-#   }
-#
-#   # Results go into tens.B
-#   ret <- .Call( "cuR_cublas_saxpy",
-#                 tens.A$get.tensor,
-#                 tens.B$get.tensor,
-#                 tens.A$get.l,
-#                 alpha,
-#                 handle$get.handle )
-#
-#   if( is.null( ret ) ) stop( "Subroutine failed" )
-#
-#   invisible( NULL )
-# }
+# B = alpha*A + B
+# The trick here is that element-wise addition can be done this way also on
+# matrices, even though thats not the intended use
+cublas.saxpy <- function( handle, tens.A, tens.B, alpha = 1, stream = NULL ){
+  check.cublas.handle.active( handle )
+  check.tensor.under( tens.A, tens.B )
+  if( !is.null( stream ) ){
+    check.cuda.stream( stream )
+    stream <- stream$get.stream
+  }
+
+  # Results go into tens.B
+  ret <- .Call( "cuR_cublas_saxpy",
+                tens.A$get.tensor,
+                tens.B$get.tensor,
+                tens.A$get.l,
+                alpha,
+                handle$get.handle,
+                stream )
+
+  if( is.null( ret ) ) stop( "Subroutine failed" )
+
+  # If no stream is given, make this call blocking
+  if( is.null( stream ) ){
+    cuda.stream.sync.all()
+  }
+
+  invisible( NULL )
+}

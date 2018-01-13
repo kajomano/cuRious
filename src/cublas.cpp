@@ -3,7 +3,6 @@
 #include <cublas_v2.h>
 
 #define R_NO_REMAP 1
-//#define R_NO_REMAP_RMATH 1
 
 #include <R.h>
 #include <Rinternals.h>
@@ -55,6 +54,22 @@ SEXP cuR_activate_cublas_handle(){
   return ptr;
 }
 
+void cuR_cublas_recover_stream( SEXP stream_r, cublasStatus_t stat, cublasHandle_t* handle ){
+  // If a stream is given, set it before the calculation
+  if( stream_r != R_NilValue ){
+#ifdef DEBUG_PRINTS
+    Rprintf( "Async cublas call\n" );
+#endif
+
+    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
+    cublasSetStream( *handle, *stream );
+  }else{
+#ifdef DEBUG_PRINTS
+    Rprintf( "Sync cublas call\n" );
+#endif
+  }
+}
+
 extern "C"
 SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_r, SEXP dims_B_r, SEXP al_r, SEXP be_r, SEXP tp_A_r, SEXP tp_B_r, SEXP handle_r, SEXP stream_r ){
   // Recover handle
@@ -90,22 +105,9 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_
     n = dims_B[1];
   }
 
-  // Do the operation, the results go into tens_C
+  // Handle stream
   cublasStatus_t stat;
-
-  // If a stream is given, set it before the calculation
-  if( stream_r != R_NilValue ){
-#ifdef DEBUG_PRINTS
-    Rprintf( "Async cublas call\n" );
-#endif
-
-    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
-    cublasTry( cublasSetStream( *handle, *stream ) )
-  }else{
-#ifdef DEBUG_PRINTS
-    Rprintf( "Sync cublas call\n" );
-#endif
-  }
+  cuR_cublas_recover_stream( stream_r, stat, handle );
 
   cublasTry( cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m ) )
 
@@ -122,7 +124,6 @@ extern "C"
 SEXP cuR_cublas_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP handle_r, SEXP stream_r ){
   // Recover handle
   cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
-  cublasStatus_t stat;
 
   // Recover tensors, the length and the scalar
   int l = Rf_asInteger( l_r );
@@ -130,19 +131,9 @@ SEXP cuR_cublas_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP h
   float* tens_y = (float*)R_ExternalPtrAddr( tens_y_r );
   float al = (float)Rf_asReal( al_r );
 
-  // If a stream is given, set it before the calculation
-  if( stream_r != R_NilValue ){
-#ifdef DEBUG_PRINTS
-    Rprintf( "Async cublas call\n" );
-#endif
-
-    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
-    cublasTry( cublasSetStream( *handle, *stream ) )
-  }else{
-#ifdef DEBUG_PRINTS
-    Rprintf( "Sync cublas call\n" );
-#endif
-  }
+  // Handle stream
+  cublasStatus_t stat;
+  cuR_cublas_recover_stream( stream_r, stat, handle );
 
   // Do the operation, the results go into tens_y
   cublasTry( cublasSaxpy( *handle, l, &al, tens_x, 1, tens_y, 1 ) )

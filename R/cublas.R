@@ -100,7 +100,7 @@ check.cublas.handle.active <- function( ... ){
 # Add samin/max from cuBLAS!
 
 # TODO ====
-# Add sgeam from cuBLAS!
+# Add sgeam from cuBLAS, remove saxpy!
 
 # TODO ====
 # Add sdgmm from cuBLAS!

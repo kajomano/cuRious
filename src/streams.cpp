@@ -2,7 +2,6 @@
 #include <cuda_runtime_api.h>
 
 #define R_NO_REMAP 1
-//#define R_NO_REMAP_RMATH 1
 
 #include <R.h>
 #include <Rinternals.h>

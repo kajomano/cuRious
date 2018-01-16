@@ -8,14 +8,19 @@
 # TODO ====
 # Check for missing values
 
+# TODO ====
+# Create CPU memory temporary storage to save data (without converting back to
+# double)
+
 # Terminology ====
 # Tensor: this whole wrapper object, but also the data stored on the GPU memory
-# Blob: the R side of the data storage, not up-to-date if the tensor is under!
-# Dive(): allocates space on the GPU memory and moves the blob to a tensor
-# Surface(): moves the tensor back to the blob, and frees up GPU memory
+# Obj: R vectors and matrices
+# Buffer:
+# Dive(): allocates space on the GPU memory and moves the obj to a tensor
+# Surface(): moves the tensor back to the obj, and frees up GPU memory
 # Tensor being under: if the data is on the GPU memory, the tensor is under
-# Push(): replaces data in the tensor if under, or in the blob if not
-# Pull(): extracts data from the tensor if under, or from the blob if not
+# Push(): replaces data in the tensor if under, or in the obj if not
+# Pull(): extracts data from the tensor if under, or from the obj if not
 
 # Tensor class ====
 tensor <- R6Class(
@@ -25,7 +30,7 @@ tensor <- R6Class(
 
     initialize = function( obj ){
       private$dims <- get.dims( obj )
-      private$blob <- private$create.dummy()
+      private$obj <- private$create.dummy()
 
       # Force storage type
       if( storage.mode( obj ) != "double" ){
@@ -35,7 +40,7 @@ tensor <- R6Class(
 
       # Copy the data (in C), to not have soft copies that
       # could later be messed up by pull()
-      .Call( "cuR_copy_blob", obj, private$blob, self$get.l )
+      .Call( "cuR_copy_obj", obj, private$obj, self$get.l )
 
       invisible( TRUE )
     },
@@ -46,7 +51,7 @@ tensor <- R6Class(
       }
 
       private$create.tensor()
-      private$push.sync( private$blob )
+      private$push.sync( private$obj )
 
       invisible( TRUE )
     },
@@ -56,7 +61,7 @@ tensor <- R6Class(
         return( invisible( FALSE ) )
       }
 
-      private$pull.sync( private$blob )
+      private$pull.sync( private$obj )
       private$destroy.tensor()
       self$destroy.stage()
 
@@ -75,7 +80,7 @@ tensor <- R6Class(
       if( self$is.under ){
         private$push.sync( obj )
       }else{
-        .Call( "cuR_copy_blob", obj, private$blob, self$get.l )
+        .Call( "cuR_copy_obj", obj, private$obj, self$get.l )
       }
 
       invisible( TRUE )
@@ -91,7 +96,7 @@ tensor <- R6Class(
       if( self$is.under ){
         private$pull.sync( obj )
       }else{
-        .Call( "cuR_copy_blob", private$blob, obj, self$get.l )
+        .Call( "cuR_copy_obj", private$obj, obj, self$get.l )
       }
 
       obj
@@ -192,7 +197,7 @@ tensor <- R6Class(
 
   private = list(
     tensor = NULL,
-    blob   = NULL,
+    obj   = NULL,
     dims   = NULL,
     stage  = NULL,
 
@@ -213,11 +218,7 @@ tensor <- R6Class(
     },
 
     create.dummy = function(){
-      if( private$dims[2] == 1 ){
-        vector( "numeric", length = private$dims[1] )
-      }else{
-        matrix( 0, nrow = private$dims[1], ncol = private$dims[2] )
-      }
+      create.dummy( private$dims )
     },
 
     push.sync = function( obj ){
@@ -313,24 +314,6 @@ tensor <- R6Class(
 )
 
 # Helper functions ====
-
-# This function checks for validity too!
-# The order of dims is super important!
-get.dims <- function( obj ){
-  if( is.tensor( obj ) ){
-    return( obj$get.dims )
-  }
-
-  if( is.vector( obj ) ){
-    # R vectors are functionally single column matrices, thats why
-    return( c( length( obj ), 1L ) )
-  }else if( is.matrix( obj )){
-    return( c( nrow( obj ), ncol( obj ) ) )
-  }else{
-    stop( "Unsupported R object for tensor conversion" )
-  }
-}
-
 is.tensor <- function( ... ){
   objs <- list( ... )
   sapply( objs, function( obj ){

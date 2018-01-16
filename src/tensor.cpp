@@ -11,7 +11,7 @@
 #include "debug.h"
 
 extern "C"
-SEXP cuR_copy_blob( SEXP src_r, SEXP dest_r, SEXP l_r ){
+SEXP cuR_copy_obj( SEXP src_r, SEXP dest_r, SEXP l_r ){
   double* src  = REAL( src_r );
   double* dest = REAL( dest_r );
   int l        = Rf_asInteger( l_r );

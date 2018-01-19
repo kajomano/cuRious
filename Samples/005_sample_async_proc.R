@@ -87,7 +87,7 @@ out.stream$activate()
 print( microbenchmark( tens.in$push.preproc( mat.dummy ), times = 10 ) )
 print( microbenchmark( tens.out$pull.proc( mat.dummy ), times = 10 ) )
 
-# The actual host<-->device memory transfers can launched separately also by
+# The actual host<-->device memory transfers can be launched separately also by
 # calling the .async fetches and supporting a stream on staged tensors
 print( microbenchmark( tens.in$push.fetch.async( in.stream ), times = 10 ) )
 print( microbenchmark( tens.out$pull.prefetch.async( out.stream ), times = 10 ) )

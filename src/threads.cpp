@@ -1,5 +1,115 @@
 #include <windows.h>
 #include <process.h>
+#include <algorithm>
+#include <stdio.h>
+
+struct cuR_thread_args_dd{
+  double* src;
+  double* dst;
+  int* dims;
+  int* rsrc;
+  int* rdst;
+  int offset; // in rows
+  int span;
+};
+
+unsigned int __stdcall cuR_thread_dd( void* args ){
+  cuR_thread_args_dd* arg_list = ( cuR_thread_args_dd* )args;
+
+  int i      = arg_list->offset;
+  int i_stop = arg_list->offset + arg_list->span;
+  int j, pos_src, pos_dst;
+
+  // Both subsetted
+  if( arg_list->rsrc && arg_list->rdst ){
+
+
+  }else if( !arg_list->rsrc && !arg_list->rdst ){
+
+    // No subsetting
+    for(; i < i_stop ; i++ ){
+      for( j = 0; j < arg_list->dims[1]; j++ ){
+        pos_dst = pos_src = i + j*arg_list->dims[0];
+        arg_list->dst[pos_dst] = arg_list->src[pos_src];
+      }
+    }
+
+  // Destination subsetted
+  }else if( !arg_list->rsrc ){
+
+  // Source subsetted
+  }else{
+
+  }
+
+  printf( "Thread finished\n" );
+
+  return 0;
+}
+
+void cuR_threaded_dd( double* src, double* dst, int* dims, int* rsrc, int* rdst, int threads ){
+  threads = std::max( std::min( dims[0]*dims[1], threads ), 1 );
+  int span = dims[0] / threads;
+  threads -= 1;
+
+  HANDLE* handles = new HANDLE[threads];
+  cuR_thread_args_dd* args = new cuR_thread_args_dd[threads];
+
+  // Launch threads
+  for( int i = 0; i < threads; i++ ){
+    args[i].src    = src;
+    args[i].dst    = dst;
+    args[i].dims   = dims;
+    args[i].rsrc   = rsrc;
+    args[i].rdst   = rdst;
+    args[i].offset = i*span;
+    args[i].span   = span;
+
+    handles[i] = (HANDLE)_beginthreadex(0, 0, cuR_thread_dd, args+i, 0, 0);
+  }
+
+  // Do the remainder of the processing on the main thread
+  int i      = threads*span;
+  int i_stop = dims[0];
+  int j, pos_src, pos_dst;
+
+  // Both subsetted
+  if( rsrc && rdst ){
+
+
+  }else if( !rsrc && !rdst ){
+
+    // No subsetting
+    for(; i < i_stop ; i++ ){
+      for( j = 0; j < dims[1]; j++ ){
+        pos_dst = pos_src = i + j*dims[0];
+        dst[pos_dst] = src[pos_src];
+      }
+    }
+
+    // Destination subsetted
+  }else if( !rsrc ){
+
+    // Source subsetted
+  }else{
+
+  }
+
+  // Wait for threads to finish
+  WaitForMultipleObjects( threads, handles, true, INFINITE );
+
+  // Close threads
+  for( int i = 0; i < threads; i++ ){
+    CloseHandle( handles[i] );
+  }
+
+  delete[] handles;
+  delete[] args;
+}
+
+
+
+
 
 struct cuR_arg_list{
   double* data;

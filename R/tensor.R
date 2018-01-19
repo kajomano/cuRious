@@ -12,24 +12,16 @@
 # Create CPU memory temporary storage to save data (without converting back to
 # double)
 
-# Terminology ====
-# Tensor: this whole wrapper object, but also the data stored on the GPU memory
-# Obj: R vectors and matrices
-# Buffer:
-# Dive(): allocates space on the GPU memory and moves the obj to a tensor
-# Surface(): moves the tensor back to the obj, and frees up GPU memory
-# Tensor being under: if the data is on the GPU memory, the tensor is under
-# Push(): replaces data in the tensor if under, or in the obj if not
-# Pull(): extracts data from the tensor if under, or from the obj if not
-
 # Tensor class ====
 tensor <- R6Class(
   "tensor",
   public = list(
-    threads = 4,      # Set threads to 1 to turn off multithreading
+
 
     initialize = function( obj ){
-      private$dims <- get.dims( obj )
+      private$dims  <- get.dims( obj )
+      private$level <- get.level( obj )
+
       private$obj <- private$create.dummy()
 
       # Force storage type
@@ -197,9 +189,8 @@ tensor <- R6Class(
 
   private = list(
     tensor = NULL,
-    obj   = NULL,
+    level  = NULL,
     dims   = NULL,
-    stage  = NULL,
 
     create.tensor = function(){
       if( self$get.l > 2^32-1 ){
@@ -299,6 +290,10 @@ tensor <- R6Class(
       if( missing(val) ) return( private$dims )
     },
 
+    get.level = function( val ){
+      if( missing(val) ) return( private$level )
+    },
+
     get.l = function( val ){
       if( missing(val) ) return( prod( private$dims ) )
     },
@@ -327,17 +322,17 @@ check.tensor <- function( ... ){
   }
 }
 
-is.under <- function( ... ){
-  check.tensor( ... )
-
-  tenss <- list( ... )
-  sapply( tenss, function( tens ){
-    tens$is.under
-  })
-}
-
-check.tensor.under <- function( ... ){
-  if( !all( is.under( ... ) ) ){
-    stop( "Not all tensors are under" )
-  }
-}
+# is.under <- function( ... ){
+#   check.tensor( ... )
+#
+#   tenss <- list( ... )
+#   sapply( tenss, function( tens ){
+#     tens$is.under
+#   })
+# }
+#
+# check.tensor.under <- function( ... ){
+#   if( !all( is.under( ... ) ) ){
+#     stop( "Not all tensors are under" )
+#   }
+# }

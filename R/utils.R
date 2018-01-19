@@ -16,6 +16,19 @@ get.dims <- function( obj ){
   }
 }
 
+# Location encoder
+# Level 0: R object (       host memory, double)
+# Level 1: C array  (       host memory, double)
+# Level 2: C array  (pinned host memory, float )
+# Level 3: C array  (     device memory, float )
+get.level <- function( obj ){
+  if( is.tensor( obj ) ){
+    return( obj$get.level )
+  }
+
+  0L
+}
+
 # Placeholder object creator
 create.dummy <- function( dims ){
   if( dims[2] == 1 ){
@@ -23,6 +36,26 @@ create.dummy <- function( dims ){
   }else{
     matrix( 0, nrow = dims[1], ncol = dims[2] )
   }
+}
+
+# Force storage in double
+force.double <- function( obj ){
+  if( storage.mode( obj ) != "double" ){
+    warning( "Supported object is not double precision" )
+    storage.mode( obj ) <- "double"
+  }
+
+  obj
+}
+
+# Force storage in int
+force.int <- function( obj ){
+  if( storage.mode( obj ) != "integer" ){
+    warning( "Supported object is not an integer" )
+    storage.mode( obj ) <- "integer"
+  }
+
+  obj
 }
 
 # Clean global env (and all memory)

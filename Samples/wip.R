@@ -22,37 +22,25 @@ copy <- function(){
 }
 
 microbenchmark( copy(), times = 10 )
-microbenchmark( transfer( x, y, threads = 1L ), times = 10 )
-microbenchmark( transfer( x, y, threads = 2L ), times = 10 )
-microbenchmark( transfer( x, y, threads = 3L ), times = 10 )
-microbenchmark( transfer( x, y, threads = 4L ), times = 10 )
+microbenchmark( transfer( x, y ), times = 10 )
 print( identical( y, matrix( data, rows, cols ) ) )
 
 # Source subset ====
 x <- matrix( more.data, rows, more.cols )
 y <- matrix( 0, rows, cols )
-microbenchmark( transfer( x, y, subs.cols, threads = 1L ), times = 10 )
-microbenchmark( transfer( x, y, subs.cols, threads = 2L ), times = 10 )
-microbenchmark( transfer( x, y, subs.cols, threads = 3L ), times = 10 )
-microbenchmark( transfer( x, y, subs.cols, threads = 4L ), times = 10 )
+microbenchmark( transfer( x, y, subs.cols ), times = 10 )
 print( identical( y, matrix( data, rows, more.cols )[ ,subs.cols ] ) )
 
 # Destination subset ====
 x <- matrix( data, rows, cols )
 y <- matrix( 0, rows, more.cols )
-microbenchmark( transfer( x, y, cols.dst = subs.cols, threads = 1L ), times = 10 )
-microbenchmark( transfer( x, y, cols.dst = subs.cols, threads = 2L ), times = 10 )
-microbenchmark( transfer( x, y, cols.dst = subs.cols, threads = 3L ), times = 10 )
-microbenchmark( transfer( x, y, cols.dst = subs.cols, threads = 4L ), times = 10 )
+microbenchmark( transfer( x, y, cols.dst = subs.cols ), times = 10 )
 print( identical( y[ ,subs.cols ], matrix( data, rows, cols ) ) )
 
 # Destination and source subset ====
 x <- matrix( data, rows, more.cols )
 y <- matrix( 0, rows, more.cols )
-microbenchmark( transfer( x, y, subs.cols, subs.cols, threads = 1L ), times = 10 )
-microbenchmark( transfer( x, y, subs.cols, subs.cols, threads = 2L ), times = 10 )
-microbenchmark( transfer( x, y, subs.cols, subs.cols, threads = 3L ), times = 10 )
-microbenchmark( transfer( x, y, subs.cols, subs.cols, threads = 4L ), times = 10 )
+microbenchmark( transfer( x, y, subs.cols, subs.cols ), times = 10 )
 print( identical( y[ ,subs.cols ], matrix( data, rows, more.cols )[ ,subs.cols ] ) )
 
 clean.global()

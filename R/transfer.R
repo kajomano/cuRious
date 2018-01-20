@@ -47,18 +47,17 @@ transfer <- function( src,
       check.dims( dims.src, dims.dst )
 
       if( src.level == 0L && dst.level == 0L ){
-        # TODO ====
         # Level 0 copy+subset
-        .Call( "cuR_transf_0_0", src.obj, dst.obj, dims.src, cols.src, cols.dst, threads )
+        .Call( "cuR_transf_0_0", src.obj, dst.obj, dims.src, cols.src, cols.dst )
       }else if( src.level != 0L && dst.level != 0L ){
-        # TODO ====
         # Level 1/2 copy+subset
+        .Call( "cuR_transf_12_12", src.obj, dst.obj, dims.src, cols.src, cols.dst )
       }else if( src.level == 0L ){
-        # TODO ====
         # Subset+convert to float
+        .Call( "cuR_transf_0_12", src.obj, dst.obj, dims.src, cols.src, cols.dst, threads )
       }else{
-        # TODO ====
         # Subset+convert to double
+        .Call( "cuR_transf_12_0", src.obj, dst.obj, dims.src, cols.src, cols.dst, threads )
       }
 
       # Non-async host-device, device-host

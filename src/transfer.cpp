@@ -11,16 +11,16 @@
 #include "debug.h"
 
 extern "C"
-SEXP cuR_transf_0_0( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP rsrc_r, SEXP rdst_r, SEXP threads_r ){
+SEXP cuR_transf_0_0( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP threads_r ){
 
   double* src  = REAL( src_r );
   double* dst  = REAL( dst_r );
   int* dims    = INTEGER( dims_r );
-  int* rsrc    = ( R_NilValue == rsrc_r ) ? NULL : INTEGER( rsrc_r );
-  int* rdst    = ( R_NilValue == rdst_r ) ? NULL : INTEGER( rdst_r );
+  int* csrc    = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
+  int* cdst    = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
   int threads  = Rf_asInteger( threads_r );
 
-  cuR_threaded_dd( src, dst, dims, rsrc, rdst, threads );
+  cuR_threaded_dd( src, dst, dims, csrc, cdst, threads );
 
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
   Rf_unprotect(1);

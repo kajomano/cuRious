@@ -4,8 +4,8 @@
 # residing on any level, therefore it is horribly bloated
 transfer <- function( src,
                       dst = NULL,
-                      rows.src = NULL,
-                      rows.dst = NULL,
+                      cols.src = NULL,
+                      cols.dst = NULL,
                       stream = NULL,
                       threads = 4L ){
 
@@ -33,8 +33,8 @@ transfer <- function( src,
   dst.level <- get.level( dst )
 
   # Clean up other arguments
-  if( !is.null(rows.src) ) rows.src <- force.int( rows.src )
-  if( !is.null(rows.dst) ) rows.dst <- force.int( rows.dst )
+  if( !is.null(cols.src) ) cols.src <- force.int( cols.src )
+  if( !is.null(cols.dst) ) cols.dst <- force.int( cols.dst )
   threads <- force.int( threads )
   if( !is.null(stream) ) check.cuda.stream( stream )
 
@@ -42,15 +42,14 @@ transfer <- function( src,
   if( abs( src.level - dst.level ) != 3L ){
     # Subsettable transfers host-host
     if( src.level < 3L && dst.level < 3L ){
-      if( !is.null( stream ) ) warning( "Stream supported to a non-async transfer" )
-      if( !is.null( rows.src ) ) dims.src[[1]] <- length( rows.src )
-      if( !is.null( rows.dst ) ) dims.dst[[1]] <- length( rows.dst )
+      if( !is.null( cols.src ) ) dims.src[[2]] <- length( cols.src )
+      if( !is.null( cols.dst ) ) dims.dst[[2]] <- length( cols.dst )
       check.dims( dims.src, dims.dst )
 
       if( src.level == 0L && dst.level == 0L ){
         # TODO ====
         # Level 0 copy+subset
-        .Call( "cuR_transf_0_0", src.obj, dst.obj, dims.src, rows.src, rows.dst, threads )
+        .Call( "cuR_transf_0_0", src.obj, dst.obj, dims.src, cols.src, cols.dst, threads )
       }else if( src.level != 0L && dst.level != 0L ){
         # TODO ====
         # Level 1/2 copy+subset
@@ -64,8 +63,6 @@ transfer <- function( src,
 
       # Non-async host-device, device-host
     }else if( src.level == 1L || dst.level == 1L ){
-      if( !is.null( stream ) ) warning( "Stream supported to a non-async transfer" )
-      if( !is.null( rows.src ) || !is.null( rows.dst ) ) warning( "Row subset supported to a non-subsettable transfer" )
       check.dims( dims.src, dims.dst )
 
       if( src.level == 1L ){
@@ -76,7 +73,6 @@ transfer <- function( src,
 
       # Asyncable transfers host-device, device-device, device-host
     }else{
-      if( !is.null( rows.src ) || !is.null( rows.dst ) ) warning( "Row subset supported to a non-subsettable transfer" )
       check.dims( dims.src, dims.dst )
 
       if( src.level == 2L && dst.level == 3L ){
@@ -89,9 +85,8 @@ transfer <- function( src,
     }
     # Multi-stage transfers (subsettable)
   }else{
-    if( !is.null( stream ) ) warning( "Stream supported to a non-async transfer" )
-    if( !is.null( rows.src ) ) dims.src[[1]] <- length( rows.src )
-    if( !is.null( rows.dst ) ) dims.dst[[1]] <- length( rows.dst )
+    if( !is.null( cols.src ) ) dims.src[[2]] <- length( cols.src )
+    if( !is.null( cols.dst ) ) dims.dst[[2]] <- length( cols.dst )
     check.dims( dims.src, dims.dst )
 
     if( src.level == 0L ){

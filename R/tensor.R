@@ -34,6 +34,8 @@ tensor <- R6Class(
       # could later be messed up by pull()
       .Call( "cuR_copy_obj", obj, private$obj, self$get.l )
 
+      private$under <- FALSE
+
       invisible( TRUE )
     },
 
@@ -189,6 +191,9 @@ tensor <- R6Class(
 
   private = list(
     tensor = NULL,
+    stage  = NULL,
+    obj    = NULL,
+    under  = NULL,
     level  = NULL,
     dims   = NULL,
 

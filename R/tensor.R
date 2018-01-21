@@ -17,173 +17,57 @@ tensor <- R6Class(
   "tensor",
   public = list(
 
-
     initialize = function( obj ){
-      private$dims  <- get.dims( obj )
-      private$level <- get.level( obj )
-
-      private$obj <- private$create.dummy()
+      private$dims   <- get.dims( obj )
+      private$level  <- get.level( obj )
+      private$tensor <- private$create.dummy( private$level )
 
       # Force storage type
-      if( storage.mode( obj ) != "double" ){
-        warning( "Supported object is not double precision" )
-        storage.mode( obj ) <- "double"
+      force.double( obj )
+
+      # Copy the data (in C) even if it is an R object to not have soft copies
+      # that could later be messed up by pull() or other transfers
+      transfer( obj, self )
+
+      invisible( TRUE )
+    },
+
+    transform = function( level = 0 ){
+      if( private$level != level ){
+        # Create placeholder
+        temp.tensor <- private$create.dummy( level )
+
+        # Call a low-level transfer, we know all arguments are in correct form
+        trnsfr.ptr( private$tensor, temp.tensor )
+
+        # Replace current tensor
+        private$tensor <- temp.tensor
       }
-
-      # Copy the data (in C), to not have soft copies that
-      # could later be messed up by pull()
-      .Call( "cuR_copy_obj", obj, private$obj, self$get.l )
-
-      private$under <- FALSE
 
       invisible( TRUE )
     },
 
     dive = function(){
-      if( self$is.under ){
-        return( invisible( FALSE ) )
-      }
-
-      private$create.tensor()
-      private$push.sync( private$obj )
-
+      self$transform( 3 )
       invisible( TRUE )
     },
 
     surface = function(){
-      if( !self$is.under ){
-        return( invisible( FALSE ) )
-      }
-
-      private$pull.sync( private$obj )
-      private$destroy.tensor()
-      self$destroy.stage()
-
+      self$transform()
       invisible( TRUE )
     },
 
     push = function( obj ){
-      private$check.dims( obj )
-
-      # Set correct storage type
-      if( storage.mode( obj ) != "double" ){
-        warning( "Supported object is not double precision" )
-        storage.mode( obj ) <- "double"
-      }
-
-      if( self$is.under ){
-        private$push.sync( obj )
-      }else{
-        .Call( "cuR_copy_obj", obj, private$obj, self$get.l )
-      }
-
+      transfer( obj, self )
       invisible( TRUE )
     },
 
     pull = function( obj = NULL ){
-      if( is.null(obj) ){
-        obj <- private$create.dummy()
-      }else{
-        private$check.dims( obj )
-      }
-
-      if( self$is.under ){
-        private$pull.sync( obj )
-      }else{
-        .Call( "cuR_copy_obj", private$obj, obj, self$get.l )
-      }
-
-      obj
-    },
-
-    push.preproc = function( obj ){
-      private$check.staged.under()
-      private$check.dims( obj )
-
-      # Set correct storage type
-      if( storage.mode( obj ) != "double" ){
-        warning( "Supported object is not double precision" )
-        storage.mode( obj ) <- "double"
-      }
-
-      .Call( "cuR_push_preproc",
-             obj,
-             self$get.l,
-             private$stage,
-             self$threads )
-
-      invisible( TRUE )
-    },
-
-    push.fetch.async = function( stream ){
-      private$check.staged.under()
-      check.cuda.stream.active( stream )
-
-      ret <- .Call( "cuR_push_fetch_async",
-                    private$stage,
-                    self$get.l,
-                    private$tensor,
-                    stream$get.stream )
-
-      if( is.null( ret ) ) stop( "Tensor could not be fetched" )
-
-      invisible( TRUE )
-    },
-
-    pull.prefetch.async = function( stream ){
-      private$check.staged.under()
-      check.cuda.stream.active( stream )
-
-      ret <- .Call( "cuR_pull_prefetch_async",
-                    private$stage,
-                    self$get.l,
-                    private$tensor,
-                    stream$get.stream )
-
-      if( is.null( ret ) ) stop( "Tensor could not be prefetched" )
-
-      invisible( TRUE )
-    },
-
-    pull.proc = function( obj = NULL ){
-      private$check.staged.under()
+      res <- transfer( self, obj )
 
       if( is.null(obj) ){
-        obj <- private$create.dummy()
-      }else{
-        private$check.dims( obj )
+        return( res )
       }
-
-      .Call( "cuR_pull_proc",
-             obj,
-             self$get.l,
-             private$stage,
-             self$threads )
-
-      obj
-    },
-
-    create.stage = function(){
-      if( self$is.staged ){
-        return( invisible( FALSE ) )
-      }
-
-      private$stage <- .Call( "cuR_create_stage", self$get.l )
-
-      if( is.null( private$stage ) ){
-        stop( "Tensor could not be staged" )
-      }
-
-      invisible( TRUE )
-    },
-
-    destroy.stage = function(){
-      if( !self$is.staged ){
-        return( invisible( FALSE ) )
-      }
-
-      .Call( "cuR_destroy_stage", private$stage )
-      private$stage <- NULL
 
       invisible( TRUE )
     }
@@ -191,98 +75,11 @@ tensor <- R6Class(
 
   private = list(
     tensor = NULL,
-    stage  = NULL,
-    obj    = NULL,
-    under  = NULL,
     level  = NULL,
     dims   = NULL,
 
-    create.tensor = function(){
-      if( self$get.l > 2^32-1 ){
-        # TODO ====
-        # Use long int or the correct R type to remove this constraint
-        stop( "Tensor is too large to be stored on the GPU" )
-      }
-
-      private$tensor <- .Call( "cuR_create_tensor", self$get.l )
-      if( is.null( private$tensor ) ) stop( "Tensor could not be created" )
-    },
-
-    destroy.tensor = function(){
-      .Call( "cuR_destroy_tensor", private$tensor )
-      private$tensor <- NULL
-    },
-
-    create.dummy = function(){
-      create.dummy( private$dims )
-    },
-
-    push.sync = function( obj ){
-      if( self$is.staged ){
-        buffer <- private$stage
-      }else{
-        buffer <- .Call( "cuR_create_buffer", self$get.l )
-        if( is.null( buffer ) ) stop( "Buffer could not be created" )
-      }
-
-      ret <- .Call( "cuR_push_preproc",
-                    obj,
-                    self$get.l,
-                    buffer,
-                    self$threads )
-      if( is.null( ret ) ) stop( "Tensor could not be preprocessed" )
-
-      ret <- .Call( "cuR_push_fetch",
-                    buffer,
-                    self$get.l,
-                    private$tensor )
-      if( is.null( ret ) ) stop( "Tensor could not be fetched" )
-
-      if( !self$is.staged ){
-        .Call( "cuR_destroy_buffer", buffer )
-      }
-    },
-
-    pull.sync = function( obj ){
-      if( self$is.staged ){
-        buffer <- private$stage
-      }else{
-        buffer <- .Call( "cuR_create_buffer", self$get.l )
-        if( is.null( buffer ) ) stop( "Buffer could not be created" )
-      }
-
-      ret <- .Call( "cuR_pull_prefetch",
-                    buffer,
-                    self$get.l,
-                    private$tensor )
-      if( is.null( ret ) ) stop( "Tensor could not be prefetched" )
-
-      ret <- .Call( "cuR_pull_proc",
-                    obj,
-                    self$get.l,
-                    buffer,
-                    self$threads )
-      if( is.null( ret ) ) stop( "Tensor could not be processed" )
-
-      if( !self$is.staged ){
-        .Call( "cuR_destroy_buffer", buffer )
-      }
-    },
-
-    check.dims = function( obj ){
-      if( !identical( private$dims, get.dims( obj ) ) ){
-        stop( "Dimensions do not match" )
-      }
-    },
-
-    check.staged.under = function(){
-      if( !self$is.staged ){
-        stop( "Tensor is not staged" )
-      }
-
-      if( !self$is.under ){
-        stop( "Tensor is not under" )
-      }
+    create.dummy = function( level = 0 ){
+      create.dummy( private$dims, level )
     }
   ),
 
@@ -304,16 +101,19 @@ tensor <- R6Class(
     },
 
     is.under = function( val ){
-      if( missing(val) ) return( !is.null( private$tensor ) )
-    },
-
-    is.staged = function( val ){
-      if( missing(val) ) return( !is.null( private$stage ) )
+      if( missing(val) ) return( private$level == 3 )
     }
   )
 )
 
 # Helper functions ====
+is.tensor.ptr <- function( ... ){
+  objs <- list( ... )
+  sapply( objs, function( obj ){
+    "tensor.ptr" %in% class( obj )
+  })
+}
+
 is.tensor <- function( ... ){
   objs <- list( ... )
   sapply( objs, function( obj ){
@@ -327,17 +127,17 @@ check.tensor <- function( ... ){
   }
 }
 
-# is.under <- function( ... ){
-#   check.tensor( ... )
-#
-#   tenss <- list( ... )
-#   sapply( tenss, function( tens ){
-#     tens$is.under
-#   })
-# }
-#
-# check.tensor.under <- function( ... ){
-#   if( !all( is.under( ... ) ) ){
-#     stop( "Not all tensors are under" )
-#   }
-# }
+is.under <- function( ... ){
+  check.tensor( ... )
+
+  tenss <- list( ... )
+  sapply( tenss, function( tens ){
+    tens$is.under
+  })
+}
+
+check.tensor.under <- function( ... ){
+  if( !all( is.under( ... ) ) ){
+    stop( "Not all tensors are under" )
+  }
+}

@@ -54,6 +54,7 @@ cublas.handle <- R6Class(
   )
 )
 
+# Helper functions ====
 is.cublas.handle <- function( ... ){
   objs <- list( ... )
   sapply( objs, function( obj ){

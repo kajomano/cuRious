@@ -57,6 +57,7 @@ cuda.stream <- R6Class(
   )
 )
 
+# Helper functions ====
 is.cuda.stream <- function( ... ){
   objs <- list( ... )
   sapply( objs, function( obj ){

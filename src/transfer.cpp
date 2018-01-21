@@ -10,16 +10,8 @@
 #include "threads.h"
 #include "debug.h"
 
-void cuR_dd( double* src, double* dst, int* dims_ptr, int* csrc, int* cdst ){
-  int dims[2] = { dims_ptr[0], dims_ptr[1] };
-  int l       = dims[0]*dims[1];
-
-  // Subsetless processing copies need not be chunked by columns,
-  // make rows = l, cols = 1
-  if( !csrc && !cdst ){
-    dims[0] = l;
-    dims[1] = 1;
-  }
+void cuR_dd( double* src, double* dst, int* dims, int* csrc, int* cdst ){
+  int l = dims[0]*dims[1];
 
   if( !csrc && !cdst ){
     // No subsetting
@@ -44,6 +36,10 @@ void cuR_dd( double* src, double* dst, int* dims_ptr, int* csrc, int* cdst ){
   }else{
     // Source subsetted
     for( int i = 0; i < dims[1]; i ++ ){
+      // Rprintf( "Copying -------\n" );
+      // Rprintf( "src: %d - %d\n", (csrc[i]-1)*dims[0], (csrc[i]-1)*dims[0] + dims[0] );
+      // Rprintf( "dst: %d - %d\n", i*dims[0], i*dims[0] + dims[0] );
+
       memcpy( dst+i*dims[0],
               src+(csrc[i]-1)*dims[0],
               dims[0]*sizeof(double) );
@@ -51,16 +47,8 @@ void cuR_dd( double* src, double* dst, int* dims_ptr, int* csrc, int* cdst ){
   }
 }
 
-void cuR_ff( float* src, float* dst, int* dims_ptr, int* csrc, int* cdst ){
-  int dims[2] = { dims_ptr[0], dims_ptr[1] };
-  int l       = dims[0]*dims[1];
-
-  // Subsetless processing copies need not be chunked by columns,
-  // make rows = l, cols = 1
-  if( !csrc && !cdst ){
-    dims[0] = l;
-    dims[1] = 1;
-  }
+void cuR_ff( float* src, float* dst, int* dims, int* csrc, int* cdst ){
+  int l = dims[0]*dims[1];
 
   if( !csrc && !cdst ){
     // No subsetting
@@ -204,8 +192,8 @@ SEXP cuR_push_fetch( SEXP buff_r, SEXP l_r, SEXP tens_r ){
 
   cudaTry( cudaMemcpy( tens, buff, l*sizeof(float), cudaMemcpyHostToDevice ) )
 
-    // Return something that is not null
-    SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  // Return something that is not null
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
   Rf_unprotect(1);
   return ret_r;
 }
@@ -224,8 +212,8 @@ SEXP cuR_push_fetch_async( SEXP stage_r, SEXP l_r, SEXP tens_r, SEXP stream_r ){
 
   cudaTry( cudaMemcpyAsync( tens, stage, l*sizeof(float), cudaMemcpyHostToDevice, *stream ) )
 
-    // Flush for WDDM
-    cudaStreamQuery(0);
+  // Flush for WDDM
+  cudaStreamQuery(0);
 
   // Return something that is not null
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
@@ -246,8 +234,8 @@ SEXP cuR_pull_prefetch( SEXP buff_r, SEXP l_r, SEXP tens_r ){
 
   cudaTry( cudaMemcpy( buff, tens, l*sizeof(float), cudaMemcpyDeviceToHost ) )
 
-    // Return something that is not null
-    SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  // Return something that is not null
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
   Rf_unprotect(1);
   return ret_r;
 }

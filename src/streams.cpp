@@ -25,8 +25,8 @@ SEXP cuR_sync_cuda_stream( SEXP stream_r ){
   cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
   cudaTry( cudaStreamSynchronize( *stream ) )
 
-    // Return something that is not null
-    SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  // Return something that is not null
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
   Rf_unprotect(1);
   return ret_r;
 }

@@ -69,6 +69,7 @@ transfer <- function( src,
 
 # Low level transfer call that handles tensor.ptr-s, for speed considerations
 # no argument checks (except for dims) are done, don't use interactively!
+# Switch hell
 trnsfr.ptr = function( src,
                        dst,
                        cols.src = NULL,
@@ -95,8 +96,11 @@ trnsfr.ptr = function( src,
     },
     `03` = {
       dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-      # TODO ====
-      stop( "Not implemented yet" )
+      # This is a multi-stage transfer
+      temp <- create.dummy( dims.dst, 2L )
+      trnsfr.ptr( src, temp, cols.src, cols.dst, threads = threads )
+      trnsfr.ptr( temp, dst )
+      .Call( "cuR_destroy_tensor_2", temp )
     },
 
     `10` = {
@@ -113,8 +117,7 @@ trnsfr.ptr = function( src,
     },
     `13` = {
       dims <- check.dims( dims.src, dims.dst )
-      # TODO ====
-      stop( "Not implemented yet" )
+      .Call( "cuR_transf_1_3", src, dst, dims )
     },
 
     `20` = {
@@ -131,29 +134,28 @@ trnsfr.ptr = function( src,
     },
     `23` = {
       dims <- check.dims( dims.src, dims.dst )
-      # TODO ====
-      stop( "Not implemented yet" )
+      .Call( "cuR_transf_2_3", src, dst, dims, stream )
     },
 
     `30` = {
       dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-      # TODO ====
-      stop( "Not implemented yet" )
+      # This is a multi-stage transfer
+      temp <- create.dummy( dims.src, 2L )
+      trnsfr.ptr( src, temp )
+      trnsfr.ptr( temp, dst, cols.src, cols.dst, threads = threads )
+      .Call( "cuR_destroy_tensor_2", temp )
     },
     `31` = {
       dims <- check.dims( dims.src, dims.dst )
-      # TODO ====
-      stop( "Not implemented yet" )
+      .Call( "cuR_transf_3_1", src, dst, dims )
     },
     `32` = {
       dims <- check.dims( dims.src, dims.dst )
-      # TODO ====
-      stop( "Not implemented yet" )
+      .Call( "cuR_transf_3_2", src, dst, dims, stream )
     },
     `33` = {
       dims <- check.dims( dims.src, dims.dst )
-      # TODO ====
-      stop( "Not implemented yet" )
+      .Call( "cuR_transf_3_3", src, dst, dims, stream )
     }
   )
 

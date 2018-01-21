@@ -28,6 +28,7 @@ extern "C"
 SEXP cuR_create_tensor_1( SEXP dims_r ){
   int* dims = INTEGER(dims_r);
   int l = dims[0]*dims[1];
+
   float* tens = new float[l];
 
 #ifdef DEBUG_PRINTS

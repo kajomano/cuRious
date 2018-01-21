@@ -36,10 +36,6 @@ void cuR_dd( double* src, double* dst, int* dims, int* csrc, int* cdst ){
   }else{
     // Source subsetted
     for( int i = 0; i < dims[1]; i ++ ){
-      // Rprintf( "Copying -------\n" );
-      // Rprintf( "src: %d - %d\n", (csrc[i]-1)*dims[0], (csrc[i]-1)*dims[0] + dims[0] );
-      // Rprintf( "dst: %d - %d\n", i*dims[0], i*dims[0] + dims[0] );
-
       memcpy( dst+i*dims[0],
               src+(csrc[i]-1)*dims[0],
               dims[0]*sizeof(double) );
@@ -142,6 +138,113 @@ SEXP cuR_transf_12_0( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cds
   int threads = Rf_asInteger( threads_r );
 
   cuR_threaded_fd( src, dst, dims, csrc, cdst, threads );
+
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
+
+extern "C"
+SEXP cuR_transf_1_3( SEXP src_r, SEXP dst_r, SEXP dims_r ){
+
+  float* src  = (float*)R_ExternalPtrAddr( src_r );
+  float* dst  = (float*)R_ExternalPtrAddr( dst_r );
+  int* dims   = INTEGER( dims_r );
+  int l       = dims[0]*dims[1];
+
+  cudaError_t cuda_stat;
+
+  cudaTry( cudaMemcpy( dst, src, l*sizeof(float), cudaMemcpyHostToDevice ) );
+
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
+
+extern "C"
+SEXP cuR_transf_3_1( SEXP src_r, SEXP dst_r, SEXP dims_r ){
+
+  float* src  = (float*)R_ExternalPtrAddr( src_r );
+  float* dst  = (float*)R_ExternalPtrAddr( dst_r );
+  int* dims   = INTEGER( dims_r );
+  int l       = dims[0]*dims[1];
+
+  cudaError_t cuda_stat;
+
+  cudaTry( cudaMemcpy( dst, src, l*sizeof(float), cudaMemcpyDeviceToHost ) );
+
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
+
+extern "C"
+SEXP cuR_transf_2_3( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP stream_r ){
+
+  float* src  = (float*)R_ExternalPtrAddr( src_r );
+  float* dst  = (float*)R_ExternalPtrAddr( dst_r );
+  int* dims   = INTEGER( dims_r );
+  int l       = dims[0]*dims[1];
+  cudaError_t cuda_stat;
+
+  if( stream_r != R_NilValue ){
+    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
+    cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(float), cudaMemcpyHostToDevice, *stream ) );
+
+    // Flush for WDDM
+    cudaStreamQuery(0);
+  }else{
+    cudaTry( cudaMemcpy( dst, src, l*sizeof(float), cudaMemcpyHostToDevice ) );
+  }
+
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
+
+extern "C"
+SEXP cuR_transf_3_2( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP stream_r ){
+
+  float* src  = (float*)R_ExternalPtrAddr( src_r );
+  float* dst  = (float*)R_ExternalPtrAddr( dst_r );
+  int* dims   = INTEGER( dims_r );
+  int l       = dims[0]*dims[1];
+  cudaError_t cuda_stat;
+
+  if( stream_r != R_NilValue ){
+    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
+    cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(float), cudaMemcpyDeviceToHost, *stream ) );
+
+    // Flush for WDDM
+    cudaStreamQuery(0);
+  }else{
+    cudaTry( cudaMemcpy( dst, src, l*sizeof(float), cudaMemcpyDeviceToHost ) );
+  }
+
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
+
+extern "C"
+SEXP cuR_transf_3_3( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP stream_r ){
+
+  float* src  = (float*)R_ExternalPtrAddr( src_r );
+  float* dst  = (float*)R_ExternalPtrAddr( dst_r );
+  int* dims   = INTEGER( dims_r );
+  int l       = dims[0]*dims[1];
+  cudaError_t cuda_stat;
+
+  if( stream_r != R_NilValue ){
+    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
+    cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(float), cudaMemcpyDeviceToDevice, *stream ) );
+
+    // Flush for WDDM
+    cudaStreamQuery(0);
+  }else{
+    cudaTry( cudaMemcpy( dst, src, l*sizeof(float), cudaMemcpyDeviceToDevice ) );
+    cudaTry( cudaDeviceSynchronize() )
+  }
 
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
   Rf_unprotect(1);

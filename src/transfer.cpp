@@ -133,8 +133,9 @@ SEXP cuR_transf_0_12( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cds
 
 extern "C"
 SEXP cuR_transf_12_0( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP threads_r ){
-  float* src  = (float*)R_ExternalPtrAddr( dst_r );
-  double* dst = REAL( src_r );
+
+  float* src  = (float*)R_ExternalPtrAddr( src_r );
+  double* dst = REAL( dst_r );
   int* dims   = INTEGER( dims_r );
   int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
   int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );

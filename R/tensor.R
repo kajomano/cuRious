@@ -42,6 +42,7 @@ tensor <- R6Class(
 
         # Replace current tensor
         private$tensor <- temp.tensor
+        private$level  <- as.integer( level )
       }
 
       invisible( TRUE )

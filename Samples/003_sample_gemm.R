@@ -9,15 +9,15 @@ m <- 6
 n <- 4
 k <- 5
 
-mat.A <- matrix( 1:(m*k), ncol = k )
+mat.A <- matrix( as.double( 1:(m*k) ), ncol = k )
 tens.A <- tensor$new( mat.A )
 tens.A$dive()
 
-mat.B <- matrix( 1:(k*n), ncol = n )
+mat.B <- matrix( as.double( 1:(k*n) ), ncol = n )
 tens.B <- tensor$new( mat.B )
 tens.B$dive()
 
-mat.C <- matrix( 1:(m*n), ncol = n )
+mat.C <- matrix( as.double( 1:(m*n) ), ncol = n )
 tens.C <- tensor$new( mat.C )
 tens.C$dive()
 

@@ -1,7 +1,7 @@
 # Although the main idea is to have most of the data residing in the GPU memory,
 # all the training data can probably not be expected to fit there. When
-# prototyping it is sometimes easier to first implement something in pure R,
-# which also requires data transfer between the host and the device. For this
+# prototyping it is also sometimes easier to first implement something in pure
+# R, which requires data transfer between the host and the device. For this
 # case, cuRious tries to implement the data transfer as fast as possible. This
 # script gives you a general feel how much time it can take to transfer data to
 # and from the GPU.

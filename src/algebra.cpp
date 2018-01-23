@@ -8,7 +8,7 @@
 #include <R.h>
 #include <Rinternals.h>
 
-#include "debug.h"
+#include "common.h"
 
 cudaStream_t* cuR_alg_recover_stream( SEXP stream_r ){
   if( stream_r != R_NilValue ){

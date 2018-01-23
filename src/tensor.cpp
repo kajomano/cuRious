@@ -44,7 +44,9 @@ SEXP cuR_destroy_tensor_1( SEXP tens_r ){
   return ret_r;
 }
 
+
 // Level 2 ---------------------------------------------------------------------
+#ifndef CUDA_EXCLUDE
 
 void cuR_fin_tensor_2( SEXP tens_r ){
   float* tens = (float*)R_ExternalPtrAddr( tens_r );
@@ -54,7 +56,7 @@ void cuR_fin_tensor_2( SEXP tens_r ){
   if( tens ){
     debugPrint( Rprintf( "<%p> Finalizing L2 tensor\n", (void*)tens ) );
 
-    cudaDo( cudaFreeHost( tens ) );
+    cudaFreeHost( tens );
     R_ClearExternalPtr( tens_r );
   }
 }
@@ -62,11 +64,10 @@ void cuR_fin_tensor_2( SEXP tens_r ){
 extern "C"
 SEXP cuR_create_tensor_2( SEXP dims_r ){
   float* tens;
-  cudaDo( cudaError_t cuda_stat );
   int* dims = INTEGER(dims_r);
   int l = dims[0]*dims[1];
 
-  cudaTry( cudaHostAlloc( (void**)&tens, l*sizeof(float), cudaHostAllocDefault) )
+  cudaTry( cudaHostAlloc( (void**)&tens, l*sizeof(float), cudaHostAllocDefault) );
 
   debugPrint( Rprintf( "<%p> Creating L2 tensor\n", (void*)tens ) );
 
@@ -100,7 +101,7 @@ void cuR_fin_tensor_3( SEXP tens_r ){
     debugPrint( Rprintf( "<%p> Finalizing L3 tensor\n", (void*)tens ) );
 
     // Free memory
-    cudaDo( cudaFree( tens ) );
+    cudaFree( tens );
     R_ClearExternalPtr( tens_r );
   }
 }
@@ -108,7 +109,6 @@ void cuR_fin_tensor_3( SEXP tens_r ){
 extern "C"
 SEXP cuR_create_tensor_3( SEXP dims_r ){
   float* tens;
-  cudaDo( cudaError_t cuda_stat );
   int* dims = INTEGER(dims_r);
   int l = dims[0]*dims[1];
 
@@ -137,3 +137,5 @@ SEXP cuR_destroy_tensor_3( SEXP tens_r ){
   Rf_unprotect(1);
   return ret_r;
 }
+
+#endif

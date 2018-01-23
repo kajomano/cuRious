@@ -44,7 +44,7 @@ all_objs  = $(cpp_objs) $(cu_objs) $(wincpp_objs)
 # Linux (untested)
 # PKG_LIBS  = "-L$(CUDA_HOME)/lib/x64 -Wl, -rpath, $(CUDA_HOME)/lib/x64 -lcuda -lcudart"
 # Windows (also includes special windows .wincpp objects)
-PKG_LIBS  = $(wincpp_objs) -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas
+PKG_LIBS  = $(wincpp_objs) -fopenmp -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas
 
 ### Recipes
 
@@ -53,7 +53,7 @@ all: cuRious.so
 cuRious.so: $(all_objs)
 
 %.o: %.cpp $(h_srcs)
-	$(CXX) -O3 -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
+	$(CXX) -O3 -fopenmp -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
 
 %.o: %.wincpp $(h_srcs)
 	$(CXX) -O3 -I$(R_INC) -I$(CUDA_INC) -x c++ $< -o $@ -c

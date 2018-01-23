@@ -1,27 +1,12 @@
-#include "algebra_cu.h"
-
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-
-#define R_NO_REMAP 1
-
-#include <R.h>
-#include <Rinternals.h>
-
 #include "common.h"
+#include "algebra_cu.h"
 
 cudaStream_t* cuR_alg_recover_stream( SEXP stream_r ){
   if( stream_r != R_NilValue ){
-#ifdef DEBUG_PRINTS
-    Rprintf( "Async alg call\n" );
-#endif
-
+    debugPrint( Rprintf( "Async alg call\n" ) );
     return (cudaStream_t*)R_ExternalPtrAddr( stream_r );
   }else{
-#ifdef DEBUG_PRINTS
-    Rprintf( "Sync alg call\n" );
-#endif
-
+    debugPrint( Rprintf( "Sync alg call\n" ) );
     return NULL;
   }
 }

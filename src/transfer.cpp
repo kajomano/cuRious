@@ -1,6 +1,7 @@
 #include "common.h"
-// #include "threads.h"
+#include "threads.h"
 #include <cstring>
+#include <omp.h>
 
 void cuR_dd( double* src, double* dst, int* dims, int* csrc, int* cdst ){
   int l = dims[0]*dims[1];
@@ -102,39 +103,47 @@ SEXP cuR_transf_12_12( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cd
   return ret_r;
 }
 
-// extern "C"
-// SEXP cuR_transf_0_12( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP threads_r ){
-//
-//   double* src = REAL( src_r );
-//   float* dst  = (float*)R_ExternalPtrAddr( dst_r );
-//   int* dims   = INTEGER( dims_r );
-//   int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
-//   int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
-//   int threads  = Rf_asInteger( threads_r );
-//
-//   cuR_threaded_df( src, dst, dims, csrc, cdst, threads );
-//
-//   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-//   Rf_unprotect(1);
-//   return ret_r;
-// }
-//
-// extern "C"
-// SEXP cuR_transf_12_0( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP threads_r ){
-//
-//   float* src  = (float*)R_ExternalPtrAddr( src_r );
-//   double* dst = REAL( dst_r );
-//   int* dims   = INTEGER( dims_r );
-//   int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
-//   int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
-//   int threads = Rf_asInteger( threads_r );
-//
-//   cuR_threaded_fd( src, dst, dims, csrc, cdst, threads );
-//
-//   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-//   Rf_unprotect(1);
-//   return ret_r;
-// }
+extern "C"
+SEXP cuR_transf_0_12( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP threads_r ){
+
+  double* src = REAL( src_r );
+  float* dst  = (float*)R_ExternalPtrAddr( dst_r );
+  int* dims   = INTEGER( dims_r );
+  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
+  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+  int threads  = Rf_asInteger( threads_r );
+
+  // cuR_threaded_df( src, dst, dims, csrc, cdst, threads );
+  int l = dims[0]*dims[1];
+  omp_set_num_threads(threads);
+  #pragma omp parallel
+  for( int i = 0; i < l; i++ ){
+    dst[i] = (float)src[i];
+  }
+
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
+
+extern "C"
+SEXP cuR_transf_12_0( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP threads_r ){
+
+  float* src  = (float*)R_ExternalPtrAddr( src_r );
+  double* dst = REAL( dst_r );
+  int* dims   = INTEGER( dims_r );
+  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
+  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+  int threads = Rf_asInteger( threads_r );
+
+  cuR_threaded_fd( src, dst, dims, csrc, cdst, threads );
+
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
+
+#ifndef CUDA_EXCLUDE
 
 extern "C"
 SEXP cuR_transf_1_3( SEXP src_r, SEXP dst_r, SEXP dims_r ){
@@ -175,11 +184,11 @@ SEXP cuR_transf_2_3( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP stream_r ){
   int l       = dims[0]*dims[1];
 
   if( stream_r != R_NilValue ){
-    cudaDo( cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r ) );
+    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
     cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(float), cudaMemcpyHostToDevice, *stream ) );
 
     // Flush for WDDM
-    cudaTry( cudaStreamQuery(0) );
+    cudaStreamQuery(0);
   }else{
     cudaTry( cudaMemcpy( dst, src, l*sizeof(float), cudaMemcpyHostToDevice ) );
   }
@@ -198,11 +207,11 @@ SEXP cuR_transf_3_2( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP stream_r ){
   int l       = dims[0]*dims[1];
 
   if( stream_r != R_NilValue ){
-    cudaDo( cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r ) );
+    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
     cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(float), cudaMemcpyDeviceToHost, *stream ) );
 
     // Flush for WDDM
-    cudaTry( cudaStreamQuery(0) );
+    cudaStreamQuery(0);
   }else{
     cudaTry( cudaMemcpy( dst, src, l*sizeof(float), cudaMemcpyDeviceToHost ) );
   }
@@ -221,11 +230,11 @@ SEXP cuR_transf_3_3( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP stream_r ){
   int l       = dims[0]*dims[1];
 
   if( stream_r != R_NilValue ){
-    cudaDo( cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r ) );
+    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
     cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(float), cudaMemcpyDeviceToDevice, *stream ) );
 
     // Flush for WDDM
-    cudaTry( cudaStreamQuery(0) );
+    cudaStreamQuery(0);
   }else{
     cudaTry( cudaMemcpy( dst, src, l*sizeof(float), cudaMemcpyDeviceToDevice ) );
     cudaTry( cudaDeviceSynchronize() )
@@ -235,3 +244,5 @@ SEXP cuR_transf_3_3( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP stream_r ){
   Rf_unprotect(1);
   return ret_r;
 }
+
+#endif

@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <process.h>
 #include <algorithm>
+#include <stdio.h>
 
 inline int round_int_div( int nom, int denom ){
   int whole_div = nom / denom;
@@ -244,7 +245,7 @@ struct cuR_thread_args_fd{
   int span;
 };
 
-unsigned int __stdcall cuR_thread_dd( void* arg_struct ){
+unsigned int __stdcall cuR_thread_fd( void* arg_struct ){
   cuR_thread_args_fd* args = ( cuR_thread_args_fd* )arg_struct;
 
   int curc     = args->offset / args->dims[0];
@@ -356,7 +357,7 @@ void cuR_threaded_fd( float* src, double* dst, int* dims_ptr, int* csrc, int* cd
     args[i].offset = offset;
     args[i].span   = span;
 
-    handles[i] = (HANDLE)_beginthreadex(0, 0, cuR_thread_dd, args+i, 0, 0);
+    handles[i] = (HANDLE)_beginthreadex(0, 0, cuR_thread_fd, args+i, 0, 0);
 
     offset += span;
   }

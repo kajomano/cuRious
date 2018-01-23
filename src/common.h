@@ -1,5 +1,5 @@
 // Options
-#define CUDA_EXCLUDE 1
+//#define CUDA_EXCLUDE 1
 //#define DEBUG_PRINTS 1
 
 #define R_NO_REMAP 1
@@ -15,7 +15,7 @@
 #include <cublas_v2.h>
 
 #define cublasTry(ans){ if( cublasAssert( (ans), __FILE__, __LINE__ ) ) return R_NilValue; }
-bool cublasAssert( cublasStatus_t stat, const char *file, int line){
+inline bool cublasAssert( cublasStatus_t stat, const char *file, int line){
   if( stat == CUBLAS_STATUS_SUCCESS ){
     return false;
   }else if( stat == CUBLAS_STATUS_NOT_INITIALIZED ){
@@ -35,7 +35,7 @@ bool cublasAssert( cublasStatus_t stat, const char *file, int line){
 }
 
 #define cudaTry(ans){ if( cudaAssert( (ans), __FILE__, __LINE__ ) ) return R_NilValue; }
-bool cudaAssert( cudaError_t code, const char *file, int line){
+inline bool cudaAssert( cudaError_t code, const char *file, int line){
   if (code != cudaSuccess){
     Rprintf("cuda assert: %s %s %d\n", cudaGetErrorString(code), file, line);
     return true;
@@ -43,12 +43,6 @@ bool cudaAssert( cudaError_t code, const char *file, int line){
   return false;
 }
 
-#define cudaDo(ans){ (ans); }
-
-#else
-#define cublasTry(ans){ }
-#define cudaTry(ans){ }
-#define cudaDo(ans){ }
 #endif
 
 // Debug print macros

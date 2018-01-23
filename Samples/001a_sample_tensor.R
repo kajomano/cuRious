@@ -3,8 +3,7 @@
 library( cuRious )
 
 # Create a vector
-n <- 10
-vect.x <- rnorm( n ) * 10^9
+vect.x <- rnorm( 10 ) * 10^9
 
 # Create a tensor, and relocate (dive) the information to the GPU
 tens.x <- tensor$new( vect.x )
@@ -21,7 +20,7 @@ tens.x$get.tensor
 # compared to reinitialization as it does not allocate new memory space.
 # You can only push a vector with the same length as the original (matrix with
 # the same dimensions).
-tens.x$push( rep( 0, times = n ) )
+tens.x$push( rep( 0, times = 10 ) )
 
 # Let's copy the tensor. As you can see, it is a shallow copy, pointing to the
 # same memory adress as its predecessor

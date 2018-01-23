@@ -1,6 +1,19 @@
 library( cuRious )
 library( microbenchmark )
 
+big.n <- 10^7
+tens.Y <- tensor$new( rep(0, times = big.n ) )
+tens.X <- tensor$new( rep(1, times = big.n ) )
+tens.Y$transform( 1 )
+
+microbenchmark( transfer( tens.X, tens.Y, threads = 4L ), times = 100 )
+
+clean.global()
+
+
+identical( tens.Y$pull(), tens.X$pull() )
+
+
 for( j in 1:100000 ){
 
   rows      <- runif( 1, 1, 3000 )

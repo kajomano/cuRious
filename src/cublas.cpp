@@ -1,13 +1,5 @@
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-#include <cublas_v2.h>
-
-#define R_NO_REMAP 1
-
-#include <R.h>
-#include <Rinternals.h>
-
-#include "debug.h"
+#include "common.h"
+#ifndef CUDA_EXCLUDE
 
 // This is a good example how to access the handle in other functions
 // Also a good example how to finalize things, this function can be called
@@ -18,11 +10,9 @@ void cuR_finalize_cublas_handle( SEXP ptr ){
   // Destroy context and free memory!
   // Clear R object too
   if( handle ){
-#ifdef DEBUG_PRINTS
-    Rprintf( "<%p> Finalizing handle\n", (void*)handle );
-#endif
+    debugPrint( Rprintf( "<%p> Finalizing handle\n", (void*)handle ) );
 
-    cublasDestroy( *handle );
+    cublasTry( cublasDestroy( *handle ) );
     delete[] handle;
     R_ClearExternalPtr( ptr );
   }
@@ -37,14 +27,11 @@ SEXP cuR_deactivate_cublas_handle( SEXP ptr ){
 extern "C"
 SEXP cuR_activate_cublas_handle(){
   cublasHandle_t* handle = new cublasHandle_t;
-#ifdef DEBUG_PRINTS
-  Rprintf( "<%p> Creating handle\n", (void*)handle );
-#endif
 
-  // cublasTry is a macro defined in debug.h, you need to create the variable
-  // 'stat' beforehand
-  cublasStatus_t stat;
-  cublasTry( cublasCreate( handle ) )
+  debugPrint( Rprintf( "<%p> Creating handle\n", (void*)handle ) );
+
+  // Try to create handle
+  cublasTry( cublasCreate( handle ) );
 
   // Return to R with an external pointer SEXP
   SEXP ptr = Rf_protect( R_MakeExternalPtr( handle, R_NilValue, R_NilValue ) );
@@ -54,21 +41,23 @@ SEXP cuR_activate_cublas_handle(){
   return ptr;
 }
 
-void cuR_cublas_recover_stream( SEXP stream_r, cublasStatus_t stat, cublasHandle_t* handle ){
-  // If a stream is given, set it before the calculation
-  if( stream_r != R_NilValue ){
-#ifdef DEBUG_PRINTS
-    Rprintf( "Async cublas call\n" );
-#endif
+// ITT
+// TODO ====
+// Do this so it returns a cublasStatus
+// other TODO ====
+// Remove the cudaDo() calls, put everything in #ifndefs
 
-    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
-    cublasSetStream( *handle, *stream );
-  }else{
-#ifdef DEBUG_PRINTS
-    Rprintf( "Sync cublas call\n" );
-#endif
-  }
-}
+// void cuR_cublas_recover_stream( SEXP stream_r, cublasStatus_t stat, cublasHandle_t* handle ){
+//   // If a stream is given, set it before the calculation
+//   if( stream_r != R_NilValue ){
+//     debugPrint( Rprintf( "Async cublas call\n" ) );
+//
+//     cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
+//     cublasTry( cublasSetStream( *handle, *stream ) );
+//   }else{
+//     debugPrint( Rprintf( "Sync cublas call\n" ) );
+//   }
+// }
 
 extern "C"
 SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_r, SEXP dims_B_r, SEXP al_r, SEXP be_r, SEXP tp_A_r, SEXP tp_B_r, SEXP handle_r, SEXP stream_r ){
@@ -112,7 +101,7 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_
   cublasTry( cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m ) )
 
   // Flush for WDDM
-  cudaStreamQuery(0);
+  cudaTry( cudaStreamQuery(0) );
 
   // Return something that is not null
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
@@ -146,3 +135,5 @@ SEXP cuR_cublas_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP h
   Rf_unprotect(1);
   return ret_r;
 }
+
+#endif

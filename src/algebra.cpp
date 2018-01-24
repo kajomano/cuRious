@@ -1,5 +1,6 @@
-#include "common.h"
 #include "algebra_cu.h"
+
+#ifndef CUDA_EXCLUDE
 
 cudaStream_t* cuR_alg_recover_stream( SEXP stream_r ){
   if( stream_r != R_NilValue ){
@@ -34,3 +35,4 @@ SEXP cuR_alg_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP stre
   return ret_r;
 }
 
+#endif

@@ -1,11 +1,12 @@
 ### Makevars is a Makefile, most of the problems you encounter are general, and
-### not specific to R. Search for Makefile problems first!
+### not specific to R or Rcpp. Search for Makefile problems first!
 ### Manual: https://www.gnu.org/software/make/manual/html_node/index.html#SEC_Contents
 ### Print any variable with: $(warning $(any_variable))
+### The file is made to mimic the Makeconf calls found in $(R_HOME)/etc/x64/
 
 ### Define variables
 ## R related
-R_INC     = /usr/share/R/include
+R_INC     = $(R_HOME)/include
 
 ## CUDA related
 #CUDA_HOME = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v9.1"
@@ -17,7 +18,7 @@ R_INC     = /usr/share/R/include
 # -arch=sm_30 -gencode=arch=compute_30,code=sm_30: what type of machine code to
 # generate, dependent on your graphics card, refer to:
 # http://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
-#NVCC_ARGS = -arch=sm_52 -gencode=arch=compute_52,code=sm_52
+#NVCC_ARGS = -x=cu -arch=sm_52 -gencode=arch=compute_52,code=sm_52
 
 # NVCC uses the VC compiler on windows, but PATH is usually buggy, needs explicit
 # location to work, also the common includes are there
@@ -34,17 +35,16 @@ cpp_objs  = $(patsubst %.cpp, %.o, $(cpp_srcs))
 #cu_objs   = $(patsubst %.cc, %.o, $(cu_srcs))
 
 ## Windows specific files
-#wincpp_srcs  = $(wildcard *.wincpp)
-#wincpp_objs  = $(patsubst %.wincpp, %.o, $(wincpp_srcs))
+wincpp_srcs  = $(wildcard *.wincpp)
+wincpp_objs  = $(patsubst %.wincpp, %.o, $(wincpp_srcs))
 
-all_objs  = $(cpp_objs) #$(cu_objs) #$(wincpp_objs)
+all_objs  = $(cpp_objs) $(wincpp_objs)
 
 ### Linker options
 # Linux (untested)
 # PKG_LIBS  = "-L$(CUDA_HOME)/lib/x64 -Wl, -rpath, $(CUDA_HOME)/lib/x64 -lcuda -lcudart"
 # Windows (also includes special windows .wincpp objects)
-#$(wincpp_objs)
-PKG_LIBS  = -fopenmp #-L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas
+PKG_LIBS  = $(wincpp_objs)
 
 ### Recipes
 
@@ -53,10 +53,10 @@ all: cuRious.so
 cuRious.so: $(all_objs)
 
 %.o: %.cpp $(h_srcs)
-	$(CXX) -O3 -fopenmp -fPIC -I$(R_INC) $< -o $@ -c
+	$(CXX) -O3 -I$(R_INC) $< -o $@ -c
 
-#%.o: %.wincpp $(h_srcs)
-	#$(CXX) -O3 -I$(R_INC) -I$(CUDA_INC) -x c++ $< -o $@ -c
+%.o: %.wincpp $(h_srcs)
+	$(CXX) -O3 -I$(R_INC) -x c++ $< -o $@ -c
 
-#%.o: %.cu $(h_srcs)
-	#$(NVCC) -ccbin=$(VC_BIN) $(NVCC_ARGS) -I=$(CUDA_INC) $< -o $@ -c
+#%.o: %.cc $(h_srcs)
+#	$(NVCC) -ccbin=$(VC_BIN) $(NVCC_ARGS) -I=$(CUDA_INC) $< -o $@ -c

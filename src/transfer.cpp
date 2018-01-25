@@ -1,16 +1,12 @@
 #include "common.h"
-#include "threads.h"
 #include <cstring>
-#include <omp.h>
 
 void cuR_dd( double* src, double* dst, int* dims, int* csrc, int* cdst ){
-  int l = dims[0]*dims[1];
-
   if( !csrc && !cdst ){
     // No subsetting
     memcpy( dst,
             src,
-            l*sizeof(double) );
+            dims[0]*dims[1]*sizeof(double) );
 
   }else if( csrc && cdst ){
     // Both subsetted
@@ -36,14 +32,96 @@ void cuR_dd( double* src, double* dst, int* dims, int* csrc, int* cdst ){
   }
 }
 
-void cuR_ff( float* src, float* dst, int* dims, int* csrc, int* cdst ){
-  int l = dims[0]*dims[1];
+void cuR_df( double* src, float* dst, int* dims, int* csrc, int* cdst ){
+  if( !csrc && !cdst ){
+    // No subsetting
+    int l = dims[0]*dims[1];
+    for( int j = 0; j < l; j++ ){
+      dst[j] = (float)src[j];
+    }
+  }else if( csrc && cdst ){
+    // Both subsetted
+    int dst_off, src_off;
+    for( int i = 0; i < dims[1]; i ++ ){
+      dst_off = (cdst[i]-1)*dims[0];
+      src_off = (csrc[i]-1)*dims[0];
+      for( int j = 0; j < dims[0]; j++ ){
+        dst[dst_off+j] = (float)src[src_off+j];
+      }
+    }
+  }else if( !csrc ){
+    // Destination subsetted
+    int dst_off;
+    int src_off = 0;
+    for( int i = 0; i < dims[1]; i ++ ){
+      dst_off = (cdst[i]-1)*dims[0];
+      for( int j = 0; j < dims[0]; j++ ){
+        dst[dst_off+j] = (float)src[src_off+j];
+      }
+      src_off += dims[0];
+    }
+  }else{
+    // Source subsetted
+    int dst_off = 0;
+    int src_off;
+    for( int i = 0; i < dims[1]; i ++ ){
+      src_off = (csrc[i]-1)*dims[0];
+      for( int j = 0; j < dims[0]; j++ ){
+        dst[dst_off+j] = (float)src[src_off+j];
+      }
+      dst_off += dims[0];
+    }
+  }
+}
 
+void cuR_fd( float* src, double* dst, int* dims, int* csrc, int* cdst ){
+  if( !csrc && !cdst ){
+    // No subsetting
+    int l = dims[0]*dims[1];
+    for( int j = 0; j < l; j++ ){
+      dst[j] = (double)src[j];
+    }
+  }else if( csrc && cdst ){
+    // Both subsetted
+    int dst_off, src_off;
+    for( int i = 0; i < dims[1]; i ++ ){
+      dst_off = (cdst[i]-1)*dims[0];
+      src_off = (csrc[i]-1)*dims[0];
+      for( int j = 0; j < dims[0]; j++ ){
+        dst[dst_off+j] = (double)src[src_off+j];
+      }
+    }
+  }else if( !csrc ){
+    // Destination subsetted
+    int dst_off;
+    int src_off = 0;
+    for( int i = 0; i < dims[1]; i ++ ){
+      dst_off = (cdst[i]-1)*dims[0];
+      for( int j = 0; j < dims[0]; j++ ){
+        dst[dst_off+j] = (double)src[src_off+j];
+      }
+      src_off += dims[0];
+    }
+  }else{
+    // Source subsetted
+    int dst_off = 0;
+    int src_off;
+    for( int i = 0; i < dims[1]; i ++ ){
+      src_off = (csrc[i]-1)*dims[0];
+      for( int j = 0; j < dims[0]; j++ ){
+        dst[dst_off+j] = (double)src[src_off+j];
+      }
+      dst_off += dims[0];
+    }
+  }
+}
+
+void cuR_ff( float* src, float* dst, int* dims, int* csrc, int* cdst ){
   if( !csrc && !cdst ){
     // No subsetting
     memcpy( dst,
             src,
-            l*sizeof(float) );
+            dims[0]*dims[1]*sizeof(float) );
 
   }else if( csrc && cdst ){
     // Both subsetted
@@ -104,22 +182,15 @@ SEXP cuR_transf_12_12( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cd
 }
 
 extern "C"
-SEXP cuR_transf_0_12( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP threads_r ){
+SEXP cuR_transf_0_12( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r ){
 
   double* src = REAL( src_r );
   float* dst  = (float*)R_ExternalPtrAddr( dst_r );
   int* dims   = INTEGER( dims_r );
   int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
   int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
-  int threads  = Rf_asInteger( threads_r );
 
-  // cuR_threaded_df( src, dst, dims, csrc, cdst, threads );
-  int l = dims[0]*dims[1];
-  omp_set_num_threads(threads);
-  #pragma omp parallel
-  for( int i = 0; i < l; i++ ){
-    dst[i] = (float)src[i];
-  }
+  cuR_df( src, dst, dims, csrc, cdst );
 
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
   Rf_unprotect(1);
@@ -127,16 +198,15 @@ SEXP cuR_transf_0_12( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cds
 }
 
 extern "C"
-SEXP cuR_transf_12_0( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP threads_r ){
+SEXP cuR_transf_12_0( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r ){
 
   float* src  = (float*)R_ExternalPtrAddr( src_r );
   double* dst = REAL( dst_r );
   int* dims   = INTEGER( dims_r );
   int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
   int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
-  int threads = Rf_asInteger( threads_r );
 
-  cuR_threaded_fd( src, dst, dims, csrc, cdst, threads );
+  cuR_fd( src, dst, dims, csrc, cdst );
 
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
   Rf_unprotect(1);

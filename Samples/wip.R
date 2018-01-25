@@ -1,25 +1,11 @@
 library( cuRious )
 library( microbenchmark )
 
-big.n <- 10^7
-tens.Y <- tensor$new( rep(0, times = big.n ) )
-tens.X <- tensor$new( rep(1, times = big.n ) )
-tens.Y$transform( 1 )
-
-microbenchmark( transfer( tens.X, tens.Y, threads = 4L ), times = 100 )
-
-clean.global()
-
-
-identical( tens.Y$pull(), tens.X$pull() )
-
-
 for( j in 1:100000 ){
 
   rows      <- runif( 1, 1, 3000 )
   cols      <- runif( 1, 1, 2000 )
   more.cols <- runif( 1, cols, 4000 )
-  threads   <- as.integer( runif( 1, 1, 4 ) )
 
   data      <- round( rnorm( cols*rows ) )
   more.data <- round( rnorm( more.cols*rows ) )
@@ -45,7 +31,7 @@ for( j in 1:100000 ){
     y$transform( lev.y )
 
     # microbenchmark( transfer( x, y ), times = 10 )
-    transfer( x, y, threads = threads )
+    transfer( x, y )
     res <- identical( y$pull(), matrix( data, rows, cols ) )
     if( !res ) stop("No subsetting")
 
@@ -56,7 +42,7 @@ for( j in 1:100000 ){
     y$transform( lev.y )
 
     # microbenchmark( transfer( x, y, subs.cols ), times = 10 )
-    transfer( x, y, subs.cols, threads = threads )
+    transfer( x, y, subs.cols )
     res <- identical( y$pull(), matrix( more.data, rows, more.cols )[ ,subs.cols ] )
     if( !res ) stop("Source subset")
 
@@ -67,7 +53,7 @@ for( j in 1:100000 ){
     y$transform( lev.y )
 
     # microbenchmark( transfer( x, y, cols.dst = subs.cols ), times = 10 )
-    transfer( x, y, cols.dst = subs.cols, threads = threads )
+    transfer( x, y, cols.dst = subs.cols )
     res <- identical( y$pull()[ ,subs.cols ], matrix( data, rows, cols ) )
     if( !res ) stop("Destination subset")
 
@@ -78,7 +64,7 @@ for( j in 1:100000 ){
     y$transform( lev.y )
 
     # microbenchmark( transfer( x, y, subs.cols, subs.cols ), times = 10 )
-    transfer( x, y, subs.cols, subs.cols, threads = threads )
+    transfer( x, y, subs.cols, subs.cols )
     res <- identical( y$pull()[ ,subs.cols ], matrix( more.data, rows, more.cols )[ ,subs.cols ] )
     if( !res ) stop("Destination and source subset")
   }

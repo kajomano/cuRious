@@ -6,8 +6,7 @@ transfer <- function( src,
                       dst      = NULL,
                       cols.src = NULL,
                       cols.dst = NULL,
-                      stream   = NULL,
-                      threads  = 4L ){
+                      stream   = NULL ){
 
   # Clean up arguments
   # src
@@ -53,11 +52,8 @@ transfer <- function( src,
     stream <- stream$get.stream
   }
 
-  # threads
-  threads <- force.int( threads )
-
   # Main low level transfer call
-  trnsfr.ptr( src.obj, dst.obj, cols.src, cols.dst, stream, threads )
+  trnsfr.ptr( src.obj, dst.obj, cols.src, cols.dst, stream )
 
   # Return with dst if wasnt supported
   if( is.null(dst) ){
@@ -74,8 +70,7 @@ trnsfr.ptr = function( src,
                        dst,
                        cols.src = NULL,
                        cols.dst = NULL,
-                       stream   = NULL,
-                       threads  = 4L ){
+                       stream   = NULL ){
 
   dims.src <- get.dims( src )
   dims.dst <- get.dims( dst )
@@ -88,24 +83,24 @@ trnsfr.ptr = function( src,
     },
     `01` = {
       dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-      .Call( "cuR_transf_0_12", src, dst, dims, cols.src, cols.dst, threads )
+      .Call( "cuR_transf_0_12", src, dst, dims, cols.src, cols.dst )
     },
     `02` = {
       dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-      .Call( "cuR_transf_0_12", src, dst, dims, cols.src, cols.dst, threads )
+      .Call( "cuR_transf_0_12", src, dst, dims, cols.src, cols.dst )
     },
     `03` = {
       dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
       # This is a multi-stage transfer
       temp <- create.dummy( dims.dst, 2L )
-      trnsfr.ptr( src, temp, cols.src, cols.dst, threads = threads )
+      trnsfr.ptr( src, temp, cols.src, cols.dst )
       trnsfr.ptr( temp, dst )
       .Call( "cuR_destroy_tensor_2", temp )
     },
 
     `10` = {
       dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-      .Call( "cuR_transf_12_0", src, dst, dims, cols.src, cols.dst, threads )
+      .Call( "cuR_transf_12_0", src, dst, dims, cols.src, cols.dst )
     },
     `11` = {
       dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
@@ -122,7 +117,7 @@ trnsfr.ptr = function( src,
 
     `20` = {
       dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-      .Call( "cuR_transf_12_0", src, dst, dims, cols.src, cols.dst, threads )
+      .Call( "cuR_transf_12_0", src, dst, dims, cols.src, cols.dst )
     },
     `21` = {
       dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
@@ -142,7 +137,7 @@ trnsfr.ptr = function( src,
       # This is a multi-stage transfer
       temp <- create.dummy( dims.src, 2L )
       trnsfr.ptr( src, temp )
-      trnsfr.ptr( temp, dst, cols.src, cols.dst, threads = threads )
+      trnsfr.ptr( temp, dst, cols.src, cols.dst )
       .Call( "cuR_destroy_tensor_2", temp )
     },
     `31` = {

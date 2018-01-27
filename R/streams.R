@@ -21,25 +21,28 @@ cuda.stream <- R6Class(
   public = list(
     activate = function(){
       if( self$is.active ){
-        stop( "The CUDA stream is already active" )
+        warning( "The CUDA stream is already active" )
+        return( invisible( self ) )
       }
+
       private$stream <- .Call( "cuR_activate_cuda_stream" )
 
       if( is.null( private$stream ) ){
         stop( "The CUDA stream could not be activated" )
       }
 
-      invisible( TRUE )
+      invisible( self )
     },
     deactivate = function(){
       if( !self$is.active ){
-        stop( "The CUDA stream has not yet been activated" )
+        warning( "The CUDA stream has not yet been activated" )
+        return( invisible( self ) )
       }
 
       .Call( "cuR_deactivate_cuda_stream", private$stream )
       private$stream <- NULL
 
-      invisible( TRUE )
+      invisible( self )
     }
   ),
 

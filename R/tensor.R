@@ -19,8 +19,7 @@ tensor <- R6Class(
 
     initialize = function( obj ){
       private$dims   <- get.dims( obj )
-      private$level  <- get.level( obj )
-      private$tensor <- private$create.dummy( private$level )
+      private$tensor <- private$create.dummy( get.level( obj ) )
 
       # Force storage type
       force.double( obj )
@@ -28,12 +27,10 @@ tensor <- R6Class(
       # Copy the data (in C) even if it is an R object to not have soft copies
       # that could later be messed up by pull() or other transfers
       transfer( obj, self )
-
-      invisible( TRUE )
     },
 
     transform = function( level = 0 ){
-      if( private$level != level ){
+      if( self$get.level != level ){
         # Create placeholder
         temp.tensor <- private$create.dummy( level )
 
@@ -42,41 +39,30 @@ tensor <- R6Class(
 
         # Replace current tensor
         private$tensor <- temp.tensor
-        private$level  <- as.integer( level )
       }
 
-      invisible( TRUE )
+      invisible( self )
     },
 
     dive = function(){
       self$transform( 3 )
-      invisible( TRUE )
     },
 
     surface = function(){
       self$transform()
-      invisible( TRUE )
     },
 
     push = function( obj ){
       transfer( obj, self )
-      invisible( TRUE )
     },
 
     pull = function( obj = NULL ){
-      res <- transfer( self, obj )
-
-      if( is.null(obj) ){
-        return( res )
-      }
-
-      invisible( TRUE )
+      transfer( self, obj )
     }
   ),
 
   private = list(
     tensor = NULL,
-    level  = NULL,
     dims   = NULL,
 
     create.dummy = function( level = 0 ){
@@ -94,7 +80,7 @@ tensor <- R6Class(
     },
 
     get.level = function( val ){
-      if( missing(val) ) return( private$level )
+      if( missing(val) ) return( get.level(private$tensor) )
     },
 
     get.l = function( val ){
@@ -102,7 +88,7 @@ tensor <- R6Class(
     },
 
     is.under = function( val ){
-      if( missing(val) ) return( private$level == 3 )
+      if( missing(val) ) return( self$get.level == 3 )
     }
   )
 )

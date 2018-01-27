@@ -1,9 +1,10 @@
-# This script shows a simple matrix-matrix mutliplication (GEMM) using cuBLAS
+# This script shows a simple matrix-matrix mutliplication (GEMM) using cuBLAS,
+# a cuda library that implements Basic Linear-Algebraic Subroutines (BLAS).
 # GEMM stands for GEneral Matrix-Multiply, and is an often used function in
 # neural networks
 library( cuRious )
 
-# Create tensors and store them in GPU memory
+# Create matrix tensors and store them in GPU memory
 # GEMM: C = A( m, k ) %*% B( k, n ) + C( m, n )
 m <- 6
 n <- 4
@@ -21,8 +22,8 @@ mat.C <- matrix( as.double( 1:(m*n) ), ncol = n )
 tens.C <- tensor$new( mat.C )
 tens.C$dive()
 
-# Create a cublas handle and activate it. An activated cuBLAS handle is needed
-# for each cublas call. As it is costly to create a handle, it is advised to
+# Create a cuBLAS handle and activate it. An activated cuBLAS handle is needed
+# for each cuBLAS call. As it is costly to create a handle, it is advised to
 # reuse the handle throughout multiple calls, or even the whole session.
 handle <- cublas.handle$new()
 handle$activate()

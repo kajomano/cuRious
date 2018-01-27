@@ -8,7 +8,6 @@ get.dims <- function( obj ){
     tensor.ptr = c( attr( obj, "dim0" ), attr( obj, "dim1" ) ),
     matrix     = c( nrow( obj ), ncol( obj ) ),
     numeric    = c( length( obj ), 1L ),
-    integer    = c( length( obj ), 1L ),
     stop( "Unknown object" )
   )
 }
@@ -21,11 +20,10 @@ get.dims <- function( obj ){
 get.level <- function( obj ){
   switch(
     class( obj )[[1]],
-    tensor     = obj$get.level,
+    tensor     = attr( obj$get.tensor, "level" ),
     tensor.ptr = attr( obj, "level" ),
     matrix     = 0L,
     numeric    = 0L,
-    integer    = 0L,
     stop( "Unknown object" )
   )
 }
@@ -51,6 +49,24 @@ create.dummy <- function( dims, level = 0 ){
     `2` = .Call( "cuR_create_tensor_2", dims ),
     `3` = .Call( "cuR_create_tensor_3", dims ),
     stop( "Invalid level" )
+  )
+}
+
+# Copy utility function, just like in data.table
+copy <- function( obj ){
+  copy.inner <- function( obj ){
+    copied <- create.dummy( get.dims( obj ), get.level( obj ) )
+    trnsfr.ptr( obj, copied )
+    copied
+  }
+
+  switch(
+    class( obj )[[1]],
+    tensor     = tensor$new( obj ),
+    tensor.ptr = copy.inner( obj ),
+    matrix     = copy.inner( obj ),
+    numeric    = copy.inner( obj ),
+    stop( "Unknown object" )
   )
 }
 

@@ -1,5 +1,8 @@
 # .Calls: src/transfer.cpp, src/tensor.cpp
 
+# TODO ====
+# Create from-to continous subsetting
+
 # This function is a general tool for copying data between tensors or R objects
 # residing on any level, therefore it is horribly bloated
 transfer <- function( src,
@@ -154,8 +157,6 @@ trnsfr.ptr = function( src,
     }
   )
 
-  # TODO ====
-  # Error handling revision
   if( is.null(res) ){
     stop( "Transfer was unsuccessful" )
   }

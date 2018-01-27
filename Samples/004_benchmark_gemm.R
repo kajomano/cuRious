@@ -1,5 +1,5 @@
 # This script compares the speeds of a native R GEMM routine with the cuRious
-# implementation that uses cuBLAS
+# implementation that uses cuBLAS.
 library( cuRious )
 library( microbenchmark )
 

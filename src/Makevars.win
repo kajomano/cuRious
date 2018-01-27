@@ -18,7 +18,7 @@ CUDA_INC  = $(CUDA_HOME)/include
 # -arch=sm_30 -gencode=arch=compute_30,code=sm_30: what type of machine code to
 # generate, dependent on your graphics card, refer to:
 # http://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
-NVCC_ARGS = -x=cu -arch=sm_52 -gencode=arch=compute_52,code=sm_52
+NVCC_ARGS = -arch=sm_52 -gencode=arch=compute_52,code=sm_52
 
 # NVCC uses the VC compiler on windows, but PATH is usually buggy, needs explicit
 # location to work, also the common includes are there
@@ -31,20 +31,16 @@ h_srcs    = $(wildcard *.h)
 cpp_srcs  = $(wildcard *.cpp)
 cpp_objs  = $(patsubst %.cpp, %.o, $(cpp_srcs))
 
-cu_srcs   = $(wildcard *.cc)
-cu_objs   = $(patsubst %.cc, %.o, $(cu_srcs))
+cu_srcs   = $(wildcard *.cu)
+cu_objs   = $(patsubst %.cu, %.o, $(cu_srcs))
 
-## Windows specific files
-wincpp_srcs  = $(wildcard *.wincpp)
-wincpp_objs  = $(patsubst %.wincpp, %.o, $(wincpp_srcs))
-
-all_objs  = $(cpp_objs) $(cu_objs) $(wincpp_objs)
+all_objs  = $(cpp_objs) $(cu_objs)
 
 ### Linker options
 # Linux (untested)
 # PKG_LIBS  = "-L$(CUDA_HOME)/lib/x64 -Wl, -rpath, $(CUDA_HOME)/lib/x64 -lcuda -lcudart"
 # Windows (also includes special windows .wincpp objects)
-PKG_LIBS  = $(wincpp_objs) -fopenmp -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas
+PKG_LIBS  = $(cu_objs) -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas
 
 ### Recipes
 
@@ -53,10 +49,7 @@ all: cuRious.so
 cuRious.so: $(all_objs)
 
 %.o: %.cpp $(h_srcs)
-	$(CXX) -O3 -fopenmp -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
+	$(CXX) -O3 -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
 
-%.o: %.wincpp $(h_srcs)
-	$(CXX) -O3 -I$(R_INC) -I$(CUDA_INC) -x c++ $< -o $@ -c
-
-%.o: %.cc $(h_srcs)
+%.o: %.cu $(h_srcs)
 	$(NVCC) -ccbin=$(VC_BIN) $(NVCC_ARGS) -I=$(CUDA_INC) $< -o $@ -c

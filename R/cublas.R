@@ -11,7 +11,8 @@ cublas.handle <- R6Class(
   public = list(
     activate = function(){
       if( self$is.active ){
-        stop( "The cuBLAS handle has already been activated" )
+        warning( "The cuBLAS handle has already been activated" )
+        return( invisible( self ) )
       }
       private$handle <- .Call( "cuR_activate_cublas_handle" )
 
@@ -19,17 +20,18 @@ cublas.handle <- R6Class(
         stop( "The cuBLAS handle could not be activated" )
       }
 
-      invisible( TRUE )
+      invisible( self )
     },
     deactivate = function(){
       if( !self$is.active ){
-        stop( "The cuBLAS handle is not active" )
+        warning( "The cuBLAS handle is not active" )
+        return( invisible( self ) )
       }
 
       .Call( "cuR_deactivate_cublas_handle", private$handle )
       private$handle <- NULL
 
-      invisible( TRUE )
+      invisible( self )
     }
   ),
 

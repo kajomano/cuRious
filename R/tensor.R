@@ -9,8 +9,8 @@
 # Check for missing values
 
 # TODO ====
-# Create CPU memory temporary storage to save data (without converting back to
-# double)
+# Store important attributes in here too, as they are unmodifiable here
+# and use them if they are available, trnsfr.ptr should take these as arguments
 
 # Tensor class ====
 tensor <- R6Class(
@@ -32,10 +32,13 @@ tensor <- R6Class(
     transform = function( level = 0 ){
       if( self$get.level != level ){
         # Create placeholder
-        temp.tensor <- private$create.dummy( level )
+        temp.tensor.ptr <- private$create.dummy( level )
+
+        # TODO ====
+        # Call proper transfer here
 
         # Call a low-level transfer, we know all arguments are in correct form
-        trnsfr.ptr( private$tensor, temp.tensor )
+        transfer( private$tensor, temp.tensor )
 
         # Replace current tensor
         private$tensor <- temp.tensor
@@ -64,6 +67,8 @@ tensor <- R6Class(
   private = list(
     tensor = NULL,
     dims   = NULL,
+    type   = NULL,
+    level  = NULL,
 
     create.dummy = function( level = 0 ){
       create.dummy( private$dims, level )
@@ -76,11 +81,11 @@ tensor <- R6Class(
     },
 
     get.dims = function( val ){
-      if( missing(val) ) return( private$dims )
+      if( missing(val) ) return( get.dims( private$tensor ) )
     },
 
     get.level = function( val ){
-      if( missing(val) ) return( get.level(private$tensor) )
+      if( missing(val) ) return( get.level( private$tensor ) )
     },
 
     get.l = function( val ){

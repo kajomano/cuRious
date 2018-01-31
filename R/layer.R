@@ -23,15 +23,15 @@ layer.input <- R6Class(
     init = function(){},
 
     # Priming decides what exactly forward and backward passes will do
-    prime.test  = function( batch.size, ... ){
+    deploy.test  = function( batch.size, ... ){
 
     },
 
-    prime.train = function( batch.size, ... ){
-      self$prime.test( batch.size, ... )
+    deploy.train = function( batch.size, ... ){
+      self$deploy.test( batch.size, ... )
     },
 
-    deprime = function(){},
+    retract = function(){},
 
     forward.pass = function( input ){
 

@@ -6,16 +6,3 @@ nn <- R6Class(
     layers = list()
   )
 )
-
-is.nn <- function( ... ){
-  objs <- list( ... )
-  sapply( objs, function( obj ){
-    "nn" %in% class( obj )
-  })
-}
-
-check.nn <- function( ... ){
-  if( !all( is.nn( ... ) ) ){
-    stop( "Not all objects are nns" )
-  }
-}

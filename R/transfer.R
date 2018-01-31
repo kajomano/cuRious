@@ -1,7 +1,10 @@
 # .Calls: src/transfer.cpp, src/tensor.cpp
 
 # TODO ====
-# Create from-to continous subsetting
+# Create from-to continous (range) subsetting
+
+# TODO ====
+# All checks should be in transfer, not in trnsfr.ptr
 
 # This function is a general tool for copying data between tensors or R objects
 # residing on any level, therefore it is horribly bloated
@@ -67,7 +70,7 @@ transfer <- function( src,
 }
 
 # Low level transfer call that handles tensor.ptr-s, for speed considerations
-# no argument checks (except for dims) are done, don't use interactively!
+# no argument checks are done, don't use interactively!
 # Switch hell
 trnsfr.ptr = function( src,
                        dst,

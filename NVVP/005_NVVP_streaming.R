@@ -1,11 +1,21 @@
 # Script to use with nvprof
-print( paste0( R.home(), "/bin/Rscript" ) )
-print( paste0( getwd(), "/NVVP/005_NVVP_streaming.R" ) )
+# I had a lot of trouble with nvvp nad especially nvprof giving all kinds of
+# strange segfaults and errors on linux. Turns out, you need to have sudo
+# privileges when running nvprof, but then nothing is there on the PATH. The
+# following worked:
+# sudo /usr/local/cuda/bin/nvprof /usr/lib/R/bin/Rscript ./005_NVVP_streaming.R
+
+print( paste(
+  "sudo",
+  "/usr/local/cuda/bin/nvvp",
+  paste0( R.home(), "/bin/Rscript" ),
+  paste0( getwd(), "/NVVP/005_NVVP_streaming.R" )
+) )
 
 library( cuRious )
 library( microbenchmark )
 
-n <- 10
+n <- 1000
 
 mat.in  <- matrix( round(rnorm( 10*n*n )), nrow = n, ncol = 10*n )
 mat.out.R <- matrix( 0, nrow = n, ncol = 10*n )

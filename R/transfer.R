@@ -7,90 +7,144 @@
 # All checks should be in transfer, not in trnsfr.ptr
 
 # This function is a general tool for copying data between tensors or R objects
-# residing on any level, therefore it is horribly bloated
+# residing on any level, therefore it is horribly bloated :D
 transfer <- function( src,
                       dst      = NULL,
                       cols.src = NULL,
                       cols.dst = NULL,
                       stream   = NULL ){
 
-  # Clean up arguments
-  # src
-  dims.src <- get.dims( src )
-  if( is.tensor(src) ){
-    src.obj <- src$get.tensor
-  }else{
-    src.obj <- force.double( src )
-  }
+  # Src attributes
+  type.src  <- get.type( src )
+  dims.src  <- get.dims( src )
+  level.src <- get.level( src )
+  obj.src   <- get.obj( src )
 
-  # dst
+  # Dst must exist
   if( is.null(dst) ){
-    dims.dst <- dims.src
-    dst.obj <- create.dummy( dims.dst )
-  }else{
-    dims.dst <- get.dims( dst )
-    if( is.tensor(dst) ){
-      dst.obj <- dst$get.tensor
-    }else{
-      dst.obj <- force.double( dst )
-    }
+    # If not, create an L0 object of the same type
+    dst <- create.obj( dims.src, type = type.src )
   }
 
-  # cols.src
+  # Dst attributes
+  type.dst  <- get.type( dst )
+  dims.dst  <- get.dims( dst )
+  level.dst <- get.level( dst )
+  obj.dst   <- get.obj( dst )
+
+  # Type matching
+  if( type.src != type.dst ){
+    stop( "Object types do not match" )
+  }
+
+  # Source columns
+  obj.cols.src <- NULL
   if( !is.null(cols.src) ){
-    cols.src <- force.int( cols.src )
-    if( max( cols.src ) > dims.src[[2]] ){
-      stop( "Col subset outside range" )
+    if( get.type( cols.src ) != "integer" ){
+      stop( "Source columns are not integers" )
     }
+
+    if( level.src < 3 ){
+      if( level.dst == 3 ){
+        stop( "No subsetting allowed between host and device transfers" )
+      }
+
+      if( get.level( cols.src ) == 3 ){
+        stop( "Source columns are not in the host memory" )
+      }
+    }else{
+      if( level.dst < 3 ){
+        stop( "No subsetting allowed between host and device transfers" )
+      }
+
+      if( get.level( cols.src ) < 3 ){
+        stop( "Source columns are not in the device memory" )
+      }
+    }
+
+    obj.cols.src  <- get.obj( cols.src )
+    dims.src[[2]] <- get.dims( cols.src )[[1]]
   }
 
-  # cols.dst
+  # Destination columns
+  obj.cols.dst <- NULL
   if( !is.null(cols.dst) ){
-    cols.dst <- force.int( cols.dst )
-    if( max( cols.dst ) > dims.dst[[2]] ){
-      stop( "Col subset outside range" )
+    if( get.type( cols.dst ) != "integer" ){
+      stop( "Destination columns are not integers" )
     }
+
+    if( level.dst < 3 ){
+      if( level.src == 3 ){
+        stop( "No subsetting allowed between host and device transfers" )
+      }
+
+      if( get.level( cols.dst ) == 3 ){
+        stop( "Destination columns are not in the host memory" )
+      }
+    }else{
+      if( level.src < 3 ){
+        stop( "No subsetting allowed between host and device transfers" )
+      }
+
+      if( get.level( cols.dst ) < 3 ){
+        stop( "Destination columns are not in the device memory" )
+      }
+    }
+
+    obj.cols.dst  <- get.obj( cols.dst )
+    dims.dst[[2]] <- get.dims( cols.dst )[[1]]
   }
 
-  # stream
+  # Dimension matching
+  if( !identical( dims.src, dims.dst ) ){
+    stop( "Dimensions do not match" )
+  }
+
+  # Stream check
   if( !is.null(stream) ){
     check.cuda.stream( stream )
     stream <- stream$get.stream
   }
 
   # Main low level transfer call
-  trnsfr.ptr( src.obj, dst.obj, cols.src, cols.dst, stream )
+  transfer.obj( obj.src,
+                obj.dst,
+                level.src,
+                level.dst,
+                type.src,
+                dims.src,
+                obj.cols.src,
+                obj.cols.dst,
+                stream )
 
-  # Return with dst if wasnt supported
-  if( is.null(dst) ){
-    return( dst.obj )
-  }
-
-  invisible( TRUE )
+  invisible( dst )
 }
 
-# Low level transfer call that handles tensor.ptr-s, for speed considerations
-# no argument checks are done, don't use interactively!
+# Low level transfer call that handles objects, for speed considerations
+# no argument checks are done, don't use interactively or in any place where
+# speed is not critical!
 # Switch hell
-trnsfr.ptr = function( src,
-                       dst,
-                       cols.src = NULL,
-                       cols.dst = NULL,
-                       stream   = NULL ){
-
-  dims.src <- get.dims( src )
-  dims.dst <- get.dims( dst )
-
+transfer.obj = function( src,
+                         dst,
+                         level.src,
+                         level.dst,
+                         type,
+                         dims,
+                         cols.src = NULL,
+                         cols.dst = NULL,
+                         stream   = NULL ){
   res <- switch(
-    paste0( get.level(src), get.level(dst) ),
-    `00` = {
-      dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-      .Call( "cuR_transf_0_0", src, dst, dims, cols.src, cols.dst )
-    },
-    `01` = {
-      dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-      .Call( "cuR_transf_0_12", src, dst, dims, cols.src, cols.dst )
-    },
+    paste0( get.level(src), get.level(dst), type ),
+    # These will be doubles actually
+    `00f` = .Call( "cuR_transf_0_0_f", src, dst, dims, cols.src, cols.dst ),
+    `00i` = .Call( "cuR_transf_0_0_i", src, dst, dims, cols.src, cols.dst ),
+    # Logicals are stored as integers
+    `00b` = .Call( "cuR_transf_0_0_i", src, dst, dims, cols.src, cols.dst ),
+
+    # ITT
+    # ...
+
+    `01` = .Call( "cuR_transf_0_12", src, dst, dims, cols.src, cols.dst ),
     `02` = {
       dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
       .Call( "cuR_transf_0_12", src, dst, dims, cols.src, cols.dst )
@@ -163,16 +217,4 @@ trnsfr.ptr = function( src,
   if( is.null(res) ){
     stop( "Transfer was unsuccessful" )
   }
-}
-
-# Helper functions ====
-check.dims = function( dims1, dims2, cols1 = NULL, cols2 = NULL ){
-  if( !is.null( cols1 ) ) dims1[[2]] <- length( cols1 )
-  if( !is.null( cols2 ) ) dims2[[2]] <- length( cols2 )
-
-  if( !identical( dims1, dims2 ) ){
-    stop( "Dimensions do not match" )
-  }
-
-  dims1
 }

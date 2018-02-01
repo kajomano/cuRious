@@ -74,17 +74,17 @@ check.cuda.stream <- function( ... ){
   }
 }
 
-is.cuda.stream.active <- function( ... ){
-  check.cuda.stream( ... )
-
-  streams <- list( ... )
-  sapply( streams, function( stream ){
-    stream$is.active
-  })
-}
-
-check.cuda.stream.active <- function( ... ){
-  if( !all( is.cuda.stream.active( ... ) ) ){
-    stop( "Not all CUDA streams are active" )
-  }
-}
+# is.cuda.stream.active <- function( ... ){
+#   check.cuda.stream( ... )
+#
+#   streams <- list( ... )
+#   sapply( streams, function( stream ){
+#     stream$is.active
+#   })
+# }
+#
+# check.cuda.stream.active <- function( ... ){
+#   if( !all( is.cuda.stream.active( ... ) ) ){
+#     stop( "Not all CUDA streams are active" )
+#   }
+# }

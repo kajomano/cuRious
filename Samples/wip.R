@@ -16,6 +16,14 @@ library( microbenchmark )
 # TODO ====
 # transfer egyen meg .ptr-eket is
 
-test <- create.obj( c(1L,1L) )
+test <- create.obj( c(1L,1L), level = 0, type = "numeric" )
+tens <- tensor$new( test )
+
+test <- create.obj( c(3L,3L), level = 0, type = "logical" )
+
+get.type(test)
+class( test )[[1]]
+
+test
 destroy.obj( test )
 test

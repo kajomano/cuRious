@@ -1,16 +1,11 @@
 # .Calls: src/tensor.cpp
 #
-# cuRious currently supports 1D and 2D tensors, 3D tensors might be implemented
-# later for convolutional networks and/or Dropout/connect. Scalar values can be
+# cuRious currently supports 1D and 2D tensors. Scalar values can be
 # easily passed to the GPU as function arguments, no need to use the tensor
 # framework for them.
 
 # TODO ====
 # Check for missing values
-
-# TODO ====
-# Store important attributes in here too, as they are unmodifiable here
-# and use them if they are available, trnsfr.ptr should take these as arguments
 
 # Tensor class ====
 tensor <- R6Class(
@@ -18,30 +13,27 @@ tensor <- R6Class(
   public = list(
 
     initialize = function( obj ){
-      private$dims   <- get.dims( obj )
-      private$tensor <- private$create.dummy( get.level( obj ) )
-
-      # Force storage type
-      force.double( obj )
+      # Dims and type are fixed from this point on, no way to modify them
+      private$dims  <- get.dims( obj )
+      private$type  <- get.type( obj )
+      private$level <- get.level( obj )
+      private$obj   <- private$create.obj( self$get.level )
 
       # Copy the data (in C) even if it is an R object to not have soft copies
       # that could later be messed up by pull() or other transfers
-      transfer( obj, self )
+      transfer( obj, private$obj )
     },
 
     transform = function( level = 0 ){
       if( self$get.level != level ){
-        # Create placeholder
-        temp.tensor.ptr <- private$create.dummy( level )
+        # No need to check anything
+        # Create a placeholder and copy
+        temp <- private$create.obj( level )
+        transfer( private$obj, temp )
 
-        # TODO ====
-        # Call proper transfer here
-
-        # Call a low-level transfer, we know all arguments are in correct form
-        transfer( private$tensor, temp.tensor )
-
-        # Replace current tensor
-        private$tensor <- temp.tensor
+        # Forcibly destroy the previous obj and overwrite
+        destroy.obj( private$obj )
+        private$obj <- temp
       }
 
       invisible( self )
@@ -65,31 +57,35 @@ tensor <- R6Class(
   ),
 
   private = list(
-    tensor = NULL,
-    dims   = NULL,
-    type   = NULL,
-    level  = NULL,
+    dims  = NULL,
+    type  = NULL,
+    level = NULL,
+    obj   = NULL,
 
-    create.dummy = function( level = 0 ){
-      create.dummy( private$dims, level )
+    create.obj = function( level = 0 ){
+      create.obj( self$get.dims, level, self$get.type )
     }
   ),
 
   active = list(
-    get.tensor = function( val ){
-      if( missing(val) ) return( private$tensor )
+    get.obj = function( val ){
+      if( missing(val) ) return( private$obj )
     },
 
     get.dims = function( val ){
-      if( missing(val) ) return( get.dims( private$tensor ) )
+      if( missing(val) ) return( private$dims )
+    },
+
+    get.type = function( val ){
+      if( missing(val) ) return( private$type )
     },
 
     get.level = function( val ){
-      if( missing(val) ) return( get.level( private$tensor ) )
+      if( missing(val) ) return( private$level )
     },
 
     get.l = function( val ){
-      if( missing(val) ) return( prod( private$dims ) )
+      if( missing(val) ) return( prod( self$get.dims ) )
     },
 
     is.under = function( val ){
@@ -99,13 +95,6 @@ tensor <- R6Class(
 )
 
 # Helper functions ====
-is.tensor.ptr <- function( ... ){
-  objs <- list( ... )
-  sapply( objs, function( obj ){
-    "tensor.ptr" %in% class( obj )
-  })
-}
-
 is.tensor <- function( ... ){
   objs <- list( ... )
   sapply( objs, function( obj ){

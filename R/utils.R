@@ -1,9 +1,9 @@
-# Tensor types
-tensor.types <- c( f = "numeric", i = "integer", b = "logical" )
+# Object types
+obj.types <- c( f = "numeric", i = "integer", b = "logical" )
 
-# Placeholder object creator
+# Placeholder object creator, type is an R type here
 create.obj <- function( dims, level = 0, type = "numeric" ){
-  type <- match.arg( type, tensor.types )
+  type <- match.arg( type, obj.types )
 
   if( prod( dims ) > 2^32-1 ){
     # TODO ====
@@ -33,7 +33,7 @@ duplicate.obj <- function( obj ){
   if( cl == "tensor" ){
     tensor$new( obj )
   }else if( cl %in% c( "tensor.ptr", "matrix", "numeric", "integer", "logical" ) ){
-    duplicate <- create.obj( get.dims( obj ), get.level( obj ), get.type( obj ) )
+    duplicate <- create.obj( get.dims( obj ), get.level( obj ), obj.types[[get.type( obj )]] )
     transfer( obj, duplicate )
     duplicate
   }else{
@@ -41,11 +41,11 @@ duplicate.obj <- function( obj ){
   }
 }
 
-# Remove an object, completely freeing up allocated memory space
-destroy.obj <- function( obj ){
+# Access the core pointer of an object
+get.obj <- function( obj ){
   obj.ptr <- switch(
     class( obj )[[1]],
-    tensor     = obj$get.tensor,
+    tensor     = obj$get.obj,
     tensor.ptr = obj,
     matrix     = obj,
     numeric    = obj,
@@ -53,6 +53,11 @@ destroy.obj <- function( obj ){
     logical    = obj,
     stop( "Invalid object" )
   )
+}
+
+# Remove an object, completely freeing up allocated memory space
+destroy.obj <- function( obj ){
+  obj.ptr <- get.obj( obj )
 
   switch(
     as.character( get.level( obj.ptr ) ),
@@ -68,22 +73,23 @@ destroy.obj <- function( obj ){
           inherits = TRUE )
 }
 
-# Get storage type
+# Get storage type (these are C types, mapping is on top in obj.types)
 get.type <- function( obj ){
   switch(
     class( obj )[[1]],
     tensor     = obj$get.type,
     tensor.ptr = attr( obj, "type" ),
     matrix     = {
-      mode <- storage.mode( matrix )
-      if( !(mode %in% tensor.types) ){
+      mode <- storage.mode( obj )
+      if( !(mode %in% obj.types) ){
         stop("Invalid type")
       }
-      mode
+
+      names(obj.types)[[ which( obj.types == mode ) ]]
     },
-    numeric    = "numeric",
-    integer    = "integer",
-    logical    = "logical",
+    numeric    = "f",
+    integer    = "i",
+    logical    = "b",
     stop("Invalid object or type")
   )
 }

@@ -241,4 +241,4 @@ print( microbenchmark( proc.CUDA.sync(),  times = 10 ) )
 # Did we get the same result?
 print( identical( mat.out.CUDA, mat.out.CUDA.async ) )
 
-clean.global()
+# clean.global()

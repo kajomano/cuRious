@@ -92,8 +92,8 @@ stream$activate()
 tens.X$transform( 2 )
 tens.Y$transform( 3 )
 
-microbenchmark( transfer( tens.X, tens.Y ), times = 10 )                 # sync
-microbenchmark( transfer( tens.X, tens.Y, stream = stream ), times = 10 )# async
+print( microbenchmark( transfer( tens.X, tens.Y ), times = 10 ) )                  # sync
+print( microbenchmark( transfer( tens.X, tens.Y, stream = stream ), times = 10 ) ) # async
 
 # The asynchronous call is much faster, because it returns before the actual
 # data transfer is completed. This can be useful for overlapping data transfers

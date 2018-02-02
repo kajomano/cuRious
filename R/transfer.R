@@ -106,17 +106,17 @@ transfer <- function( src,
   }
 
   # Main low level transfer call
-  transfer.obj( obj.src,
-                obj.dst,
-                level.src,
-                level.dst,
-                type.src,
-                dims.src,
-                off.cols.src,
-                off.cols.dst,
-                obj.cols.src,
-                obj.cols.dst,
-                stream )
+  transfer.core( obj.src,
+                 obj.dst,
+                 level.src,
+                 level.dst,
+                 type.src,
+                 dims.src,
+                 off.cols.src,
+                 off.cols.dst,
+                 obj.cols.src,
+                 obj.cols.dst,
+                 stream )
 
   # Return destination
   invisible( dst )
@@ -126,7 +126,7 @@ transfer <- function( src,
 # no argument checks are done, don't use interactively or in any place where
 # speed is not critical!
 # Switch hell
-transfer.obj = function( src,
+transfer.core = function( src,
                          dst,
                          level.src,
                          level.dst,
@@ -140,10 +140,10 @@ transfer.obj = function( src,
   res <- switch(
     paste0( get.level(src), get.level(dst), type ),
     # These will be doubles actually
-    `00f` = .Call( "cuR_transf_0_0_f", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst ),
-    `00i` = .Call( "cuR_transf_0_0_i", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst ),
+    `00f` = .Call( "cuR_transfer_0_0_d", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst ),
+    `00i` = .Call( "cuR_transfer_0_0_i", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst ),
     # Logicals are stored as integers
-    `00b` = .Call( "cuR_transf_0_0_i", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst ),
+    `00b` = .Call( "cuR_transfer_0_0_i", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst )
 
     # ITT
     # ...

@@ -1,5 +1,5 @@
 # Object types
-obj.types <- c( f = "numeric", i = "integer", b = "logical" )
+obj.types <- c( f = "double", i = "integer", b = "logical" )
 
 # Placeholder object creator, type is an R type here
 create.obj <- function( dims, level = 0, type = "numeric" ){

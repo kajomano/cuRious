@@ -63,7 +63,7 @@ tensor <- R6Class(
     obj   = NULL,
 
     create.obj = function( level = 0 ){
-      create.obj( self$get.dims, level, self$get.type )
+      create.obj( self$get.dims, level, obj.types[[self$get.type]] )
     }
   ),
 

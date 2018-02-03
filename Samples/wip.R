@@ -24,6 +24,13 @@ tens$get.obj
 get.type(test)
 class( test )[[1]]
 
+l <- 1000
+d <- 1000
+k <- 100
+x <- matrix( rnorm( l*d ), l, d )
+c <- x[ sample(1:l, k),]
+microbenchmark( kmeans( x, c ), times = 10 )
+
 test
 destroy.obj( test )
 test

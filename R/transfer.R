@@ -50,14 +50,14 @@ transfer <- function( src,
         stop( "Source column range out of bounds" )
       }
       off.cols.src  <- range.cols.src[[1]]
-      dims.src[[2]] <- range.cols.src[[2]] - range.cols.src[[1]]
+      dims.src[[2]] <- range.cols.src[[2]] - range.cols.src[[1]] + 1L
     }else{
       if( level.src == 3 || level.dst == 3 || get.level( cols.src ) == 3 ){
         stop( "Column subset does not work with L3 tensors" )
       }
 
-      if( get.type( cols.src ) != "integer" ){
-        stop( "Source columns are not integers" )
+      if( get.type( cols.src ) != "i" ){
+        stop( "Source column subset is not integer" )
       }
 
       obj.cols.src  <- get.obj( cols.src )
@@ -78,14 +78,14 @@ transfer <- function( src,
         stop( "Source column range out of bounds" )
       }
       off.cols.dst  <- range.cols.dst[[1]]
-      dims.dst[[2]] <- range.cols.dst[[2]] - range.cols.dst[[1]]
+      dims.dst[[2]] <- range.cols.dst[[2]] - range.cols.dst[[1]] + 1L
     }else{
       if( level.src == 3 || level.dst == 3 || get.level( cols.dst ) == 3 ){
         stop( "Column subset does not work with L3 tensors" )
       }
 
-      if( get.type( cols.dst ) != "integer" ){
-        stop( "Source columns are not integers" )
+      if( get.type( cols.dst ) != "i" ){
+        stop( "Destiantio column subset is not integer" )
       }
 
       obj.cols.dst  <- get.obj( cols.dst )
@@ -139,11 +139,9 @@ transfer.core = function( src,
                          stream       = NULL ){
   res <- switch(
     paste0( get.level(src), get.level(dst), type ),
-    # These will be doubles actually
-    `00f` = .Call( "cuR_transfer_0_0_d", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst ),
+    `00n` = .Call( "cuR_transfer_0_0_n", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst ),
     `00i` = .Call( "cuR_transfer_0_0_i", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst ),
-    # Logicals are stored as integers
-    `00b` = .Call( "cuR_transfer_0_0_i", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst )
+    `00l` = .Call( "cuR_transfer_0_0_l", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst )
 
     # ITT
     # ...

@@ -36,9 +36,9 @@ SEXP cuR_create_tensor_1( SEXP dims_r ){
 }
 
 extern "C"
-SEXP cuR_create_tensor_1f( SEXP dims_r ){
+SEXP cuR_create_tensor_1n( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_1<float>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("f") );
+  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("n") );
 
   Rf_unprotect(1);
   return tens_r;
@@ -54,9 +54,9 @@ SEXP cuR_create_tensor_1i( SEXP dims_r ){
 }
 
 extern "C"
-SEXP cuR_create_tensor_1b( SEXP dims_r ){
+SEXP cuR_create_tensor_1l( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_1<bool>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("b") );
+  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("l") );
 
   Rf_unprotect(1);
   return tens_r;
@@ -110,9 +110,9 @@ SEXP cuR_create_tensor_2( SEXP dims_r ){
 }
 
 extern "C"
-SEXP cuR_create_tensor_2f( SEXP dims_r ){
+SEXP cuR_create_tensor_2n( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_2<float>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("f") );
+  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("n") );
 
   Rf_unprotect(1);
   return tens_r;
@@ -128,9 +128,9 @@ SEXP cuR_create_tensor_2i( SEXP dims_r ){
 }
 
 extern "C"
-SEXP cuR_create_tensor_2b( SEXP dims_r ){
+SEXP cuR_create_tensor_2l( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_2<bool>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("b") );
+  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("l") );
 
   Rf_unprotect(1);
   return tens_r;
@@ -183,9 +183,9 @@ SEXP cuR_create_tensor_3( SEXP dims_r ){
 }
 
 extern "C"
-SEXP cuR_create_tensor_3f( SEXP dims_r ){
+SEXP cuR_create_tensor_3n( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_3<float>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("f") );
+  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("i") );
 
   Rf_unprotect(1);
   return tens_r;
@@ -201,9 +201,9 @@ SEXP cuR_create_tensor_3i( SEXP dims_r ){
 }
 
 extern "C"
-SEXP cuR_create_tensor_3b( SEXP dims_r ){
+SEXP cuR_create_tensor_3l( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_3<bool>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("b") );
+  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("l") );
 
   Rf_unprotect(1);
   return tens_r;

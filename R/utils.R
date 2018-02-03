@@ -1,5 +1,5 @@
 # Object types
-obj.types <- c( f = "double", i = "integer", b = "logical" )
+obj.types <- c( n = "numeric", i = "integer", l = "logical" )
 
 # Placeholder object creator, type is an R type here
 create.obj <- function( dims, level = 0, type = "numeric" ){
@@ -87,9 +87,9 @@ get.type <- function( obj ){
 
       names(obj.types)[[ which( obj.types == mode ) ]]
     },
-    numeric    = "f",
+    numeric    = "n",
     integer    = "i",
-    logical    = "b",
+    logical    = "l",
     stop("Invalid object or type")
   )
 }

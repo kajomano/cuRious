@@ -34,14 +34,18 @@
 
 template <typename s, typename d>
 void cuR_transfer( s* src, d* dst, int* dims, int osrc, int odst, int* csrc, int* cdst ){
+  // Convert to 0 based indexing
+  osrc-=1;
+  odst-=1;
+
   // Offsets disable column subsetting for safety
   if( osrc ){
-    src  = src + osrc;
+    src  = src + (osrc * dims[0]);
     csrc = NULL;
   }
 
   if( odst ){
-    dst  = dst + odst;
+    dst  = dst + (odst * dims[0]);
     cdst = NULL;
   }
 
@@ -163,18 +167,53 @@ void cuR_transfer( s* src, d* dst, int* dims, int osrc, int odst, int* csrc, int
 // -----------------------------------------------------------------------------
 
 extern "C"
-SEXP cuR_transfer_0_0_d( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+SEXP cuR_transfer_0_0_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
 
   double* src = REAL( src_r );
   double* dst = REAL( dst_r );
   int* dims   = INTEGER( dims_r );
-  int osrc    = ( R_NilValue == osrc_r ) ? 0 : Rf_asInteger( osrc_r );
-  int odst    = ( R_NilValue == odst_r ) ? 0 : Rf_asInteger( odst_r );
+  int osrc    = ( R_NilValue == osrc_r ) ? 1 : Rf_asInteger( osrc_r );
+  int odst    = ( R_NilValue == odst_r ) ? 1 : Rf_asInteger( odst_r );
   int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
   int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
 
   cuR_transfer<double, double>( src, dst, dims, osrc, odst, csrc, cdst );
-  // cuR_dd( src, dst, dims, csrc, cdst );
+
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
+
+extern "C"
+SEXP cuR_transfer_0_0_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+
+  int* src    = INTEGER( src_r );
+  int* dst    = INTEGER( dst_r );
+  int* dims   = INTEGER( dims_r );
+  int osrc    = ( R_NilValue == osrc_r ) ? 1 : Rf_asInteger( osrc_r );
+  int odst    = ( R_NilValue == odst_r ) ? 1 : Rf_asInteger( odst_r );
+  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
+  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+
+  cuR_transfer<int, int>( src, dst, dims, osrc, odst, csrc, cdst );
+
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
+
+extern "C"
+SEXP cuR_transfer_0_0_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+
+  int* src    = LOGICAL( src_r );
+  int* dst    = LOGICAL( dst_r );
+  int* dims   = INTEGER( dims_r );
+  int osrc    = ( R_NilValue == osrc_r ) ? 1 : Rf_asInteger( osrc_r );
+  int odst    = ( R_NilValue == odst_r ) ? 1 : Rf_asInteger( odst_r );
+  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
+  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+
+  cuR_transfer<int, int>( src, dst, dims, osrc, odst, csrc, cdst );
 
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
   Rf_unprotect(1);

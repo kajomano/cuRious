@@ -16,8 +16,15 @@ library( microbenchmark )
 # TODO ====
 # transfer egyen meg .ptr-eket is
 
-test <- create.obj( c(2L,3L), level = 0, type = "double" )
-test <- matrix( as.numeric(1:6), 2, 3 )
+test1 <- create.obj( c(2L,3L), level = 0, type = "l" )
+test2 <- matrix( as.logical(1:6), 2, 3 )
+
+microbenchmark( transfer.core( test2, test1, 0L, 0L, "l", c( 2L, 3L ) ), times = 100 )
+microbenchmark( transfer( test2, test1 ), times = 100 )
+
+test1
+
+
 tens <- tensor$new( test )
 tens$get.obj
 

@@ -138,10 +138,49 @@ transfer.core = function( src,
                          obj.cols.dst = NULL,
                          stream       = NULL ){
   res <- switch(
-    paste0( get.level(src), get.level(dst), type ),
-    `00n` = .Call( "cuR_transfer_0_0_n", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst ),
-    `00i` = .Call( "cuR_transfer_0_0_i", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst ),
-    `00l` = .Call( "cuR_transfer_0_0_l", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst )
+    get.level(src) + 1,
+    `0` = {
+      switch(
+        get.level(dst) + 1,
+        `0` = {
+          .Call( paste0( "cuR_transfer_0_0_", type ),
+                 src,
+                 dst,
+                 dims,
+                 off.cols.src,
+                 off.cols.dst,
+                 obj.cols.src,
+                 obj.cols.dst )
+        },
+        `1` = {
+          .Call( paste0( "cuR_transfer_0_12_", type ),
+                 src,
+                 dst,
+                 dims,
+                 off.cols.src,
+                 off.cols.dst,
+                 obj.cols.src,
+                 obj.cols.dst )
+        },
+        `2` = {
+          .Call( paste0( "cuR_transfer_0_12_", type ),
+                 src,
+                 dst,
+                 dims,
+                 off.cols.src,
+                 off.cols.dst,
+                 obj.cols.src,
+                 obj.cols.dst )
+        }
+      )
+    }
+  )
+
+  # res <- switch(
+  #   paste0( get.level(src), get.level(dst), type ),
+  #   `00n` = .Call( "cuR_transfer_0_0_n", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst ),
+  #   `00i` = .Call( "cuR_transfer_0_0_i", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst ),
+  #   `00l` = .Call( "cuR_transfer_0_0_l", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst )
 
     # ITT
     # ...
@@ -214,7 +253,7 @@ transfer.core = function( src,
     #   dims <- check.dims( dims.src, dims.dst )
     #   .Call( "cuR_transf_3_3", src, dst, dims, stream )
     # }
-  )
+  # )
 
   if( is.null(res) ){
     stop( "Transfer was unsuccessful" )

@@ -1,10 +1,4 @@
-# .Calls: src/transfer.cpp, src/tensor.cpp
-
-# TODO ====
-# Create from-to continous (range) subsetting
-
-# TODO ====
-# All checks should be in transfer, not in trnsfr.ptr
+# .Calls: src/transfer.cpp
 
 # This function is a general tool for copying data between tensors or R objects
 # residing on any level, therefore it is horribly bloated :D
@@ -37,7 +31,7 @@ transfer <- function( src,
     stop( "Object types do not match" )
   }
 
-  # Source columns
+  # Source column subset/ranges
   off.cols.src <- NULL
   obj.cols.src <- NULL
 
@@ -65,7 +59,7 @@ transfer <- function( src,
     }
   }
 
-  # Destination columns
+  # Destination column subset/ranges
   off.cols.dst <- NULL
   obj.cols.dst <- NULL
 
@@ -85,7 +79,7 @@ transfer <- function( src,
       }
 
       if( get.type( cols.dst ) != "i" ){
-        stop( "Destiantio column subset is not integer" )
+        stop( "Destiantion column subset is not integer" )
       }
 
       obj.cols.dst  <- get.obj( cols.dst )
@@ -105,21 +99,47 @@ transfer <- function( src,
     stream <- stream$get.stream
   }
 
-  # Main low level transfer call
-  transfer.core( obj.src,
-                 obj.dst,
-                 level.src,
-                 level.dst,
-                 type.src,
-                 dims.src,
-                 off.cols.src,
-                 off.cols.dst,
-                 obj.cols.src,
-                 obj.cols.dst,
-                 stream )
+  # Main low level transfer calls
+  if( level.src == 0L && level.dst == 3L || level.src == 3L && level.dst == 0L ){
+    # Multi-transfer call 0L-2L-3L or 3L-2L-0L
+    temp <- create.obj( dims.src, 2, type.src )
+
+    transfer.core( obj.src,
+                   temp,
+                   level.src,
+                   2L,
+                   type.src,
+                   dims.src,
+                   off.cols.src,
+                   NULL )
+
+    transfer.core( temp,
+                   obj.dst,
+                   2L,
+                   level.dst,
+                   type.src,
+                   dims.src,
+                   NULL,
+                   off.cols.dst )
+
+    destroy.obj( temp )
+  }else{
+    # Single-transfer calls
+    transfer.core( obj.src,
+                   obj.dst,
+                   level.src,
+                   level.dst,
+                   type.src,
+                   dims.src,
+                   off.cols.src,
+                   off.cols.dst,
+                   obj.cols.src,
+                   obj.cols.dst,
+                   stream )
+  }
 
   # Return destination
-  invisible( dst )
+  dst
 }
 
 # Low level transfer call that handles objects, for speed considerations
@@ -127,16 +147,16 @@ transfer <- function( src,
 # speed is not critical!
 # Switch hell
 transfer.core = function( src,
-                         dst,
-                         level.src,
-                         level.dst,
-                         type,
-                         dims,
-                         off.cols.src = NULL,
-                         off.cols.dst = NULL,
-                         obj.cols.src = NULL,
-                         obj.cols.dst = NULL,
-                         stream       = NULL ){
+                          dst,
+                          level.src,
+                          level.dst,
+                          type,
+                          dims,
+                          off.cols.src = NULL,
+                          off.cols.dst = NULL,
+                          obj.cols.src = NULL,
+                          obj.cols.dst = NULL,
+                          stream       = NULL ){
   res <- switch(
     get.level(src) + 1,
     `0` = {
@@ -171,89 +191,133 @@ transfer.core = function( src,
                  off.cols.dst,
                  obj.cols.src,
                  obj.cols.dst )
-        }
+        },
+        stop( "Invalid level" )
       )
-    }
+    },
+    `1` = {
+      switch(
+        get.level(dst) + 1,
+        `0` = {
+          .Call( paste0( "cuR_transfer_12_0_", type ),
+                 src,
+                 dst,
+                 dims,
+                 off.cols.src,
+                 off.cols.dst,
+                 obj.cols.src,
+                 obj.cols.dst )
+        },
+        `1` = {
+          .Call( paste0( "cuR_transfer_12_12_", type ),
+                 src,
+                 dst,
+                 dims,
+                 off.cols.src,
+                 off.cols.dst,
+                 obj.cols.src,
+                 obj.cols.dst )
+        },
+        `2` = {
+          .Call( paste0( "cuR_transfer_12_12_", type ),
+                 src,
+                 dst,
+                 dims,
+                 off.cols.src,
+                 off.cols.dst,
+                 obj.cols.src,
+                 obj.cols.dst )
+        },
+        `3` = {
+          .Call( paste0( "cuR_transfer_1_3_", type ),
+                 src,
+                 dst,
+                 dims,
+                 off.cols.src,
+                 off.cols.dst )
+        },
+        stop( "Invalid level" )
+      )
+    },
+    `2` = {
+      switch(
+        get.level(dst) + 1,
+        `0` = {
+          .Call( paste0( "cuR_transfer_12_0_", type ),
+                 src,
+                 dst,
+                 dims,
+                 off.cols.src,
+                 off.cols.dst,
+                 obj.cols.src,
+                 obj.cols.dst )
+        },
+        `1` = {
+          .Call( paste0( "cuR_transfer_12_12_", type ),
+                 src,
+                 dst,
+                 dims,
+                 off.cols.src,
+                 off.cols.dst,
+                 obj.cols.src,
+                 obj.cols.dst )
+        },
+        `2` = {
+          .Call( paste0( "cuR_transfer_12_12_", type ),
+                 src,
+                 dst,
+                 dims,
+                 off.cols.src,
+                 off.cols.dst,
+                 obj.cols.src,
+                 obj.cols.dst )
+        },
+        `3` = {
+          .Call( paste0( "cuR_transfer_2_3_", type ),
+                 src,
+                 dst,
+                 dims,
+                 off.cols.src,
+                 off.cols.dst,
+                 stream )
+        },
+        stop( "Invalid level" )
+      )
+    },
+    `3` = {
+      switch(
+        get.level(dst) + 1,
+        `1` = {
+          .Call( paste0( "cuR_transfer_3_1_", type ),
+                 src,
+                 dst,
+                 dims,
+                 off.cols.src,
+                 off.cols.dst )
+        },
+        `2` = {
+          .Call( paste0( "cuR_transfer_3_2_", type ),
+                 src,
+                 dst,
+                 dims,
+                 off.cols.src,
+                 off.cols.dst,
+                 stream )
+        },
+        `3` = {
+          .Call( paste0( "cuR_transfer_3_3_", type ),
+                 src,
+                 dst,
+                 dims,
+                 off.cols.src,
+                 off.cols.dst,
+                 stream )
+        },
+        stop( "Invalid level" )
+      )
+    },
+    stop( "Invalid level" )
   )
-
-  # res <- switch(
-  #   paste0( get.level(src), get.level(dst), type ),
-  #   `00n` = .Call( "cuR_transfer_0_0_n", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst ),
-  #   `00i` = .Call( "cuR_transfer_0_0_i", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst ),
-  #   `00l` = .Call( "cuR_transfer_0_0_l", src, dst, dims, off.cols.src, off.cols.dst, obj.cols.src, obj.cols.dst )
-
-    # ITT
-    # ...
-
-    # `01` = .Call( "cuR_transf_0_12", src, dst, dims, cols.src, cols.dst ),
-    # `02` = {
-    #   dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-    #   .Call( "cuR_transf_0_12", src, dst, dims, cols.src, cols.dst )
-    # },
-    # `03` = {
-    #   dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-    #   # This is a multi-stage transfer
-    #   temp <- create.dummy( dims.dst, 2L )
-    #   trnsfr.ptr( src, temp, cols.src, cols.dst )
-    #   trnsfr.ptr( temp, dst )
-    #   .Call( "cuR_destroy_tensor_2", temp )
-    # },
-    #
-    # `10` = {
-    #   dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-    #   .Call( "cuR_transf_12_0", src, dst, dims, cols.src, cols.dst )
-    # },
-    # `11` = {
-    #   dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-    #   .Call( "cuR_transf_12_12", src, dst, dims, cols.src, cols.dst )
-    # },
-    # `12` = {
-    #   dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-    #   .Call( "cuR_transf_12_12", src, dst, dims, cols.src, cols.dst )
-    # },
-    # `13` = {
-    #   dims <- check.dims( dims.src, dims.dst )
-    #   .Call( "cuR_transf_1_3", src, dst, dims )
-    # },
-    #
-    # `20` = {
-    #   dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-    #   .Call( "cuR_transf_12_0", src, dst, dims, cols.src, cols.dst )
-    # },
-    # `21` = {
-    #   dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-    #   .Call( "cuR_transf_12_12", src, dst, dims, cols.src, cols.dst )
-    # },
-    # `22` = {
-    #   dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-    #   .Call( "cuR_transf_12_12", src, dst, dims, cols.src, cols.dst )
-    # },
-    # `23` = {
-    #   dims <- check.dims( dims.src, dims.dst )
-    #   .Call( "cuR_transf_2_3", src, dst, dims, stream )
-    # },
-    #
-    # `30` = {
-    #   dims <- check.dims( dims.src, dims.dst, cols.src, cols.dst )
-    #   # This is a multi-stage transfer
-    #   temp <- create.dummy( dims.src, 2L )
-    #   trnsfr.ptr( src, temp )
-    #   trnsfr.ptr( temp, dst, cols.src, cols.dst )
-    #   .Call( "cuR_destroy_tensor_2", temp )
-    # },
-    # `31` = {
-    #   dims <- check.dims( dims.src, dims.dst )
-    #   .Call( "cuR_transf_3_1", src, dst, dims )
-    # },
-    # `32` = {
-    #   dims <- check.dims( dims.src, dims.dst )
-    #   .Call( "cuR_transf_3_2", src, dst, dims, stream )
-    # },
-    # `33` = {
-    #   dims <- check.dims( dims.src, dims.dst )
-    #   .Call( "cuR_transf_3_3", src, dst, dims, stream )
-    # }
-  # )
 
   if( is.null(res) ){
     stop( "Transfer was unsuccessful" )

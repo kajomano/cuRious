@@ -1,3 +1,5 @@
+# .Calls: src/tensor.cpp
+
 # Object types
 obj.types <- c( n = "numeric", i = "integer", l = "logical" )
 
@@ -20,9 +22,9 @@ create.obj <- function( dims, level = 0, type = "numeric" ){
         matrix( vector( type, 1 ), nrow = dims[1], ncol = dims[2] )
       }
     },
-    `1` = .Call( paste0("cuR_create_tensor_1", names(type)), dims ),
-    `2` = .Call( paste0("cuR_create_tensor_2", names(type)), dims ),
-    `3` = .Call( paste0("cuR_create_tensor_3", names(type)), dims ),
+    `1` = .Call( paste0("cuR_create_tensor_1_", names(type)), dims ),
+    `2` = .Call( paste0("cuR_create_tensor_2_", names(type)), dims ),
+    `3` = .Call( paste0("cuR_create_tensor_3_", names(type)), dims ),
     stop( "Invalid level" )
   )
 }
@@ -57,16 +59,20 @@ get.obj <- function( obj ){
 
 # Remove an object, completely freeing up allocated memory space
 destroy.obj <- function( obj ){
-  obj.ptr <- get.obj( obj )
-
-  switch(
-    as.character( get.level( obj.ptr ) ),
-    `1` = .Call( "cuR_destroy_tensor_1", obj.ptr ),
-    `2` = .Call( "cuR_destroy_tensor_2", obj.ptr ),
-    `3` = .Call( "cuR_destroy_tensor_3", obj.ptr )
-  )
+  if( is.tensor( obj ) ){
+    obj$destroy()
+  }else{
+    switch(
+      get.level( obj ) + 1,
+      {},
+      .Call( "cuR_destroy_tensor_1", obj ),
+      .Call( "cuR_destroy_tensor_2", obj ),
+      .Call( "cuR_destroy_tensor_3", obj )
+    )
+  }
 
   # Assign NULL
+  # Sketch
   assign( as.character(substitute(obj) ),
           NULL,
           envir = parent.frame(),
@@ -81,6 +87,8 @@ get.type <- function( obj ){
     tensor.ptr = attr( obj, "type" ),
     matrix     = {
       mode <- storage.mode( obj )
+      if( mode == "double" ) mode <- "numeric"
+
       if( !(mode %in% obj.types) ){
         stop("Invalid type")
       }

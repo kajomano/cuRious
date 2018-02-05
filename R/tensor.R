@@ -17,7 +17,7 @@ tensor <- R6Class(
       private$dims  <- get.dims( obj )
       private$type  <- get.type( obj )
       private$level <- get.level( obj )
-      private$obj   <- private$create.obj( self$get.level )
+      private$obj   <- private$create.obj( private$level )
 
       # Copy the data (in C) even if it is an R object to not have soft copies
       # that could later be messed up by pull() or other transfers
@@ -25,34 +25,47 @@ tensor <- R6Class(
     },
 
     transform = function( level = 0 ){
-      if( self$get.level != level ){
+      private$check.destroyed()
+
+      if( private$level != level ){
         # No need to check anything
         # Create a placeholder and copy
         temp <- private$create.obj( level )
         transfer( private$obj, temp )
 
         # Forcibly destroy the previous obj and overwrite
-        destroy.obj( private$obj )
+        self$destroy()
         private$obj <- temp
       }
 
-      invisible( self )
+      self
     },
 
     dive = function(){
+      private$check.destroyed()
       self$transform( 3 )
     },
 
     surface = function(){
+      private$check.destroyed()
       self$transform()
     },
 
     push = function( obj ){
+      private$check.destroyed()
       transfer( obj, self )
     },
 
     pull = function( obj = NULL ){
+      private$check.destroyed()
       transfer( self, obj )
+    },
+
+    destroy = function(){
+      private$check.destroyed()
+      obj <- private$obj
+      destroy.obj( obj )
+      private$obj <- NULL
     }
   ),
 
@@ -63,32 +76,44 @@ tensor <- R6Class(
     obj   = NULL,
 
     create.obj = function( level = 0 ){
-      create.obj( self$get.dims, level, obj.types[[self$get.type]] )
+      create.obj( private$dims, level, private$type )
+    },
+
+    check.destroyed = function(){
+      if( is.null(private$obj) ){
+        stop( "The tensor was destroyed previously" )
+      }
     }
   ),
 
   active = list(
     get.obj = function( val ){
+      private$check.destroyed()
       if( missing(val) ) return( private$obj )
     },
 
     get.dims = function( val ){
+      private$check.destroyed()
       if( missing(val) ) return( private$dims )
     },
 
     get.type = function( val ){
+      private$check.destroyed()
       if( missing(val) ) return( private$type )
     },
 
     get.level = function( val ){
+      private$check.destroyed()
       if( missing(val) ) return( private$level )
     },
 
     get.l = function( val ){
+      private$check.destroyed()
       if( missing(val) ) return( prod( self$get.dims ) )
     },
 
     is.under = function( val ){
+      private$check.destroyed()
       if( missing(val) ) return( self$get.level == 3 )
     }
   )

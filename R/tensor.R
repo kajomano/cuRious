@@ -36,6 +36,8 @@ tensor <- R6Class(
         # Forcibly destroy the previous obj and overwrite
         self$destroy()
         private$obj <- temp
+
+        private$level <- level
       }
 
       self

@@ -158,10 +158,10 @@ transfer.core = function( src,
                           obj.cols.dst = NULL,
                           stream       = NULL ){
   res <- switch(
-    get.level(src) + 1,
+    as.character(get.level(src)),
     `0` = {
       switch(
-        get.level(dst) + 1,
+        as.character(get.level(dst)),
         `0` = {
           .Call( paste0( "cuR_transfer_0_0_", type ),
                  src,
@@ -197,7 +197,7 @@ transfer.core = function( src,
     },
     `1` = {
       switch(
-        get.level(dst) + 1,
+        as.character(get.level(dst)),
         `0` = {
           .Call( paste0( "cuR_transfer_12_0_", type ),
                  src,
@@ -241,7 +241,7 @@ transfer.core = function( src,
     },
     `2` = {
       switch(
-        get.level(dst) + 1,
+        as.character(get.level(dst)),
         `0` = {
           .Call( paste0( "cuR_transfer_12_0_", type ),
                  src,
@@ -286,7 +286,7 @@ transfer.core = function( src,
     },
     `3` = {
       switch(
-        get.level(dst) + 1,
+        as.character(get.level(dst)),
         `1` = {
           .Call( paste0( "cuR_transfer_3_1_", type ),
                  src,

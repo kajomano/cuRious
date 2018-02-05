@@ -13,12 +13,12 @@ library( microbenchmark )
 library( cuRious )
 library( microbenchmark )
 
-# for( j in 1:10 ){
-#   for( t in 1:3 ){
-{
-  {
-    j <- 1
-    t <- 3
+for( j in 1:100 ){
+  print( paste0( "Iter: ", j ) )
+
+  for( t in 1:3 ){
+
+    print( paste0( "Type: ", t ) )
 
     rows      <- round( runif( 1, 1, 3000 ) )
     cols      <- round( runif( 1, 1, 2000 ) )
@@ -88,6 +88,12 @@ library( microbenchmark )
       }
     }
 
+    for( lev.x in c(3) ){
+      for( lev.y in c(3) ){
+        lev.comb <- c( lev.comb, list( list(lev.x = lev.x, lev.y = lev.y) ) )
+      }
+    }
+
     stream <- cuda.stream$new()
     stream$activate()
 
@@ -102,7 +108,7 @@ library( microbenchmark )
       x <- tensor$new( matrix( data, rows, cols ) )$transform( lev.x )
       y <- tensor$new( matrix( data[[1]], rows, cols ) )$transform( lev.y )
       transfer( x, y )
-      if( !identical( y$pull(), x$pull() ) ){
+      if( !identical( x$pull(), y$pull() ) ){
         stop("Error in no subsetting L3")
       }
 
@@ -118,7 +124,5 @@ library( microbenchmark )
       }
     }
   }
-
-  print( j )
   clean.global()
 }

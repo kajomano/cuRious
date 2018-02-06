@@ -11,8 +11,8 @@ alg.saxpy <- function( tens.A, tens.B, alpha = 1, stream = NULL ){
 
   # Results go into tens.B
   ret <- .Call( "cuR_alg_saxpy",
-                tens.A$get.tensor,
-                tens.B$get.tensor,
+                tens.A$get.obj,
+                tens.B$get.obj,
                 tens.A$get.l,
                 alpha,
                 stream )

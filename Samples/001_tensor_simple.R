@@ -19,7 +19,7 @@ print( tens.x$pull() )
 print( vect.x )
 
 # The pull operation does not remove the data from GPU memory, as you can see:
-tens.x$get.tensor
+tens.x$get.obj
 
 # Push (copy in) new values into the stored vector on the device. This operation
 # is preferred compared to reinitialization as it does not allocate new memory.
@@ -30,7 +30,7 @@ tens.x$push( rep( 0, times = 10 ) )
 # Let's copy the tensor object. As you can see, it is a shallow copy, pointing
 # to the same memory adress as its predecessor:
 tens.y <- tens.x
-tens.y$get.tensor
+tens.y$get.obj
 
 # Move back (surface) the data to the host memory. Let's also check what happens
 # to the copy. The soft copying mechanism of R6 causes the copy to also surface

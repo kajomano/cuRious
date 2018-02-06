@@ -66,8 +66,10 @@ SEXP cuR_transfer_0_0_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP 
   int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
-  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+  int* csrc   = R_NilValue == csrc_r ? NULL :
+    ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
+  int* cdst   = R_NilValue == cdst_r ? NULL :
+    ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
 
   cuR_transfer_host_host<double, double>( src, dst, dims, osrc, odst, csrc, cdst );
 
@@ -84,8 +86,10 @@ SEXP cuR_transfer_0_0_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP 
   int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
-  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+  int* csrc   = R_NilValue == csrc_r ? NULL :
+    ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
+  int* cdst   = R_NilValue == cdst_r ? NULL :
+    ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
 
   cuR_transfer_host_host<int, int>( src, dst, dims, osrc, odst, csrc, cdst );
 
@@ -102,9 +106,10 @@ SEXP cuR_transfer_0_0_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP 
   int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
-  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
-
+  int* csrc   = R_NilValue == csrc_r ? NULL :
+    ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
+  int* cdst   = R_NilValue == cdst_r ? NULL :
+    ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
   cuR_transfer_host_host<int, int>( src, dst, dims, osrc, odst, csrc, cdst );
 
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
@@ -120,8 +125,10 @@ SEXP cuR_transfer_0_12_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP
   int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
-  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+  int* csrc   = R_NilValue == csrc_r ? NULL :
+    ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
+  int* cdst   = R_NilValue == cdst_r ? NULL :
+    ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
 
   cuR_transfer_host_host<double, float>( src, dst, dims, osrc, odst, csrc, cdst );
 
@@ -138,8 +145,10 @@ SEXP cuR_transfer_0_12_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP
   int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
-  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+  int* csrc   = R_NilValue == csrc_r ? NULL :
+    ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
+  int* cdst   = R_NilValue == cdst_r ? NULL :
+    ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
 
   cuR_transfer_host_host<int, int>( src, dst, dims, osrc, odst, csrc, cdst );
 
@@ -156,8 +165,10 @@ SEXP cuR_transfer_0_12_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP
   int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
-  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+  int* csrc   = R_NilValue == csrc_r ? NULL :
+    ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
+  int* cdst   = R_NilValue == cdst_r ? NULL :
+    ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
 
   cuR_transfer_host_host<int, bool>( src, dst, dims, osrc, odst, csrc, cdst );
 
@@ -174,8 +185,10 @@ SEXP cuR_transfer_12_0_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP
   int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
-  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+  int* csrc   = R_NilValue == csrc_r ? NULL :
+    ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
+  int* cdst   = R_NilValue == cdst_r ? NULL :
+    ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
 
   cuR_transfer_host_host<float, double>( src, dst, dims, osrc, odst, csrc, cdst );
 
@@ -192,8 +205,10 @@ SEXP cuR_transfer_12_0_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP
   int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
-  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+  int* csrc   = R_NilValue == csrc_r ? NULL :
+    ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
+  int* cdst   = R_NilValue == cdst_r ? NULL :
+    ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
 
   cuR_transfer_host_host<int, int>( src, dst, dims, osrc, odst, csrc, cdst );
 
@@ -210,8 +225,10 @@ SEXP cuR_transfer_12_0_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP
   int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
-  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+  int* csrc   = R_NilValue == csrc_r ? NULL :
+    ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
+  int* cdst   = R_NilValue == cdst_r ? NULL :
+    ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
 
   cuR_transfer_host_host<bool, int>( src, dst, dims, osrc, odst, csrc, cdst );
 
@@ -226,10 +243,12 @@ SEXP cuR_transfer_12_12_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEX
   float* src  = (float*)R_ExternalPtrAddr( src_r );
   float* dst  = (float*)R_ExternalPtrAddr( dst_r );
   int* dims   = INTEGER( dims_r );
-  int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
-  int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
-  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+  int osrc    = R_NilValue == osrc_r ? 0 : (Rf_asInteger( osrc_r ) - 1);
+  int odst    = R_NilValue == odst_r ? 0 : (Rf_asInteger( odst_r ) - 1);
+  int* csrc   = R_NilValue == csrc_r ? NULL :
+    ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
+  int* cdst   = R_NilValue == cdst_r ? NULL :
+    ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
 
   cuR_transfer_host_host<float, float>( src, dst, dims, osrc, odst, csrc, cdst );
 
@@ -246,8 +265,10 @@ SEXP cuR_transfer_12_12_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEX
   int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
-  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+  int* csrc   = R_NilValue == csrc_r ? NULL :
+    ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
+  int* cdst   = R_NilValue == cdst_r ? NULL :
+    ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
 
   cuR_transfer_host_host<int, int>( src, dst, dims, osrc, odst, csrc, cdst );
 
@@ -264,8 +285,10 @@ SEXP cuR_transfer_12_12_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEX
   int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = ( R_NilValue == csrc_r ) ? NULL : INTEGER( csrc_r );
-  int* cdst   = ( R_NilValue == cdst_r ) ? NULL : INTEGER( cdst_r );
+  int* csrc   = R_NilValue == csrc_r ? NULL :
+    ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
+  int* cdst   = R_NilValue == cdst_r ? NULL :
+    ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
 
   cuR_transfer_host_host<bool, bool>( src, dst, dims, osrc, odst, csrc, cdst );
 

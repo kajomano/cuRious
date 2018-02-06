@@ -11,16 +11,12 @@ n <- 4
 k <- 5
 
 mat.A <- matrix( as.double( 1:(m*k) ), ncol = k )
-tens.A <- tensor$new( mat.A )
-tens.A$dive()
-
 mat.B <- matrix( as.double( 1:(k*n) ), ncol = n )
-tens.B <- tensor$new( mat.B )
-tens.B$dive()
-
 mat.C <- matrix( as.double( 1:(m*n) ), ncol = n )
-tens.C <- tensor$new( mat.C )
-tens.C$dive()
+
+tens.A <- tensor$new( mat.A )$dive()
+tens.B <- tensor$new( mat.B )$dive()
+tens.C <- tensor$new( mat.C )$dive()
 
 # Create a cuBLAS handle and activate it. An activated cuBLAS handle is needed
 # for each cuBLAS call. As it is costly to create a handle, it is advised to

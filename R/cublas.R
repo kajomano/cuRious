@@ -146,9 +146,9 @@ cublas.sgemm <- function( handle, tens.A, tens.B, tens.C, alpha = 1, beta = 1, t
 
   # Results go into tens.B
   ret <- .Call( "cuR_cublas_sgemm",
-                tens.A$get.tensor,
-                tens.B$get.tensor,
-                tens.C$get.tensor,
+                tens.A$get.obj,
+                tens.B$get.obj,
+                tens.C$get.obj,
                 tens.A$get.dims,
                 tens.B$get.dims,
                 alpha,
@@ -181,8 +181,8 @@ cublas.saxpy <- function( handle, tens.A, tens.B, alpha = 1, stream = NULL ){
 
   # Results go into tens.B
   ret <- .Call( "cuR_cublas_saxpy",
-                tens.A$get.tensor,
-                tens.B$get.tensor,
+                tens.A$get.obj,
+                tens.B$get.obj,
                 tens.A$get.l,
                 alpha,
                 handle$get.handle,

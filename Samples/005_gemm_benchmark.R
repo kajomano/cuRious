@@ -10,16 +10,12 @@ n <- 1000
 k <- 1500
 
 mat.A <- matrix( rnorm(m*k), ncol = k )
-tens.A <- tensor$new( mat.A )
-tens.A$dive()
-
 mat.B <- matrix( rnorm(k*n), ncol = n )
-tens.B <- tensor$new( mat.B )
-tens.B$dive()
-
 mat.C <- matrix( rnorm(m*n), ncol = n )
-tens.C <- tensor$new( mat.C )
-tens.C$dive()
+
+tens.A <- tensor$new( mat.A )$dive()
+tens.B <- tensor$new( mat.B )$dive()
+tens.C <- tensor$new( mat.C )$dive()
 
 alpha <- -1.5
 beta  <- 0.5

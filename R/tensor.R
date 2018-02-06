@@ -40,16 +40,14 @@ tensor <- R6Class(
         private$level <- level
       }
 
-      self
+      invisible( self )
     },
 
     dive = function(){
-      private$check.destroyed()
       self$transform( 3 )
     },
 
     surface = function(){
-      private$check.destroyed()
       self$transform()
     },
 

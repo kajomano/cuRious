@@ -29,9 +29,9 @@ tens.x$surface
 
 # Let's look at the individual levels:
 # On level 0, the tensor is a common R object, as can be seen now:
-tens.x$get.tensor
+tens.x$get.obj
 
-# The tensor's data should not be accessed with the get.tensor accessor.
+# The tensor's data should not be accessed with the get.obj accessor.
 # This is because different tensors and R objects sharing the same memopry space
 # could be modified unintentionally, without R's lazy copy guarding them from
 # this. Instead, the pull() or transfer() (more on this later) operation should
@@ -40,7 +40,7 @@ tens.x$get.tensor
 # When creating a tensor, the initial information is also hard copied this way.
 
 # An example of an unintentional modification:
-not.really.copied.data <- tens.x$get.tensor
+not.really.copied.data <- tens.x$get.obj
 properly.copied.data   <- tens.x$pull()
 
 print( not.really.copied.data )
@@ -60,8 +60,7 @@ print( properly.copied.data )
 # and move the information between tensors by calling transfer( source, dest ).
 big.n <- 10^6
 tens.X <- tensor$new( rnorm( big.n ) )
-tens.Y <- tensor$new( rnorm( big.n ) )
-tens.Y$transform( 1 )
+tens.Y <- tensor$new( rnorm( big.n ) )$transform( 1 )
 
 microbenchmark( transfer( tens.X, tens.Y ), times = 10 ) # L0 -> L0 transfer
 microbenchmark( transfer( tens.X, tens.X ), times = 10 ) # L0 -> L1 transfer
@@ -92,13 +91,14 @@ stream$activate()
 tens.X$transform( 2 )
 tens.Y$transform( 3 )
 
-print( microbenchmark( transfer( tens.X, tens.Y ), times = 10 ) )                  # sync
-print( microbenchmark( transfer( tens.X, tens.Y, stream = stream ), times = 10 ) ) # async
+# sync
+print( microbenchmark( transfer( tens.X, tens.Y ), times = 10 ) )
+# async
+print( microbenchmark( transfer( tens.X, tens.Y, stream=stream ), times = 10 ) )
 
 # The asynchronous call is much faster, because it returns before the actual
 # data transfer is completed. This can be useful for overlapping data transfers
 # with computations, also known as data streaming. This will be shown in a later
-# sample script, but first lets see how to do computation on the device in the
-# next sample script.
+# sample script.
 
 clean.global()

@@ -8,7 +8,11 @@ cuda.stream.sync.all <- function(){
 }
 
 cuda.stream.sync <- function( stream ){
-  check.cuda.stream.active( stream )
+  check.cuda.stream( stream )
+  if( is.null( stream$get.stream ) ){
+    return( invisible( FALSE ) )
+  }
+
   if( is.null( .Call( "cuR_sync_cuda_stream", stream$get.stream ) ) ){
     stop( "Stream could not be synced" )
   }
@@ -73,18 +77,3 @@ check.cuda.stream <- function( ... ){
     stop( "Not all objects are CUDA streams" )
   }
 }
-
-# is.cuda.stream.active <- function( ... ){
-#   check.cuda.stream( ... )
-#
-#   streams <- list( ... )
-#   sapply( streams, function( stream ){
-#     stream$is.active
-#   })
-# }
-#
-# check.cuda.stream.active <- function( ... ){
-#   if( !all( is.cuda.stream.active( ... ) ) ){
-#     stop( "Not all CUDA streams are active" )
-#   }
-# }

@@ -15,9 +15,11 @@ transfer <- function( src,
   obj.src   <- get.obj( src )
 
   # Dst must exist
+  dst.not.supp <- FALSE
   if( is.null(dst) ){
     # If not, create an L0 object of the same type
     dst <- create.obj( dims.src, type = type.src )
+    dst.not.supp <- TRUE
   }
 
   # Dst attributes
@@ -47,7 +49,7 @@ transfer <- function( src,
       dims.src[[2]] <- range.cols.src[[2]] - range.cols.src[[1]] + 1L
     }else{
       if( level.src == 3 || level.dst == 3 || get.level( cols.src ) == 3 ){
-        stop( "Column subset does not work with L3 tensors" )
+        stop( "Individual column subset does not work with L3 tensors" )
       }
 
       if( get.type( cols.src ) != "i" ){
@@ -75,7 +77,7 @@ transfer <- function( src,
       dims.dst[[2]] <- range.cols.dst[[2]] - range.cols.dst[[1]] + 1L
     }else{
       if( level.src == 3 || level.dst == 3 || get.level( cols.dst ) == 3 ){
-        stop( "Column subset does not work with L3 tensors" )
+        stop( "Individual column subset does not work with L3 tensors" )
       }
 
       if( get.type( cols.dst ) != "i" ){
@@ -139,7 +141,11 @@ transfer <- function( src,
   }
 
   # Return destination
-  dst
+  if( dst.not.supp ){
+    return( dst )
+  }
+
+  invisible( dst )
 }
 
 # Low level transfer call that handles objects, for speed considerations

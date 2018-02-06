@@ -11,27 +11,8 @@ library( microbenchmark )
 
 # The main goal with streaming is to reduce memory consumption when handling
 # large data sets, but also to hide the transfer latency behind the computation.
-# For this, the large data needs to be split into smaller parts, which in turn
-# requires us to be able to subset the data. R's matrix subsetting is slow
-# because it allocates new space for the subset, and copies the data. Since
-# we will be transferring this information anyway, the subsetting step can be
-# incorporated into the transfer() function. To this extent, all transfers
-# between hsot memory locations (level 0,1 and 2) are subsettable.
-
-# There is a catch however: the way R and also CUDA expects data is in
-# column-major format, in a continous memory space. Here is an example how this
-# looks:
-#
-# R matrix:     | 1 3 5 |
-#               | 2 4 6 |
-#
-# Memory image: | 1 2 3 4 5 6 |
-#
-# This makes subsetting rows very difficult, and slow. For this reason, cuRious
-# only implements column-wise subsetting. In column-major storage, the rows
-# should be the dimensions, and the columns the different observations. This
-# probably goes against modern conventions, but hey, we are here for speed, not
-# for convenience :D
+# Large datasets are split into smaller chunks by column subsetting, explained
+# in an earlier sample script.
 
 # Base matrix size
 n <- 1000
@@ -58,7 +39,8 @@ proc.R.sync <- function(){
 }
 
 # Run the processing to see how much time this takes
-print( microbenchmark( proc.R.sync(), times = 10 ) )
+bench.R.sync <- microbenchmark( proc.R.sync(), times = 10 )
+print( bench.R.sync )
 
 # Synchronous processing - CUDA ================================================
 # The same thing can be done with our CUDA tools introduced in the previous
@@ -66,25 +48,18 @@ print( microbenchmark( proc.R.sync(), times = 10 ) )
 
 # Create the necessary tensors
 mat.dummy <- matrix( 0, n, n )
-mat.out.CUDA <- copy( mat.out.R )
+mat.out.CUDA <- duplicate.obj( mat.out.R )
 
-tens.in.1 <- tensor$new( mat.dummy )
-tens.in.1$dive()
-
-tens.proc <- tensor$new( mat.proc )
-tens.proc$dive()
-
-tens.out.1 <- tensor$new( mat.dummy )
-tens.out.1$dive()
+tens.in.1  <- tensor$new( mat.dummy )$dive()
+tens.proc  <- tensor$new( mat.proc )$dive()
+tens.out.1 <- tensor$new( mat.dummy )$dive()
 
 # cuBLAS handle
-handle <- cublas.handle$new()
-handle$activate()
+handle <- cublas.handle$new()$activate()
 
 proc.CUDA.sync <- function(){
   for( i in 1:10 ){
-    # Create a column subset
-    col.subset <- (1+(i-1)*n):(i*n)
+    col.subset <- list( (1+(i-1)*n), (i*n) )
 
     # Subset the input matrix and move to the device memory
     transfer( mat.in, tens.in.1, cols.src = col.subset )
@@ -99,8 +74,9 @@ proc.CUDA.sync <- function(){
 
 # Run the processing to see how much time this takes, and compare it to the
 # native R implementation
-print( microbenchmark( proc.R.sync(),    times = 10 ) )
-print( microbenchmark( proc.CUDA.sync(), times = 10 ) )
+bench.CUDA.sync <- microbenchmark( proc.CUDA.sync(), times = 10 )
+print( bench.R.sync )
+print( bench.CUDA.sync )
 
 # Did we get the same result?
 print( identical( mat.out.R, mat.out.CUDA ) )
@@ -114,30 +90,19 @@ print( identical( mat.out.R, mat.out.CUDA ) )
 # parallelize processing and memory transfers:
 
 # Create the necessary tensors
-mat.out.CUDA.async <- copy( mat.out.R )
+mat.out.CUDA.async <- duplicate.obj( mat.out.R )
 
-tens.in.stage <- tensor$new( mat.dummy )
-tens.in.stage$transform( 2 )
+tens.in.stage  <- tensor$new( mat.dummy )$transform( 2 )
+tens.out.stage <- tensor$new( mat.dummy )$transform( 2 )
 
-tens.out.stage <- tensor$new( mat.dummy )
-tens.out.stage$transform( 2 )
-
-tens.in.2 <- tensor$new( mat.dummy )
-tens.in.2$dive()
-
-tens.out.2 <- tensor$new( mat.dummy )
-tens.out.2$dive()
+tens.in.2 <- tensor$new( mat.dummy )$dive()
+tens.out.2 <- tensor$new( mat.dummy )$dive()
 
 # CUDA stream handles. We need 3 of them, one for transferring data in, one for
 # processing data, and one for moving data out
-stream.in <- cuda.stream$new()
-stream.in$activate()
-
-stream.proc <- cuda.stream$new()
-stream.proc$activate()
-
-stream.out <- cuda.stream$new()
-stream.out$activate()
+stream.in   <- cuda.stream$new()$activate()
+stream.proc <- cuda.stream$new()$activate()
+stream.out  <- cuda.stream$new()$activate()
 
 # Armed with the above knowledge, let's define the async function. We are going
 # use a double-buffered approach, hence the tens.in/out.2 definitions above:
@@ -147,7 +112,7 @@ proc.CUDA.async <- function(){
   i <- 1
 
   # Create a column subset
-  col.subset.in <- (1+(i-1)*n):(i*n)
+  col.subset.in <- list( (1+(i-1)*n), (i*n) )
 
   # Subset the input matrix and move to the stage (level 2 tensor), and then to
   # the dveice memory. We could do this in one step, but later this will be two,
@@ -187,8 +152,8 @@ proc.CUDA.async <- function(){
       tens.out.proc <- tens.out.1
     }
 
-    col.subset.in  <- (1+(i-1)*n):(i*n)
-    col.subset.out <- (1+(i-3)*n):((i-2)*n)
+    col.subset.in  <- list( (1+(i-1)*n), (i*n) )
+    col.subset.out <- list( (1+(i-3)*n), ((i-2)*n) )
 
     # Start processing
     cublas.sgemm( handle, tens.in.proc, tens.proc, tens.out.proc, 1, 0, stream = stream.proc )
@@ -208,7 +173,7 @@ proc.CUDA.async <- function(){
   # Spool down
   # Iteration 11
   i <- 11
-  col.subset.out <- (1+(i-3)*n):((i-2)*n)
+  col.subset.out <- list( (1+(i-3)*n), ((i-2)*n) )
   cublas.sgemm( handle, tens.in.2, tens.proc, tens.out.2, 1, 0, stream = stream.proc )
   transfer( tens.out.1, tens.out.stage, stream = stream.out )
   cuda.stream.sync( stream.out )
@@ -218,7 +183,7 @@ proc.CUDA.async <- function(){
 
   # Iteration 12
   i <- 12
-  col.subset.out <- (1+(i-3)*n):((i-2)*n)
+  col.subset.out <- list( (1+(i-3)*n), ((i-2)*n) )
   transfer( tens.out.2, tens.out.stage, stream = stream.out )
   cuda.stream.sync( stream.out )
   transfer( tens.out.stage, mat.out.CUDA.async, cols.dst = col.subset.out )
@@ -228,17 +193,19 @@ proc.CUDA.async <- function(){
 
 # Run the processing to see how much time this takes, and compare it to the
 # synchronous CUDA implementation, and the native R implementation
-print( microbenchmark( proc.R.sync(),     times = 10 ) )
-print( microbenchmark( proc.CUDA.async(), times = 10 ) )
-print( microbenchmark( proc.CUDA.sync(),  times = 10 ) )
+bench.CUDA.async <- microbenchmark( proc.CUDA.async(), times = 10 )
+print( bench.R.sync )
+print( bench.CUDA.sync )
+print( bench.CUDA.async )
 
 # The async process runtime is governed by the host memory speed in this case,
-# hence (only) the 10x speedup compared to the native R implementation. However,
-# with more complex processing, or more processing steps, the memory transfer
-# times can be completely hidden behind the processing. This would lead to the
-# same speedup that we have seen when comparing just the GEMM implementations.
+# hence (only) the 10x speedup compared to the native R implementation (w/ MRO).
+# However, with more complex processing, or more processing steps, the memory
+# transfer times can be completely hidden behind the processing. This would lead
+# to the same speedup that we have seen when comparing just the GEMM
+# implementations.
 
 # Did we get the same result?
 print( identical( mat.out.CUDA, mat.out.CUDA.async ) )
 
-# clean.global()
+clean.global()

@@ -136,6 +136,25 @@ get.level <- function( obj ){
   )
 }
 
+# Type checks for argument checking
+check.numeric <- function( obj ){
+  if( get.type( obj ) != "n" ){
+    stop( "Supported object is not numeric" )
+  }
+}
+
+check.integer <- function( obj ){
+  if( get.type( obj ) != "i" ){
+    stop( "Supported object is not integer" )
+  }
+}
+
+check.logical <- function( obj ){
+  if( get.type( obj ) != "l" ){
+    stop( "Supported object is not logical" )
+  }
+}
+
 # Clean global env (and all memory)
 clean.global <- function(){
   rm( list = ls( globalenv() ), pos = globalenv() )

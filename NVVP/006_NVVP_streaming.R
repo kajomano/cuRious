@@ -17,48 +17,29 @@ library( microbenchmark )
 
 n <- 1000
 
-mat.in  <- matrix( round(rnorm( 10*n*n )), nrow = n, ncol = 10*n )
-mat.out.R <- matrix( 0, nrow = n, ncol = 10*n )
+mat.in             <- matrix( round(rnorm( 10*n*n )), nrow = n, ncol = 10*n )
+mat.out.CUDA.async <- matrix( 0, nrow = n, ncol = 10*n )
 
 mat.proc <- t(diag( 1, n, n ))
 
 mat.dummy <- matrix( 0, n, n )
-mat.out.CUDA <- copy( mat.out.R )
 
-tens.in.1 <- tensor$new( mat.dummy )
-tens.in.1$dive()
+tens.in.1 <- tensor$new( mat.dummy )$dive()
+tens.in.2 <- tensor$new( mat.dummy )$dive()
 
-tens.proc <- tensor$new( mat.proc )
-tens.proc$dive()
+tens.proc <- tensor$new( mat.proc )$dive()
 
-tens.out.1 <- tensor$new( mat.dummy )
-tens.out.1$dive()
+tens.out.1 <- tensor$new( mat.dummy )$dive()
+tens.out.2 <- tensor$new( mat.dummy )$dive()
 
-handle <- cublas.handle$new()
-handle$activate()
+handle <- cublas.handle$new()$activate()
 
-mat.out.CUDA.async <- copy( mat.out.R )
+tens.in.stage  <- tensor$new( mat.dummy )$transform( 2 )
+tens.out.stage <- tensor$new( mat.dummy )$transform( 2 )
 
-tens.in.stage <- tensor$new( mat.dummy )
-tens.in.stage$transform( 2 )
-
-tens.out.stage <- tensor$new( mat.dummy )
-tens.out.stage$transform( 2 )
-
-tens.in.2 <- tensor$new( mat.dummy )
-tens.in.2$dive()
-
-tens.out.2 <- tensor$new( mat.dummy )
-tens.out.2$dive()
-
-stream.in <- cuda.stream$new()
-stream.in$activate()
-
-stream.proc <- cuda.stream$new()
-stream.proc$activate()
-
-stream.out <- cuda.stream$new()
-stream.out$activate()
+stream.in   <- cuda.stream$new()$activate()
+stream.proc <- cuda.stream$new()$activate()
+stream.out  <- cuda.stream$new()$activate()
 
 proc.CUDA.async <- function(){
   # Spool up
@@ -66,7 +47,7 @@ proc.CUDA.async <- function(){
   i <- 1
 
   # Create a column subset
-  col.subset.in <- (1+(i-1)*n):(i*n)
+  col.subset.in <- list( (1+(i-1)*n), (i*n) )
 
   # Subset the input matrix and move to the stage (level 2 tensor), and then to
   # the dveice memory. We could do this in one step, but later this will be two,
@@ -81,7 +62,7 @@ proc.CUDA.async <- function(){
 
   # Iteration 2
   i <- 2
-  col.subset.in <- (1+(i-1)*n):(i*n)
+  col.subset.in <- list( (1+(i-1)*n), (i*n) )
 
   # Start processing tens.in.1 right away
   cublas.sgemm( handle, tens.in.1, tens.proc, tens.out.1, 1, 0, stream = stream.proc )
@@ -106,8 +87,8 @@ proc.CUDA.async <- function(){
       tens.out.proc <- tens.out.1
     }
 
-    col.subset.in  <- (1+(i-1)*n):(i*n)
-    col.subset.out <- (1+(i-3)*n):((i-2)*n)
+    col.subset.in  <- list( (1+(i-1)*n), (i*n) )
+    col.subset.out <- list( (1+(i-3)*n), ((i-2)*n) )
 
     # Start processing
     cublas.sgemm( handle, tens.in.proc, tens.proc, tens.out.proc, 1, 0, stream = stream.proc )
@@ -127,7 +108,7 @@ proc.CUDA.async <- function(){
   # Spool down
   # Iteration 11
   i <- 11
-  col.subset.out <- (1+(i-3)*n):((i-2)*n)
+  col.subset.out <- list( (1+(i-3)*n), ((i-2)*n) )
   cublas.sgemm( handle, tens.in.2, tens.proc, tens.out.2, 1, 0, stream = stream.proc )
   transfer( tens.out.1, tens.out.stage, stream = stream.out )
   cuda.stream.sync( stream.out )
@@ -137,7 +118,7 @@ proc.CUDA.async <- function(){
 
   # Iteration 12
   i <- 12
-  col.subset.out <- (1+(i-3)*n):((i-2)*n)
+  col.subset.out <- list( (1+(i-3)*n), ((i-2)*n) )
   transfer( tens.out.2, tens.out.stage, stream = stream.out )
   cuda.stream.sync( stream.out )
   transfer( tens.out.stage, mat.out.CUDA.async, cols.dst = col.subset.out )

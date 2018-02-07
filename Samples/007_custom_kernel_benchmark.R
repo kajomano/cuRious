@@ -11,11 +11,11 @@ vect.x <- rep( 1, times = n )
 vect.y <- rep( 0, times = n )
 
 # Create tensors
-tens.x.cub <- tensor$new( vect.x )$dive()
-tens.y.cub <- tensor$new( vect.y  )$dive()
+tens.x.cub <- tensor$new( vect.x, 3 )
+tens.y.cub <- tensor$new( vect.y, 3 )
 
-tens.x.alg <- tensor$new( vect.x )$dive()
-tens.y.alg <- tensor$new( vect.y  )$dive()
+tens.x.alg <- tensor$new( vect.x, 3 )
+tens.y.alg <- tensor$new( vect.y, 3 )
 
 # Create cuBLAS handle
 handle <- cublas.handle$new()

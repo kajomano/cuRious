@@ -13,9 +13,9 @@ mat.A <- matrix( rnorm(m*k), ncol = k )
 mat.B <- matrix( rnorm(k*n), ncol = n )
 mat.C <- matrix( rnorm(m*n), ncol = n )
 
-tens.A <- tensor$new( mat.A )$dive()
-tens.B <- tensor$new( mat.B )$dive()
-tens.C <- tensor$new( mat.C )$dive()
+tens.A <- tensor$new( mat.A, 3 )
+tens.B <- tensor$new( mat.B, 3 )
+tens.C <- tensor$new( mat.C, 3 )
 
 alpha <- -1.5
 beta  <- 0.5

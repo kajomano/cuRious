@@ -113,60 +113,129 @@ check.cublas.handle.active <- function( ... ){
 # vectors, scalar and vector with matrices)
 # This might be a tradeoff
 
-# C = alpha*tp.a(A)*tp.b(B) + beta*C
+# cols.C(C) = alpha*tp.a(cols.A(A))*tp.b(cols.B(B)) + beta*(cols.C(C))
 # tp = transpose
-cublas.sgemm <- function( handle, tens.A, tens.B, tens.C, alpha = 1, beta = 1, tp.A = FALSE, tp.B = FALSE, stream = NULL ){
+cublas.sgemm <- function( tens.A,
+                          tens.B,
+                          tens.C,
+                          cols.A = NULL,
+                          cols.B = NULL,
+                          cols.C = NULL,
+                          tp.A   = FALSE,
+                          tp.B   = FALSE,
+                          alpha  = 1,
+                          beta   = 1,
+                          handle = NULL,
+                          stream = NULL ){
   # Sanity checks
-  check.cublas.handle.active( handle )
-  check.tensor.under( tens.A, tens.B, tens.C )
+  if( !all( is.under( tens.A, tens.B, tens.C ) ) &&
+      !all( is.surfaced( tens.A, tens.B, tens.C ) ) ){
+    stop( "All inputs need to be on L0 or L3" )
+  }
+
+  if( is.under( tens.A ) ){
+    check.cublas.handle.active( handle )
+  }
+
+  dims.A <- tens.A$get.dims
+  dims.B <- tens.B$get.dims
+  dims.C <- tens.C$get.dims
+
+  off.cols.A <- 1L
+  off.cols.B <- 1L
+  off.cols.C <- 1L
+
+  if( !is.null( cols.A ) ){
+    if( !is.list( cols.A ) ){
+      stop( "Only column ranges are accepted" )
+    }
+    off.cols.A  <- as.integer( cols.A[[1]] )
+    dims.A[[2]] <- as.integer( cols.A[[2]] - cols.A[[1]] + 1L )
+  }
+
+  if( !is.null( cols.B ) ){
+    if( !is.list( cols.B ) ){
+      stop( "Only column ranges are accepted" )
+    }
+    off.cols.B  <- as.integer( cols.B[[1]] )
+    dims.B[[2]] <- as.integer( cols.B[[2]] - cols.B[[1]] + 1L )
+  }
+
+  if( !is.null( cols.C ) ){
+    if( !is.list( cols.C ) ){
+      stop( "Only column ranges are accepted" )
+    }
+    off.cols.C  <- as.integer( cols.C[[1]] )
+    dims.C[[2]] <- as.integer( cols.C[[2]] - cols.C[[1]] + 1L )
+  }
+
   if( !is.null( stream ) ){
     check.cuda.stream( stream )
     stream <- stream$get.stream
   }
 
+  dims.check.A <- dims.A
+  dims.check.B <- dims.B
+
   if( tp.A ){
-    A.dims <- rev(tens.A$get.dims)
-  }else{
-    A.dims <- tens.A$get.dims
+    dims.check.A <- rev(dims.A)
   }
 
   if( tp.B ){
-    B.dims <- rev(tens.B$get.dims)
-  }else{
-    B.dims <- tens.B$get.dims
+    dims.check.B <- rev(dims.B)
   }
 
-  C.dims <- tens.C$get.dims
-
-  if( A.dims[2] != B.dims[1] ||
-      B.dims[2] != C.dims[2] ||
-      A.dims[1] != C.dims[1] ){
+  if( dims.check.A[2] != dims.check.B[1] ||
+      dims.check.B[2] != dims.C[2] ||
+      dims.check.A[1] != dims.C[1] ){
     stop( "Not all tensor have matching dimensions" )
   }
 
-  # Results go into tens.B
-  ret <- .Call( "cuR_cublas_sgemm",
-                tens.A$get.obj,
-                tens.B$get.obj,
-                tens.C$get.obj,
-                tens.A$get.dims,
-                tens.B$get.dims,
-                alpha,
-                beta,
-                tp.A,
-                tp.B,
-                handle$get.handle,
-                stream )
+  if( is.under( tens.A ) ){
+    ret <- .Call( "cuR_cublas_sgemm",
+                  tens.A$get.obj,
+                  tens.B$get.obj,
+                  tens.C$get.obj,
+                  dims.A,
+                  dims.B,
+                  off.cols.A,
+                  off.cols.B,
+                  off.cols.C,
+                  tp.A,
+                  tp.B,
+                  alpha,
+                  beta,
+                  handle$get.handle,
+                  stream )
 
-  if( is.null( ret ) ) stop( "Subroutine failed" )
+    if( is.null( ret ) ) stop( "Subroutine failed" )
 
-  # If no stream is given, make this call blocking
-  if( is.null( stream ) ){
-    cuda.stream.sync.all()
+    # If no stream is given, make this call blocking
+    if( is.null( stream ) ){
+      cuda.stream.sync.all()
+    }
+  }else{
+    tmp.A <- transfer( tens.A, cols.src = cols.A )
+    tmp.B <- transfer( tens.B, cols.src = cols.B )
+    tmp.C <- transfer( tens.C, cols.src = cols.C )
+
+    if( tp.A ){
+      tmp.A <- t(tmp.A)
+    }
+
+    if( tp.B ){
+      tmp.B <- t(tmp.B)
+    }
+
+    tmp.C <- ( alpha * tmp.A ) %*% tmp.B + ( beta * tmp.C )
+    transfer( tmp.C, tens.C, cols.dst = cols.C )
   }
 
   invisible( TRUE )
 }
+
+# TODO ====
+# Add cols subset to other cublas calls
 
 # B = alpha*A + B
 # The trick here is that element-wise addition can be done this way also on

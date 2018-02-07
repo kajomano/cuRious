@@ -58,7 +58,24 @@ cublasStatus_t cuR_cublas_recover_stream( SEXP stream_r, cublasHandle_t* handle 
 }
 
 extern "C"
-SEXP cuR_cublas_sgemm( SEXP tens_A_r, SEXP tens_B_r, SEXP tens_C_r, SEXP dims_A_r, SEXP dims_B_r, SEXP al_r, SEXP be_r, SEXP tp_A_r, SEXP tp_B_r, SEXP handle_r, SEXP stream_r ){
+SEXP cuR_cublas_sgemm( SEXP tens_A_r,
+                       SEXP tens_B_r,
+                       SEXP tens_C_r,
+                       SEXP dims_A_r,
+                       SEXP dims_B_r,
+                       SEXP oa_r,
+                       SEXP ob_r,
+                       SEXP oc_r,
+                       SEXP tp_A_r,
+                       SEXP tp_B_r,
+                       SEXP al_r,
+                       SEXP be_r,
+                       SEXP handle_r,
+                       SEXP stream_r ){
+
+  // TODO ====
+  // Changed order of arguments, watch out!
+
   // Recover handle
   cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
 

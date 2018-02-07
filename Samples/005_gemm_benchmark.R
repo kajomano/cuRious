@@ -21,8 +21,7 @@ alpha <- -1.5
 beta  <- 0.5
 
 # Create a cublas handle
-handle <- cublas.handle$new()
-handle$activate()
+handle <- cublas.handle$new()$activate()
 
 # Define functions for a better microbenchmark print
 R.dgemm <- function(){

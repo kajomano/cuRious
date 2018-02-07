@@ -108,13 +108,15 @@ tensor <- R6Class(
     },
 
     get.l = function( val ){
-      private$check.destroyed()
       if( missing(val) ) return( prod( self$get.dims ) )
     },
 
     is.under = function( val ){
-      private$check.destroyed()
       if( missing(val) ) return( self$get.level == 3 )
+    },
+
+    is.surfaced = function( val ){
+      if( missing(val) ) return( self$get.level == 0 )
     }
   )
 )
@@ -145,5 +147,20 @@ is.under <- function( ... ){
 check.tensor.under <- function( ... ){
   if( !all( is.under( ... ) ) ){
     stop( "Not all tensors are under" )
+  }
+}
+
+is.surfaced <- function( ... ){
+  check.tensor( ... )
+
+  tenss <- list( ... )
+  sapply( tenss, function( tens ){
+    tens$is.surfaced
+  })
+}
+
+check.tensor.surfaced <- function( ... ){
+  if( !all( is.surfaced( ... ) ) ){
+    stop( "Not all tensors are surfaced" )
   }
 }

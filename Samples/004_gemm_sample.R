@@ -21,8 +21,7 @@ tens.C <- tensor$new( mat.C )$dive()
 # Create a cuBLAS handle and activate it. An activated cuBLAS handle is needed
 # for each cuBLAS call. As it is costly to create a handle, it is advised to
 # reuse the handle throughout multiple calls, or even the whole session.
-handle <- cublas.handle$new()
-handle$activate()
+handle <- cublas.handle$new()$activate()
 
 # Mutliply the two matrices, the result ending up in tens.C
 cublas.sgemm( handle, tens.A, tens.B, tens.C )

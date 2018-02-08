@@ -100,7 +100,6 @@ transfer <- function( src,
 
   # Dimension matching
   if( !identical( dims.src, dims.dst ) ){
-    browser()
     stop( "Dimensions do not match" )
   }
 

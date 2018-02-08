@@ -87,6 +87,14 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r,
   float* tens_C = (float*)R_ExternalPtrAddr( tens_C_r );
   float al = (float)Rf_asReal( al_r );
   float be = (float)Rf_asReal( be_r );
+  int oa   = ( R_NilValue == oa_r ) ? 0 : (Rf_asInteger( oa_r ) - 1);
+  int ob   = ( R_NilValue == ob_r ) ? 0 : (Rf_asInteger( ob_r ) - 1);
+  int oc   = ( R_NilValue == oc_r ) ? 0 : (Rf_asInteger( oc_r ) - 1);
+
+  // Offsets
+  tens_A = tens_A + (oa * dims_A[0]);
+  tens_B = tens_B + (ob * dims_B[0]);
+  tens_C = tens_C + (oc * dims_A[0]);
 
   // Transposes
   cublasOperation_t op_A, op_B;
@@ -124,30 +132,30 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r,
   return ret_r;
 }
 
-extern "C"
-SEXP cuR_cublas_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP handle_r, SEXP stream_r ){
-  // Recover handle
-  cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
-
-  // Recover tensors, the length and the scalar
-  int l = Rf_asInteger( l_r );
-  float* tens_x = (float*)R_ExternalPtrAddr( tens_x_r );
-  float* tens_y = (float*)R_ExternalPtrAddr( tens_y_r );
-  float al = (float)Rf_asReal( al_r );
-
-  // Handle stream
-  cublasTry( cuR_cublas_recover_stream( stream_r, handle ) );;
-
-  // Do the operation, the results go into tens_y
-  cublasTry( cublasSaxpy( *handle, l, &al, tens_x, 1, tens_y, 1 ) );
-
-  // Flush for WDDM
-  cudaStreamQuery(0);
-
-  // Return something that is not null
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
+// extern "C"
+// SEXP cuR_cublas_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP handle_r, SEXP stream_r ){
+//   // Recover handle
+//   cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
+//
+//   // Recover tensors, the length and the scalar
+//   int l = Rf_asInteger( l_r );
+//   float* tens_x = (float*)R_ExternalPtrAddr( tens_x_r );
+//   float* tens_y = (float*)R_ExternalPtrAddr( tens_y_r );
+//   float al = (float)Rf_asReal( al_r );
+//
+//   // Handle stream
+//   cublasTry( cuR_cublas_recover_stream( stream_r, handle ) );;
+//
+//   // Do the operation, the results go into tens_y
+//   cublasTry( cublasSaxpy( *handle, l, &al, tens_x, 1, tens_y, 1 ) );
+//
+//   // Flush for WDDM
+//   cudaStreamQuery(0);
+//
+//   // Return something that is not null
+//   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+//   Rf_unprotect(1);
+//   return ret_r;
+// }
 
 #endif

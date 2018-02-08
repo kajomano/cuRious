@@ -215,6 +215,8 @@ cublas.sgemm <- function( tens.A,
       cuda.stream.sync.all()
     }
   }else{
+    browser()
+
     tmp.A <- transfer( tens.A, cols.src = cols.A )
     tmp.B <- transfer( tens.B, cols.src = cols.B )
     tmp.C <- transfer( tens.C, cols.src = cols.C )

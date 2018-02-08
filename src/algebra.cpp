@@ -1,4 +1,4 @@
-#include "algebra_cu.h"
+#include "algebra.h"
 
 #ifndef CUDA_EXCLUDE
 

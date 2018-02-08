@@ -14,19 +14,21 @@ transfer <- function( src,
   level.src <- get.level( src )
   obj.src   <- get.obj( src )
 
-  # Dst must exist
-  dst.not.supp <- FALSE
-  if( is.null(dst) ){
-    # If not, create an L0 object of the same type
-    dst <- create.obj( dims.src, type = type.src )
-    dst.not.supp <- TRUE
-  }
-
   # Dst attributes
-  type.dst  <- get.type( dst )
-  dims.dst  <- get.dims( dst )
-  level.dst <- get.level( dst )
-  obj.dst   <- get.obj( dst )
+  if( is.null( dst ) ){
+    dst.not.supp <- TRUE
+    type.dst  <- type.src
+    level.dst <- 0L
+    if( !is.null( cols.dst ) ){
+      stop( "Column subsetting does not make sense for non-existing destinations" )
+    }
+  }else{
+    dst.not.supp <- FALSE
+    type.dst  <- get.type( dst )
+    dims.dst  <- get.dims( dst )
+    level.dst <- get.level( dst )
+    obj.dst   <- get.obj( dst )
+  }
 
   # Type matching
   if( type.src != type.dst ){
@@ -89,6 +91,12 @@ transfer <- function( src,
     }
   }
 
+  # At this point dst should exist
+  if( is.null( dst ) ){
+    dims.dst <- dims.src
+    dst      <- create.obj( dims.dst, type = type.dst )
+    obj.dst  <- get.obj( dst )
+  }
 
   # Dimension matching
   if( !identical( dims.src, dims.dst ) ){

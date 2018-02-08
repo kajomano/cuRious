@@ -60,7 +60,7 @@ print( properly.copied.data )
 # and move the information between tensors by calling transfer( source, dest ).
 big.n <- 10^6
 tens.X <- tensor$new( rnorm( big.n ) )
-tens.Y <- tensor$new( rnorm( big.n ) )$transform( 1 )
+tens.Y <- tensor$new( rnorm( big.n ), 1 )
 
 microbenchmark( transfer( tens.X, tens.Y ), times = 10 ) # L0 -> L0 transfer
 microbenchmark( transfer( tens.X, tens.X ), times = 10 ) # L0 -> L1 transfer

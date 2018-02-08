@@ -50,9 +50,9 @@ print( bench.R.sync )
 mat.dummy <- matrix( 0, n, n )
 mat.out.CUDA <- duplicate.obj( mat.out.R )
 
-tens.in.1  <- tensor$new( mat.dummy )$dive()
-tens.proc  <- tensor$new( mat.proc )$dive()
-tens.out.1 <- tensor$new( mat.dummy )$dive()
+tens.in.1  <- tensor$new( mat.dummy, 3 )
+tens.proc  <- tensor$new( mat.proc,  3 )
+tens.out.1 <- tensor$new( mat.dummy, 3 )
 
 # cuBLAS handle
 handle <- cublas.handle$new()$activate()
@@ -92,11 +92,11 @@ print( identical( mat.out.R, mat.out.CUDA ) )
 # Create the necessary tensors
 mat.out.CUDA.async <- duplicate.obj( mat.out.R )
 
-tens.in.stage  <- tensor$new( mat.dummy )$transform( 2 )
-tens.out.stage <- tensor$new( mat.dummy )$transform( 2 )
+tens.in.stage  <- tensor$new( mat.dummy, 2 )
+tens.out.stage <- tensor$new( mat.dummy, 2 )
 
-tens.in.2 <- tensor$new( mat.dummy )$dive()
-tens.out.2 <- tensor$new( mat.dummy )$dive()
+tens.in.2 <- tensor$new( mat.dummy,  3 )
+tens.out.2 <- tensor$new( mat.dummy, 3 )
 
 # CUDA stream handles. We need 3 of them, one for transferring data in, one for
 # processing data, and one for moving data out

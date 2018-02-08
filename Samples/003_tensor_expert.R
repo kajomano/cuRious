@@ -33,8 +33,8 @@ library( cuRious )
 # last column ids respectively. Both source and destination can be subsetted
 # this way:
 
-tens.X <- tensor$new( matrix( as.numeric(1:6), 2, 3 ) )$transform(1)
-tens.Y <- tensor$new( matrix( 0, 2, 3 ) )$transform(1)
+tens.X <- tensor$new( matrix( as.numeric(1:6), 2, 3 ), 1 )
+tens.Y <- tensor$new( matrix( 0, 2, 3 ), 1 )
 
 transfer( tens.X, tens.Y, list( 1L,2L ), list( 2L,3L ) )
 
@@ -75,7 +75,7 @@ get.type( tens.log )
 # Individual subsetting with integer tensors ====
 # Individual matrix subsetting can be done with integer tensors too, if the
 # tensor is in host memory:
-tens.sub <- tensor$new( c(1L,3L,2L) )$transform(1)
+tens.sub <- tensor$new( c(1L,3L,2L), 1 )
 
 tens.Y$push( matrix( 0, 2, 3 ) )
 transfer( tens.X, tens.Y, tens.sub )

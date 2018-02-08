@@ -24,18 +24,18 @@ mat.proc <- t(diag( 1, n, n ))
 
 mat.dummy <- matrix( 0, n, n )
 
-tens.in.1 <- tensor$new( mat.dummy )$dive()
-tens.in.2 <- tensor$new( mat.dummy )$dive()
+tens.in.1 <- tensor$new( mat.dummy, 3 )
+tens.in.2 <- tensor$new( mat.dummy, 3 )
 
-tens.proc <- tensor$new( mat.proc )$dive()
+tens.proc <- tensor$new( mat.proc, 3 )
 
-tens.out.1 <- tensor$new( mat.dummy )$dive()
-tens.out.2 <- tensor$new( mat.dummy )$dive()
+tens.out.1 <- tensor$new( mat.dummy, 3 )
+tens.out.2 <- tensor$new( mat.dummy, 3 )
 
 handle <- cublas.handle$new()$activate()
 
-tens.in.stage  <- tensor$new( mat.dummy )$transform( 2 )
-tens.out.stage <- tensor$new( mat.dummy )$transform( 2 )
+tens.in.stage  <- tensor$new( mat.dummy, 2 )
+tens.out.stage <- tensor$new( mat.dummy, 2 )
 
 stream.in   <- cuda.stream$new()$activate()
 stream.proc <- cuda.stream$new()$activate()

@@ -88,19 +88,10 @@ check.cublas.handle.active <- function( ... ){
 # cuBLAS linear algebra operations ====
 
 # TODO ====
-# Add scopy from cuBLAS!
-
-# TODO ====
 # Add sswap from cuBLAS!
 
 # TODO ====
 # Add sscal from cuBLAS!
-
-# TODO ====
-# Add sasum from cuBLAS!
-
-# TODO ====
-# Add samin/max from cuBLAS!
 
 # TODO ====
 # Add sgeam from cuBLAS, remove saxpy!
@@ -108,12 +99,110 @@ check.cublas.handle.active <- function( ... ){
 # TODO ====
 # Add sdgmm from cuBLAS!
 
-# TODO BIG ====
-# Add reuse to functions when using tensors with fewer dimensions( scalar with
-# vectors, scalar and vector with matrices)
-# This might be a tradeoff
+# sger ====
+# A = a*x %*% tp(y) + A
+# tp = transpose
+# x and y are column vectors here, but it does not actually matter, the data
+# stored behind x or tp(x) is the same, hence the rows.x argument name
+cublas.sger <- function( tens.x,
+                         tens.y,
+                         tens.A,
+                         rows.x = NULL,
+                         rows.y = NULL,
+                         cols.A = NULL,
+                         alpha  = 1,
+                         handle = NULL,
+                         stream = NULL ){
+  # Sanity checks
+  if( !all( is.under( tens.x, tens.y, tens.A ) ) &&
+      !all( is.surfaced( tens.x, tens.y, tens.A ) ) ){
+    stop( "All inputs need to be on L0 or L3" )
+  }
 
-# cols.C(C) = alpha*tp.a(cols.A(A))*tp.b(cols.B(B)) + beta*(cols.C(C))
+  if( is.under( tens.x ) ){
+    check.cublas.handle.active( handle )
+  }
+
+  dims.x <- tens.x$get.dims
+  dims.y <- tens.y$get.dims
+  dims.A <- tens.A$get.dims
+
+  if( dims.x[2] != 1L || dims.y[2] != 1L ){
+    stop( "x and y need to be vectors" )
+  }
+
+  off.rows.x <- 1L
+  off.rows.y <- 1L
+  off.cols.A <- 1L
+
+  if( !is.null( rows.x ) ){
+    if( !is.list( rows.x ) ){
+      stop( "Only row ranges are accepted" )
+    }
+    off.rows.x  <- as.integer( rows.x[[1]] )
+    dims.x[[1]] <- as.integer( rows.x[[2]] - rows.x[[1]] + 1L )
+  }
+
+  if( !is.null( rows.y ) ){
+    if( !is.list( rows.y ) ){
+      stop( "Only row ranges are accepted" )
+    }
+    off.rows.y  <- as.integer( rows.y[[1]] )
+    dims.y[[1]] <- as.integer( rows.y[[2]] - rows.y[[1]] + 1L )
+  }
+
+  if( !is.null( cols.A ) ){
+    if( !is.list( cols.A ) ){
+      stop( "Only column ranges are accepted" )
+    }
+    off.cols.A  <- as.integer( cols.A[[1]] )
+    dims.A[[2]] <- as.integer( cols.A[[2]] - cols.A[[1]] + 1L )
+  }
+
+  if( !is.null( stream ) ){
+    check.cuda.stream( stream )
+    stream <- stream$get.stream
+  }
+
+  if( dims.x[1] != dims.A[1] ||
+      dims.y[1] != dims.A[2] ){
+    stop( "Not all tensors have matching dimensions" )
+  }
+
+  if( is.under( tens.A ) ){
+    ret <- .Call( "cuR_cublas_sger",
+                  tens.x$get.obj,
+                  tens.y$get.obj,
+                  tens.A$get.obj,
+                  dims.A,
+                  off.rows.x,
+                  off.rows.y,
+                  off.cols.A,
+                  alpha,
+                  handle$get.handle,
+                  stream )
+
+    if( is.null( ret ) ) stop( "Subroutine failed" )
+
+    # If no stream is given, make this call blocking
+    if( is.null( stream ) ){
+      cuda.stream.sync.all()
+    }
+  }else{
+    tmp.x <- transfer( tens.x, cols.src = rows.x )
+    tmp.y <- transfer( tens.y, cols.src = rows.y )
+    tmp.A <- transfer( tens.A, cols.src = cols.A )
+
+    tmp.A <- ( alpha * tmp.x ) %*% t(tmp.y) + tmp.A
+    transfer( tmp.A, tens.A, cols.dst = cols.A )
+  }
+
+  invisible( TRUE )
+}
+
+
+# sgemm ====
+# cols.C(C) = alpha*tp.a(cols.A(A)) %*% tp.b(cols.B(B)) + beta*(cols.C(C))
 # tp = transpose
 cublas.sgemm <- function( tens.A,
                           tens.B,
@@ -188,7 +277,7 @@ cublas.sgemm <- function( tens.A,
   if( dims.check.A[2] != dims.check.B[1] ||
       dims.check.B[2] != dims.C[2] ||
       dims.check.A[1] != dims.C[1] ){
-    stop( "Not all tensor have matching dimensions" )
+    stop( "Not all tensors have matching dimensions" )
   }
 
   if( is.under( tens.A ) ){
@@ -237,32 +326,32 @@ cublas.sgemm <- function( tens.A,
 # TODO ====
 # Add cols subset to other cublas calls
 
-# B = alpha*A + B
-# The trick here is that element-wise addition can be done this way also on
-# matrices, even though thats not the intended use
-cublas.saxpy <- function( handle, tens.A, tens.B, alpha = 1, stream = NULL ){
-  check.cublas.handle.active( handle )
-  check.tensor.under( tens.A, tens.B )
-  if( !is.null( stream ) ){
-    check.cuda.stream( stream )
-    stream <- stream$get.stream
-  }
-
-  # Results go into tens.B
-  ret <- .Call( "cuR_cublas_saxpy",
-                tens.A$get.obj,
-                tens.B$get.obj,
-                tens.A$get.l,
-                alpha,
-                handle$get.handle,
-                stream )
-
-  if( is.null( ret ) ) stop( "Subroutine failed" )
-
-  # If no stream is given, make this call blocking
-  if( is.null( stream ) ){
-    cuda.stream.sync.all()
-  }
-
-  invisible( NULL )
-}
+# # B = alpha*A + B
+# # The trick here is that element-wise addition can be done this way also on
+# # matrices, even though thats not the intended use
+# cublas.saxpy <- function( handle, tens.A, tens.B, alpha = 1, stream = NULL ){
+#   check.cublas.handle.active( handle )
+#   check.tensor.under( tens.A, tens.B )
+#   if( !is.null( stream ) ){
+#     check.cuda.stream( stream )
+#     stream <- stream$get.stream
+#   }
+#
+#   # Results go into tens.B
+#   ret <- .Call( "cuR_cublas_saxpy",
+#                 tens.A$get.obj,
+#                 tens.B$get.obj,
+#                 tens.A$get.l,
+#                 alpha,
+#                 handle$get.handle,
+#                 stream )
+#
+#   if( is.null( ret ) ) stop( "Subroutine failed" )
+#
+#   # If no stream is given, make this call blocking
+#   if( is.null( stream ) ){
+#     cuda.stream.sync.all()
+#   }
+#
+#   invisible( NULL )
+# }

@@ -65,7 +65,7 @@ proc.CUDA.sync <- function(){
     transfer( mat.in, tens.in.1, cols.src = col.subset )
 
     # Process the subsetted matrix
-    cublas.sgemm( handle, tens.in.1, tens.proc, tens.out.1, alpha = 1, beta = 0 )
+    cublas.sgemm( tens.in.1, tens.proc, tens.out.1, alpha = 1, beta = 0, handle = handle )
 
     # Recover the results from device memory and store the processed matrix
     transfer( tens.out.1, mat.out.CUDA, cols.dst = col.subset )
@@ -130,7 +130,7 @@ proc.CUDA.async <- function(){
   col.subset.in <- (1+(i-1)*n):(i*n)
 
   # Start processing tens.in.1 right away
-  cublas.sgemm( handle, tens.in.1, tens.proc, tens.out.1, 1, 0, stream = stream.proc )
+  cublas.sgemm( tens.in.1, tens.proc, tens.out.1, alpha = 1, beta = 0, handle = handle, stream = stream.proc )
 
   # Move new data to the device
   transfer( mat.in, tens.in.stage, cols.src = col.subset.in )
@@ -156,7 +156,7 @@ proc.CUDA.async <- function(){
     col.subset.out <- list( (1+(i-3)*n), ((i-2)*n) )
 
     # Start processing
-    cublas.sgemm( handle, tens.in.proc, tens.proc, tens.out.proc, 1, 0, stream = stream.proc )
+    cublas.sgemm( tens.in.proc, tens.proc, tens.out.proc, alpha = 1, beta = 0, handle = handle, stream = stream.proc )
 
     # Start moving data out (async part), and in (sync part)
     transfer( tens.out, tens.out.stage, stream = stream.out )
@@ -174,7 +174,7 @@ proc.CUDA.async <- function(){
   # Iteration 11
   i <- 11
   col.subset.out <- list( (1+(i-3)*n), ((i-2)*n) )
-  cublas.sgemm( handle, tens.in.2, tens.proc, tens.out.2, 1, 0, stream = stream.proc )
+  cublas.sgemm( tens.in.2, tens.proc, tens.out.2, alpha = 1, beta = 0, handle = handle, stream = stream.proc )
   transfer( tens.out.1, tens.out.stage, stream = stream.out )
   cuda.stream.sync( stream.out )
   transfer( tens.out.stage, mat.out.CUDA.async, cols.dst = col.subset.out )

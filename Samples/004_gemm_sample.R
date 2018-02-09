@@ -24,7 +24,7 @@ tens.C <- tensor$new( mat.C, 3 )
 handle <- cublas.handle$new()$activate()
 
 # Mutliply the two matrices, the result ending up in tens.C
-cublas.sgemm( handle, tens.A, tens.B, tens.C )
+cublas.sgemm( tens.A, tens.B, tens.C, handle = handle )
 
 # Check if we got a correct result: they should be equal, as we used whole numbers
 print( tens.C$pull() )

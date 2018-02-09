@@ -40,7 +40,7 @@ all_objs  = $(cpp_objs) $(cu_objs)
 # Linux (untested)
 # PKG_LIBS  = "-L$(CUDA_HOME)/lib/x64 -Wl, -rpath, $(CUDA_HOME)/lib/x64 -lcuda -lcudart"
 # Windows (also includes special windows .wincpp objects)
-PKG_LIBS  = $(cu_objs) -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas
+PKG_LIBS = $(cu_objs) -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas
 
 ### Recipes
 
@@ -52,4 +52,4 @@ cuRious.so: $(all_objs)
 	$(CXX) -O3 -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
 
 %.o: %.cu $(h_srcs)
-	$(NVCC) -ccbin=$(VC_BIN) $(NVCC_ARGS) -I=$(CUDA_INC) $< -o $@ -c
+	$(NVCC) -ccbin=$(VC_BIN) $(NVCC_ARGS) $< -o $@ -c

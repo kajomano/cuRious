@@ -58,6 +58,55 @@ cublasStatus_t cuR_cublas_recover_stream( SEXP stream_r, cublasHandle_t* handle 
 }
 
 extern "C"
+SEXP cuR_cublas_sger( SEXP tens_x_r,
+                      SEXP tens_y_r,
+                      SEXP tens_A_r,
+                      SEXP dims_A_r,
+                      SEXP ox_r,
+                      SEXP oy_r,
+                      SEXP oA_r,
+                      SEXP al_r,
+                      SEXP handle_r,
+                      SEXP stream_r ){
+
+  // Recover handle
+  cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
+
+  // Recover tensors, the dims and the scalars
+  int* dims_A = INTEGER( dims_A_r );
+  float* tens_x = (float*)R_ExternalPtrAddr( tens_x_r );
+  float* tens_y = (float*)R_ExternalPtrAddr( tens_y_r );
+  float* tens_A = (float*)R_ExternalPtrAddr( tens_A_r );
+  float al = (float)Rf_asReal( al_r );
+  int ox   = ( R_NilValue == ox_r ) ? 0 : (Rf_asInteger( ox_r ) - 1);
+  int oy   = ( R_NilValue == oy_r ) ? 0 : (Rf_asInteger( oy_r ) - 1);
+  int oA   = ( R_NilValue == oA_r ) ? 0 : (Rf_asInteger( oA_r ) - 1);
+
+  // Offsets
+  tens_x = tens_x + ox;
+  tens_y = tens_y + oy;
+  tens_A = tens_A + (oA * dims_A[0]);
+
+  int m = dims_A[0];
+  int n = dims_A[1];
+
+  // Handle stream
+  cublasTry( cuR_cublas_recover_stream( stream_r, handle ) );
+
+  // Do the op
+  cublasSger( *handle, m, n, &al, tens_x, 1, tens_y,1, tens_A, m );
+
+  // Flush for WDDM
+  cudaStreamQuery(0);
+
+  // Return something that is not null
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
+
+
+extern "C"
 SEXP cuR_cublas_sgemm( SEXP tens_A_r,
                        SEXP tens_B_r,
                        SEXP tens_C_r,
@@ -72,9 +121,6 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r,
                        SEXP be_r,
                        SEXP handle_r,
                        SEXP stream_r ){
-
-  // TODO ====
-  // Changed order of arguments, watch out!
 
   // Recover handle
   cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );

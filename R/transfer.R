@@ -12,7 +12,11 @@ transfer <- function( src,
   type.src  <- get.type( src )
   dims.src  <- get.dims( src )
   level.src <- get.level( src )
-  obj.src   <- get.obj( src )
+  if( is.tensor(src) ){
+    obj.src <- src$get.obj
+  }else{
+    obj.src <- src
+  }
 
   # Dst attributes
   if( is.null( dst ) ){
@@ -27,7 +31,11 @@ transfer <- function( src,
     type.dst  <- get.type( dst )
     dims.dst  <- get.dims( dst )
     level.dst <- get.level( dst )
-    obj.dst   <- get.obj( dst )
+    if( is.tensor(dst) ){
+      obj.dst <- dst$get.obj
+    }else{
+      obj.dst <- dst
+    }
   }
 
   # Type matching
@@ -58,7 +66,11 @@ transfer <- function( src,
         stop( "Source column subset is not integer" )
       }
 
-      obj.cols.src  <- get.obj( cols.src )
+      if( is.tensor( cols.src ) ){
+        obj.cols.src <- cols.src$get.obj
+      }else{
+        obj.cols.src <- cols.src
+      }
       dims.src[[2]] <- get.dims( cols.src )[[1]]
     }
   }
@@ -86,7 +98,11 @@ transfer <- function( src,
         stop( "Destiantion column subset is not integer" )
       }
 
-      obj.cols.dst  <- get.obj( cols.dst )
+      if( is.tensor( cols.dst ) ){
+        obj.cols.dst <- cols.dst$get.obj
+      }else{
+        obj.cols.dst <- cols.dst
+      }
       dims.dst[[2]] <- get.dims( cols.dst )[[1]]
     }
   }
@@ -95,7 +111,7 @@ transfer <- function( src,
   if( is.null( dst ) ){
     dims.dst <- dims.src
     dst      <- create.obj( dims.dst, type = type.dst )
-    obj.dst  <- get.obj( dst )
+    obj.dst  <- dst
   }
 
   # Dimension matching

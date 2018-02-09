@@ -57,31 +57,35 @@ is.obj <- function( obj ){
   )
 }
 
-# Access the core pointer of an object
-get.obj <- function( obj ){
-  switch(
-    class( obj )[[1]],
-    tensor     = obj$get.obj,
-    tensor.ptr = obj,
-    matrix     = obj,
-    numeric    = obj,
-    integer    = obj,
-    logical    = obj,
-    stop( "Invalid object" )
-  )
+# Set values to 0 or false
+clear.obj <- function( obj ){
+  dims  <- get.dims( obj )
+  type  <- get.type( obj )
+  level <- get.level( obj )
+
+  if( is.tensor( obj ) ){
+    obj$clear()
+  }else{
+    res <- .Call( paste0("cuR_clear_tensor_", level, "_", type ), obj, dims )
+    if( is.null( res ) ){
+      stop( "Unsuccesfull clear" )
+    }
+  }
 }
 
 # Remove an object, completely freeing up allocated memory space
 destroy.obj <- function( obj ){
+  type  <- get.type( obj )
+
   if( is.tensor( obj ) ){
     obj$destroy()
   }else{
     switch(
       get.level( obj ) + 1,
       {},
-      .Call( "cuR_destroy_tensor_1", obj ),
-      .Call( "cuR_destroy_tensor_2", obj ),
-      .Call( "cuR_destroy_tensor_3", obj )
+      .Call( paste0("cuR_destroy_tensor_1_", type ), obj ),
+      .Call( paste0("cuR_destroy_tensor_2_", type ), obj ),
+      .Call( paste0("cuR_destroy_tensor_3_", type ), obj )
     )
   }
 

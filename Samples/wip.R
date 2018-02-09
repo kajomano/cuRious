@@ -1,28 +1,32 @@
 library( cuRious )
 library( microbenchmark )
 
-# C = A( m, k ) %*% B( k, n ) + C( m, n )
 m     <- 6
 n     <- 5
 
-vect.x <- rep( 1, times = m )
-vect.y <- rep( 1, times = n )
-mat.A  <- matrix( as.numeric( 1:(n*m) + 10 ), ncol = n, nrow = m )
+mat.A.n       <- matrix( 1, ncol = n, nrow = m )
+mat.A.i       <- matrix( 1L, ncol = n, nrow = m )
+mat.A.l       <- matrix( TRUE, ncol = n, nrow = m )
 
-tens.x <- tensor$new( vect.x )
-tens.y <- tensor$new( vect.y )
-tens.A <- tensor$new( mat.A )
+mat.A.check.n <- matrix( 0, ncol = n, nrow = m )
+mat.A.check.i <- matrix( 0L, ncol = n, nrow = m )
+mat.A.check.l <- matrix( FALSE, ncol = n, nrow = m )
 
-tens.x.under <- duplicate.obj( tens.x )$dive()
-tens.y.under <- duplicate.obj( tens.y )$dive()
-tens.A.under <- duplicate.obj( tens.A )$dive()
+for( l in c( 0L, 1L, 2L, 3L ) ){
+  tens.A.n <- tensor$new( mat.A.n, l )
+  tens.A.i <- tensor$new( mat.A.i, l )
+  tens.A.l <- tensor$new( mat.A.l, l )
 
-handle <- cublas.handle$new()$activate()
+  clear.obj( tens.A.n )
+  clear.obj( tens.A.i )
+  clear.obj( tens.A.l )
 
-cublas.sger( tens.x, tens.y, tens.A, alpha = 2 )
-cublas.sger( tens.x.under, tens.y.under, tens.A.under, alpha = 2, handle = handle )
+  print( identical( tens.A.n$pull(), mat.A.check.n ) )
+  print( identical( tens.A.i$pull(), mat.A.check.i ) )
+  print( identical( tens.A.l$pull(), mat.A.check.l ) )
 
-print( tens.A$pull() )
-print( tens.A.under$pull() )
+  destroy.obj( tens.A.n )
+  destroy.obj( tens.A.i )
+  destroy.obj( tens.A.l )
+}
 
-identical( tens.A$pull(), tens.A.under$pull() )

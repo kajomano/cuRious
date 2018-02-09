@@ -61,6 +61,11 @@ tensor <- R6Class(
       transfer( self, obj )
     },
 
+    clear = function(){
+      private$check.destroyed()
+      clear.obj( private$obj )
+    },
+
     destroy = function(){
       private$check.destroyed()
       obj <- private$obj

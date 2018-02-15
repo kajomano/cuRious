@@ -99,6 +99,20 @@ destroy.obj <- function( obj ){
   invisible( NULL )
 }
 
+# Check if destroyed
+is.destroyed <- function( obj ){
+  switch(
+    class( obj )[[1]],
+    tensor     = obj$is.destroyed,
+    tensor.ptr = is.null( obj ),
+    matrix     = is.null( obj ),
+    numeric    = is.null( obj ),
+    integer    = is.null( obj ),
+    logical    = is.null( obj ),
+    stop( "Invalid object" )
+  )
+}
+
 # Get storage type (these are C types, mapping is on top in obj.types)
 get.type <- function( obj ){
   switch(

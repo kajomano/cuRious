@@ -122,6 +122,10 @@ tensor <- R6Class(
 
     is.surfaced = function( val ){
       if( missing(val) ) return( self$get.level == 0 )
+    },
+
+    is.destroyed = function( val ){
+      if( missing(val) ) return( is.null(private$obj) )
     }
   )
 )

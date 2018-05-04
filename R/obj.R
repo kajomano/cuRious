@@ -90,7 +90,7 @@ destroy.obj <- function( obj ){
   }
 
   # Assign NULL
-  # Sketch
+  # Sketch city
   assign( as.character(substitute(obj) ),
           NULL,
           envir = parent.frame(),
@@ -136,6 +136,16 @@ get.type <- function( obj ){
   )
 }
 
+# Check if supplied var is a storage type
+check.type <- function( obj ){
+  type <- pmatch( obj, obj.types )
+  if( is.na( type ) ){
+    stop( "Invalid storage type" )
+  }
+
+  invisible( type )
+}
+
 # Dimension encoder
 # This function checks for validity too!
 # The order of dims is super important!
@@ -150,6 +160,19 @@ get.dims <- function( obj ){
     logical    = c( length( obj ), 1L ),
     stop( "Invalid object" )
   )
+}
+
+# Check if the supplied object can go as dims
+check.dims <- function( obj ){
+  if( !is.numeric( obj ) ){
+    stop( "Invalid dims" )
+  }
+
+  if( length( obj ) != 2 || any( obj < 1 ) || any( obj %% 1 ) ){
+    stop( "Invalid dims" )
+  }
+
+  invisible( as.integer( obj ) )
 }
 
 # Location encoder
@@ -168,6 +191,19 @@ get.level <- function( obj ){
     logical    = 0L,
     stop( "Invalid object" )
   )
+}
+
+# Check if the supplied obejct is passable as level
+check.level <- function( obj ){
+  if( !is.numeric( obj ) ){
+    stop( "Invalid level" )
+  }
+
+  if( length( obj ) != 1 || obj < 0 || obj > 3 || obj %% 1 ){
+    stop( "Invalid level" )
+  }
+
+  invisible( as.integer( obj ) )
 }
 
 # Type checks for argument checking

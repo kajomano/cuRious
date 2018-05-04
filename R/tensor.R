@@ -11,17 +11,27 @@
 tensor <- R6Class(
   "tensor",
   public = list(
+    initialize = function( obj   = NULL,
+                           dims  = get.dims( obj ),
+                           type  = get.type( obj ),
+                           level = get.level( obj ) ){
 
-    initialize = function( obj, level = get.level( obj ) ){
       # Dims and type are fixed from this point on, no way to modify them
-      private$dims  <- get.dims( obj )
-      private$type  <- get.type( obj )
+      if( is.null(  ) )
+      private$dims  <- dims
+      private$type  <- type
+
+      # Rest is changeable
       private$level <- level
       private$obj   <- private$create.obj( private$level )
 
-      # Copy the data (in C) even if it is an R object to not have soft copies
+      # Copy the data (in C) even if it is an R object, to not have soft copies
       # that could later be messed up by pull() or other transfers
-      transfer( obj, private$obj )
+      if( !is.null( obj ) ){
+        transfer( obj, private$obj )
+      }else{
+        self$clear()
+      }
     },
 
     transform = function( level = 0 ){

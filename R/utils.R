@@ -1,5 +1,6 @@
-# Clean global env (and all memory)
-clean.global <- function(){
+# Clean global env and restart session
+clean <- function(){
   rm( list = ls( globalenv() ), pos = globalenv() )
   gc()
+  .rs.restartR()
 }

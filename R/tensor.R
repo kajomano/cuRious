@@ -4,8 +4,13 @@
 # easily passed to the GPU as function arguments, no need to use the tensor
 # framework for them.
 
+# Level 0: R object (        host memory, double, int, bool )
+# Level 1: C array  (        host memory, float,  int, bool )
+# Level 2: C array  ( pinned host memory, float,  int, bool )
+# Level 3: C array  (      device memory, float,  int, bool )
+
 # TODO ====
-# Check for missing values
+# Check for missing values on init, pull, push
 
 # Tensor class ====
 tensor <- R6Class(
@@ -14,53 +19,71 @@ tensor <- R6Class(
     initialize = function( obj   = NULL,
                            dims  = get.dims( obj ),
                            type  = get.type( obj ),
-                           level = get.level( obj ) ){
+                           level = 0L ){
 
-      # Dims and type are fixed from this point on, no way to modify them
-      if( is.null(  ) )
-      private$dims  <- dims
-      private$type  <- type
+      # If object is not supported
+      if( is.null( obj ) ){
+        private$.dims <- check.dims( dims )
+        private$.type <- check.type( type )
+      # If supported
+      }else{
+        private$.dims <- get.dims( obj )
+        private$.type <- get.type( obj )
+      }
 
-      # Rest is changeable
-      private$level <- level
-      private$obj   <- private$create.obj( private$level )
+      private$.level <- check.level( level )
+
+      # Allocate space for the tensor
+      private$.ptr <- private$create.ptr()
 
       # Copy the data (in C) even if it is an R object, to not have soft copies
       # that could later be messed up by pull() or other transfers
       if( !is.null( obj ) ){
-        transfer( obj, private$obj )
+        transfer.core( obj,
+                       private$.ptr,
+                       0L,
+                       private$.level,
+                       private$.type,
+                       private$.dims )
       }else{
         self$clear()
       }
     },
 
-    transform = function( level = 0 ){
+    transform = function( level = 0L ){
       private$check.destroyed()
+      level <- check.level( level )
 
-      if( private$level != level ){
-        # No need to check anything
+      if( private$.level != level ){
         # Create a placeholder and copy
-        temp <- private$create.obj( level )
-        transfer( private$obj, temp )
+        tmp <- private$create.ptr( level )
+        transfer.core( private$.ptr,
+                       tmp,
+                       private$.level,
+                       level,
+                       private$.type,
+                       private$.dims )
 
-        # Forcibly destroy the previous obj and overwrite
-        self$destroy()
-        private$obj <- temp
-
-        private$level <- level
+        # Update
+        private$.ptr   <- tmp
+        private$.level <- level
       }
 
       invisible( self )
     },
 
     dive = function(){
-      self$transform( 3 )
+      private$check.destroyed()
+      self$transform( 3L )
     },
 
     surface = function(){
+      private$check.destroyed()
       self$transform()
     },
 
+    # These functions are only there for objs, are essentially interfaces
+    # to R
     push = function( obj ){
       private$check.destroyed()
       transfer( obj, self )
@@ -73,113 +96,174 @@ tensor <- R6Class(
 
     clear = function(){
       private$check.destroyed()
-      clear.obj( private$obj )
+      .Call( paste0("cuR_clear_tensor_", private$.level, "_", private$.type ),
+             private$.ptr,
+             private$.dims )
     },
 
     destroy = function(){
-      private$check.destroyed()
-      obj <- private$obj
-      destroy.obj( obj )
-      private$obj <- NULL
+      private$.ptr <- NULL
     }
   ),
 
   private = list(
-    dims  = NULL,
-    type  = NULL,
-    level = NULL,
-    obj   = NULL,
+    .ptr   = NULL,
+    .dims  = NULL,
+    .type  = NULL,
+    .level = NULL,
 
-    create.obj = function( level = 0 ){
-      create.obj( private$dims, level, private$type )
+    create.ptr = function( level = private$.level ){
+      if( prod( private$.dims ) > 2^32-1 ){
+        # TODO ====
+        # Use long int or the correct R type to remove this constraint
+        stop( "Object is too large" )
+      }
+
+      switch(
+        as.character( level ),
+        `0` = {
+          if( private$.dims[2] == 1 ){
+            vector( types[[private$.type]], private$.dims[1] )
+          }else{
+            matrix( vector( types[[private$.type]], 1 ),
+                    nrow = private$.dims[1],
+                    ncol = private$.dims[2] )
+          }
+        },
+        `1` = .Call( paste0("cuR_create_tensor_1_", private$.type ), private$.dims ),
+        `2` = .Call( paste0("cuR_create_tensor_2_", private$.type ), private$.dims ),
+        `3` = .Call( paste0("cuR_create_tensor_3_", private$.type ), private$.dims )
+      )
+    },
+
+    compare.dims = function( obj ){
+      if( get.dims( obj ) != private$.dims ) stop( "Dims do not match" )
+    },
+
+    compare.type = function( obj ){
+      if( get.type( obj ) != private$.type ) stop( "Types do not match" )
     },
 
     check.destroyed = function(){
-      if( is.null(private$obj) ){
-        stop( "The tensor was destroyed previously" )
+      if( self$is.destroyed ){
+        stop( "The tensor is destroyed" )
       }
     }
   ),
 
   active = list(
-    get.obj = function( val ){
+    ptr = function( val ){
       private$check.destroyed()
-      if( missing(val) ) return( private$obj )
+
+      if( missing( val ) ){
+        return( private$.ptr )
+      }else{
+        if( !self$is.surfaced ) stop( "Not surfaced, direct access denied" )
+
+        val <- check.object( val )
+        private$compare.dims( val )
+        private$compare.type( val )
+
+        private$.ptr <- val
+      }
     },
 
-    get.dims = function( val ){
+    dims = function( val ){
       private$check.destroyed()
-      if( missing(val) ) return( private$dims )
+      if( missing( val ) ) return( private$.dims )
     },
 
-    get.type = function( val ){
+    type = function( val ){
       private$check.destroyed()
-      if( missing(val) ) return( private$type )
+      if( missing( val ) ) return( private$.type )
     },
 
-    get.level = function( val ){
+    level = function( val ){
       private$check.destroyed()
-      if( missing(val) ) return( private$level )
+      if( missing( val ) ) return( private$.level )
     },
 
-    get.l = function( val ){
-      if( missing(val) ) return( prod( self$get.dims ) )
+    l = function( val ){
+      if( missing( val ) ) return( prod( self$dims ) )
     },
 
     is.under = function( val ){
-      if( missing(val) ) return( self$get.level == 3 )
+      if( missing( val ) ) return( self$level == 3 )
     },
 
     is.surfaced = function( val ){
-      if( missing(val) ) return( self$get.level == 0 )
+      if( missing( val ) ) return( self$level == 0 )
     },
 
     is.destroyed = function( val ){
-      if( missing(val) ) return( is.null(private$obj) )
+      if( missing( val ) ) return( is.null( private$.ptr ) )
     }
   )
 )
 
+# Utility functions ====
+# Dimension encoder
+get.dims <- function( obj ){
+  obj <- check.obj( obj )
+
+  switch(
+    class( obj )[[1]],
+    matrix  = c( nrow( obj ), ncol( obj ) ),
+    numeric = c( length( obj ), 1L ),
+    integer = c( length( obj ), 1L ),
+    logical = c( length( obj ), 1L )
+  )
+}
+
+# Get storage type
+get.type <- function( obj ){
+  obj <- check.obj( obj )
+
+  switch(
+    class( obj )[[1]],
+    matrix     = {
+      mode <- storage.mode( obj )
+      if( mode == "double" ) mode <- "numeric"
+
+      if( !(mode %in% types) ){
+        stop("Invalid type")
+      }
+
+      names(types)[[ which( types == mode ) ]]
+    },
+    numeric = "n",
+    integer = "i",
+    logical = "l"
+  )
+}
+
 # Helper functions ====
-is.tensor <- function( ... ){
-  objs <- list( ... )
-  sapply( objs, function( obj ){
-    "tensor" %in% class( obj )
-  })
-}
-
-check.tensor <- function( ... ){
-  if( !all( is.tensor( ... ) ) ){
-    stop( "Not all objects are tensors" )
-  }
-}
-
-is.under <- function( ... ){
-  check.tensor( ... )
-
-  tenss <- list( ... )
-  sapply( tenss, function( tens ){
-    tens$is.under
-  })
-}
-
-check.tensor.under <- function( ... ){
-  if( !all( is.under( ... ) ) ){
-    stop( "Not all tensors are under" )
-  }
-}
-
-is.surfaced <- function( ... ){
-  check.tensor( ... )
-
-  tenss <- list( ... )
-  sapply( tenss, function( tens ){
-    tens$is.surfaced
-  })
-}
-
-check.tensor.surfaced <- function( ... ){
-  if( !all( is.surfaced( ... ) ) ){
-    stop( "Not all tensors are surfaced" )
-  }
-}
+# is.under <- function( ... ){
+#   check.tensor( ... )
+#
+#   tenss <- list( ... )
+#   sapply( tenss, function( tens ){
+#     tens$is.under
+#   })
+# }
+#
+# check.tensor.under <- function( ... ){
+#   if( !all( is.under( ... ) ) ){
+#     stop( "Not all tensors are under" )
+#   }
+# }
+#
+# is.surfaced <- function( ... ){
+#   check.tensor( ... )
+#
+#   tenss <- list( ... )
+#   sapply( tenss, function( tens ){
+#     tens$is.surfaced
+#   })
+# }
+#
+# check.tensor.surfaced <- function( ... ){
+#   if( !all( is.surfaced( ... ) ) ){
+#     stop( "Not all tensors are surfaced" )
+#   }
+# }

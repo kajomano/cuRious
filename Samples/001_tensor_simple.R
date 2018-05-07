@@ -13,6 +13,9 @@ vect.x <- rnorm( 10 ) * 10^9
 tens.x <- tensor$new( vect.x )
 tens.x$dive()
 
+# TODO ====
+# From here: explain that pull/push is intended for debug only, otherwise use
+# the accessor
 # Pull (copy out) the vector back to R. You should actually see some precision
 # loss, the cause of this will be explained in the next script.
 print( tens.x$pull() )
@@ -39,4 +42,4 @@ tens.y$get.obj
 tens.x$surface()
 tens.y$pull()
 
-clean.global()
+clean()

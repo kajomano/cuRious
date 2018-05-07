@@ -37,13 +37,13 @@ void cuR_finalize_cuda_stream( SEXP ptr ){
 }
 
 extern "C"
-SEXP cuR_deactivate_cuda_stream( SEXP ptr ){
+SEXP cuR_destroy_cuda_stream( SEXP ptr ){
   cuR_finalize_cuda_stream( ptr );
   return R_NilValue;
 }
 
 extern "C"
-SEXP cuR_activate_cuda_stream(){
+SEXP cuR_create_cuda_stream(){
   cudaStream_t* stream = new cudaStream_t;
   debugPrint( Rprintf( "<%p> Creating stream\n", (void*)stream ) );
 

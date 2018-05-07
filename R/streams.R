@@ -8,14 +8,12 @@ cuda.stream.sync.all <- function(){
 }
 
 cuda.stream.sync <- function( stream ){
-  check.cuda.stream( stream )
-  if( is.null( stream$get.stream ) ){
-    return( invisible( FALSE ) )
-  }
+  stream <- check.cuda.stream( stream )
 
-  if( is.null( .Call( "cuR_sync_cuda_stream", stream$get.stream ) ) ){
+  if( is.null( .Call( "cuR_sync_cuda_stream", stream$stream ) ) ){
     stop( "Stream could not be synced" )
   }
+
   invisible( TRUE )
 }
 
@@ -23,57 +21,29 @@ cuda.stream.sync <- function( stream ){
 cuda.stream <- R6Class(
   "cuda.stream",
   public = list(
-    activate = function(){
-      if( self$is.active ){
-        warning( "The CUDA stream is already active" )
-        return( invisible( self ) )
-      }
-
-      private$stream <- .Call( "cuR_activate_cuda_stream" )
-
-      if( is.null( private$stream ) ){
-        stop( "The CUDA stream could not be activated" )
-      }
-
-      invisible( self )
-    },
-    deactivate = function(){
-      if( !self$is.active ){
-        warning( "The CUDA stream has not yet been activated" )
-        return( invisible( self ) )
-      }
-
-      .Call( "cuR_deactivate_cuda_stream", private$stream )
-      private$stream <- NULL
-
-      invisible( self )
+    initialize = function(){
+      private$.stream <- .Call( "cuR_create_cuda_stream" )
     }
   ),
 
   private = list(
-    stream = NULL
+    .stream = NULL,
+
+    check.destroyed = function(){
+      if( self$is.destroyed ){
+        stop( "The stream is destroyed" )
+      }
+    }
   ),
 
   active = list(
-    get.stream = function( val ){
-      if( missing(val) ) return( private$stream )
+    stream = function( val ){
+      private$check.destroyed()
+      if( missing( val ) ) return( private$.stream )
     },
-    is.active = function(){
-      !is.null( private$stream )
+
+    is.destroyed = function( val ){
+      if( missing( val ) ) return( is.null( private$.stream ) )
     }
   )
 )
-
-# Helper functions ====
-is.cuda.stream <- function( ... ){
-  objs <- list( ... )
-  sapply( objs, function( obj ){
-    "cuda.stream" %in% class( obj )
-  })
-}
-
-check.cuda.stream <- function( ... ){
-  if( !all( is.cuda.stream( ... ) ) ){
-    stop( "Not all objects are CUDA streams" )
-  }
-}

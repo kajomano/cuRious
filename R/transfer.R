@@ -1,314 +1,310 @@
 # .Calls: src/transfer.cpp
 
-# This function is a general tool for copying data between tensors or R objects
-# residing on any level, therefore it is horribly bloated :D
+# This function is a general tool for copying data between tensors
+# residing on any level. cols.dst and .src are either 2 long integer vectors
+# defining column ranges, or n long integer tensors on levels 0-2, defining
+# exact columns to be transferred (transferred to).
 transfer <- function( src,
-                      dst      = NULL,
-                      cols.src = NULL,
-                      cols.dst = NULL,
+                      dst,
+                      src.cols = NULL,
+                      dst.cols = NULL,
                       stream   = NULL ){
 
-  # Src attributes
-  type.src  <- get.type( src )
-  dims.src  <- get.dims( src )
-  level.src <- get.level( src )
-  if( is.tensor(src) ){
-    obj.src <- src$get.obj
-  }else{
-    obj.src <- src
-  }
+  src <- check.tensor( src )
+  dst <- check.tensor( dst )
 
-  # Dst attributes
-  if( is.null( dst ) ){
-    dst.not.supp <- TRUE
-    type.dst  <- type.src
-    level.dst <- 0L
-    if( !is.null( cols.dst ) ){
-      stop( "Column subsetting does not make sense for non-existing destinations" )
-    }
-  }else{
-    dst.not.supp <- FALSE
-    type.dst  <- get.type( dst )
-    dims.dst  <- get.dims( dst )
-    level.dst <- get.level( dst )
-    if( is.tensor(dst) ){
-      obj.dst <- dst$get.obj
-    }else{
-      obj.dst <- dst
-    }
-  }
+  src.dims <- src$dims
+  dst.dims <- dst$dims
 
   # Type matching
-  if( type.src != type.dst ){
-    stop( "Object types do not match" )
+  if( src$type != dst$type ){
+    stop( "Tensor types do not match" )
   }
 
   # Source column subset/ranges
-  off.cols.src <- NULL
-  obj.cols.src <- NULL
+  src.col.ptr <- NULL
+  src.col.off <- NULL
 
-  if( !is.null( cols.src ) ){
-    if( is.list( cols.src ) ){
-      range.cols.src <- as.integer( c( cols.src[[1]], cols.src[[2]] ) )
-      if( range.cols.src[[2]] > dims.src[[2]] ||
-          range.cols.src[[2]] < range.cols.src[[1]] ||
-          range.cols.src[[1]] < 0L ){
-        stop( "Source column range out of bounds" )
-      }
-      off.cols.src  <- range.cols.src[[1]]
-      dims.src[[2]] <- range.cols.src[[2]] - range.cols.src[[1]] + 1L
-    }else{
-      if( level.src == 3 || level.dst == 3 || get.level( cols.src ) == 3 ){
-        stop( "Individual column subset does not work with L3 tensors" )
+  if( !is.null( src.cols ) ){
+    if( is.obj( src.cols ) ){
+      if( src$level == 3 || dst$level == 3 || src.cols$level == 3 ){
+        stop( "Individual source column subsets do not work with L3 tensors" )
       }
 
-      if( get.type( cols.src ) != "i" ){
+      if( src.cols$type != "i" ){
         stop( "Source column subset is not integer" )
       }
 
-      if( is.tensor( cols.src ) ){
-        obj.cols.src <- cols.src$get.obj
-      }else{
-        obj.cols.src <- cols.src
+      src.col.ptr <- src.cols$ptr
+      src.dims[[2]] <- src.cols$l
+    }else if( is.numeric( src.cols ) && length( src.cols ) ){
+      if( as.logical( src.cols %% 1 ) ||
+          src.cols[[2]] > src$dims[[2]] ||
+          src.cols[[2]] < src.cols[[1]] ||
+          src.cols[[1]] < 0 ){
+        stop( "Invalid source column range" )
       }
-      dims.src[[2]] <- get.dims( cols.src )[[1]]
+
+      src.col.off <- as.integer( src.cols[[1]] )
+      src.dims[[2]] <- as.integer( src.cols[[2]] - src.cols[[1]] + 1 )
+    }else{
+      stop( "Invalid source column subset" )
     }
   }
 
   # Destination column subset/ranges
-  off.cols.dst <- NULL
-  obj.cols.dst <- NULL
+  dst.col.ptr <- NULL
+  dst.col.off <- NULL
 
-  if( !is.null( cols.dst ) ){
-    if( is.list( cols.dst ) ){
-      range.cols.dst <- as.integer( c( cols.dst[[1]], cols.dst[[2]] ) )
-      if( range.cols.dst[[2]] > dims.dst[[2]] ||
-          range.cols.dst[[2]] < range.cols.dst[[1]] ||
-          range.cols.dst[[1]] < 0L ){
-        stop( "Source column range out of bounds" )
+  if( !is.null( dst.cols ) ){
+    if( is.obj( dst.cols ) ){
+      if( dst$level == 3 || dst$level == 3 || dst.cols$level == 3 ){
+        stop( "Individual destination column subsets do not work with L3 tensors" )
       }
-      off.cols.dst  <- range.cols.dst[[1]]
-      dims.dst[[2]] <- range.cols.dst[[2]] - range.cols.dst[[1]] + 1L
+
+      if( dst.cols$type != "i" ){
+        stop( "Destination column subset is not integer" )
+      }
+
+      dst.col.ptr <- dst.cols$ptr
+      dst.dims[[2]] <- dst.cols$l
+    }else if( is.numeric( dst.cols ) && length( dst.cols ) ){
+      if( as.logical( dst.cols %% 1 ) ||
+          dst.cols[[2]] > dst$dims[[2]] ||
+          dst.cols[[2]] < dst.cols[[1]] ||
+          dst.cols[[1]] < 0 ){
+        stop( "Invalid destination column range" )
+      }
+
+      dst.col.off <- as.integer( dst.cols[[1]] )
+      dst.dims[[2]] <- as.integer( dst.cols[[2]] - dst.cols[[1]] + 1 )
     }else{
-      if( level.src == 3 || level.dst == 3 || get.level( cols.dst ) == 3 ){
-        stop( "Individual column subset does not work with L3 tensors" )
-      }
-
-      if( get.type( cols.dst ) != "i" ){
-        stop( "Destiantion column subset is not integer" )
-      }
-
-      if( is.tensor( cols.dst ) ){
-        obj.cols.dst <- cols.dst$get.obj
-      }else{
-        obj.cols.dst <- cols.dst
-      }
-      dims.dst[[2]] <- get.dims( cols.dst )[[1]]
+      stop( "Invalid destination column subset" )
     }
   }
 
-  # At this point dst should exist
-  if( is.null( dst ) ){
-    dims.dst <- dims.src
-    dst      <- create.obj( dims.dst, type = type.dst )
-    obj.dst  <- dst
-  }
-
   # Dimension matching
-  if( !identical( dims.src, dims.dst ) ){
+  if( !identical( src.dims, dst.dims ) ){
     stop( "Dimensions do not match" )
   }
 
   # Stream check
-  if( !is.null(stream) ){
+  if( !is.null( stream ) ){
     check.cuda.stream( stream )
-    stream <- stream$get.stream
+    stream <- stream$stream
   }
+
+  # Main core transfer call
+  transfer.core( src$ptr,
+                 dst$ptr,
+                 src$level,
+                 dst$level,
+                 src$type,
+                 src.dims,
+                 src.col.off,
+                 dst.col.off,
+                 src.col.ptr,
+                 dst.col.ptr,
+                 stream )
+
+  invisible( TRUE )
+}
+
+# Mid-level transfer call, without argument checks. Can still handle
+# multi-transfer calls. Should not be used interactively!
+transfer.core = function( src.ptr,
+                          dst.ptr,
+                          src.level,
+                          dst.level,
+                          type,
+                          dims,
+                          src.col.off = NULL,
+                          dst.col.off = NULL,
+                          src.col.ptr = NULL,
+                          dst.col.ptr = NULL,
+                          stream      = NULL ){
 
   # Main low level transfer calls
-  if( level.src == 0L && level.dst == 3L || level.src == 3L && level.dst == 0L ){
+  if( src.level == 0L && dst.level == 3L ||
+      src.level == 3L && dst.level == 0L ){
+
     # Multi-transfer call 0L-2L-3L or 3L-2L-0L
-    temp <- create.obj( dims.src, 2, type.src )
+    tmp <- tensor$new( NULL, dims, type, 2L )
 
-    transfer.core( obj.src,
-                   temp,
-                   level.src,
-                   2L,
-                   type.src,
-                   dims.src,
-                   off.cols.src,
-                   NULL )
+    transfer.ptr( src.ptr,
+                  tmp$ptr,
+                  src.level,
+                  2L,
+                  type,
+                  dims,
+                  src.col.off,
+                  NULL )
 
-    transfer.core( temp,
-                   obj.dst,
-                   2L,
-                   level.dst,
-                   type.src,
-                   dims.src,
-                   NULL,
-                   off.cols.dst )
+    transfer.ptr( tmp$ptr,
+                  dst.ptr,
+                  2L,
+                  dst.level,
+                  type,
+                  dims,
+                  NULL,
+                  dst.col.off )
 
-    destroy.obj( temp )
+    tmp$destroy()
   }else{
     # Single-transfer calls
-    transfer.core( obj.src,
-                   obj.dst,
-                   level.src,
-                   level.dst,
-                   type.src,
-                   dims.src,
-                   off.cols.src,
-                   off.cols.dst,
-                   obj.cols.src,
-                   obj.cols.dst,
-                   stream )
+    transfer.ptr( src.ptr,
+                  dst.ptr,
+                  src.level,
+                  dst.level,
+                  type,
+                  dims,
+                  src.col.off,
+                  dst.col.off,
+                  src.col.ptr,
+                  dst.col.ptr,
+                  stream )
   }
 
-  # Return destination
-  if( dst.not.supp ){
-    return( dst )
-  }
-
-  invisible( dst )
+  invisible( TRUE )
 }
 
 # Low level transfer call that handles objects, for speed considerations
 # no argument checks are done, don't use interactively or in any place where
 # speed is not critical!
 # Switch hell
-transfer.core = function( src,
-                          dst,
-                          level.src,
-                          level.dst,
-                          type,
-                          dims,
-                          off.cols.src = NULL,
-                          off.cols.dst = NULL,
-                          obj.cols.src = NULL,
-                          obj.cols.dst = NULL,
-                          stream       = NULL ){
+transfer.ptr = function( src.ptr,
+                         dst.ptr,
+                         src.level,
+                         dst.level,
+                         type,
+                         dims,
+                         src.col.off = NULL,
+                         dst.col.off = NULL,
+                         src.col.ptr = NULL,
+                         dst.col.ptr = NULL,
+                         stream      = NULL ){
   res <- switch(
-    as.character(get.level(src)),
+    as.character( src.level ),
     `0` = {
       switch(
-        as.character(get.level(dst)),
+        as.character( dst.level ),
         `0` = {
           .Call( paste0( "cuR_transfer_0_0_", type ),
-                 src,
-                 dst,
+                 src.ptr,
+                 dst.ptr,
                  dims,
-                 off.cols.src,
-                 off.cols.dst,
-                 obj.cols.src,
-                 obj.cols.dst )
+                 src.col.off,
+                 dst.col.off,
+                 src.col.ptr,
+                 dst.col.ptr )
         },
         `1` = {
           .Call( paste0( "cuR_transfer_0_12_", type ),
-                 src,
-                 dst,
+                 src.ptr,
+                 dst.ptr,
                  dims,
-                 off.cols.src,
-                 off.cols.dst,
-                 obj.cols.src,
-                 obj.cols.dst )
+                 src.col.off,
+                 dst.col.off,
+                 src.col.ptr,
+                 dst.col.ptr )
         },
         `2` = {
           .Call( paste0( "cuR_transfer_0_12_", type ),
-                 src,
-                 dst,
+                 src.ptr,
+                 dst.ptr,
                  dims,
-                 off.cols.src,
-                 off.cols.dst,
-                 obj.cols.src,
-                 obj.cols.dst )
+                 src.col.off,
+                 dst.col.off,
+                 src.col.ptr,
+                 dst.col.ptr )
         },
         stop( "Invalid level" )
       )
     },
     `1` = {
       switch(
-        as.character(get.level(dst)),
+        as.character( dst.level ),
         `0` = {
           .Call( paste0( "cuR_transfer_12_0_", type ),
-                 src,
-                 dst,
+                 src.ptr,
+                 dst.ptr,
                  dims,
-                 off.cols.src,
-                 off.cols.dst,
-                 obj.cols.src,
-                 obj.cols.dst )
+                 src.col.off,
+                 dst.col.off,
+                 src.col.ptr,
+                 dst.col.ptr )
         },
         `1` = {
           .Call( paste0( "cuR_transfer_12_12_", type ),
-                 src,
-                 dst,
+                 src.ptr,
+                 dst.ptr,
                  dims,
-                 off.cols.src,
-                 off.cols.dst,
-                 obj.cols.src,
-                 obj.cols.dst )
+                 src.col.off,
+                 dst.col.off,
+                 src.col.ptr,
+                 dst.col.ptr )
         },
         `2` = {
           .Call( paste0( "cuR_transfer_12_12_", type ),
-                 src,
-                 dst,
+                 src.ptr,
+                 dst.ptr,
                  dims,
-                 off.cols.src,
-                 off.cols.dst,
-                 obj.cols.src,
-                 obj.cols.dst )
+                 src.col.off,
+                 dst.col.off,
+                 src.col.ptr,
+                 dst.col.ptr )
         },
         `3` = {
           .Call( paste0( "cuR_transfer_1_3_", type ),
-                 src,
-                 dst,
+                 src.ptr,
+                 dst.ptr,
                  dims,
-                 off.cols.src,
-                 off.cols.dst )
+                 src.col.off,
+                 dst.col.off )
         },
         stop( "Invalid level" )
       )
     },
     `2` = {
       switch(
-        as.character(get.level(dst)),
+        as.character( dst.level ),
         `0` = {
           .Call( paste0( "cuR_transfer_12_0_", type ),
-                 src,
-                 dst,
+                 src.ptr,
+                 dst.ptr,
                  dims,
-                 off.cols.src,
-                 off.cols.dst,
-                 obj.cols.src,
-                 obj.cols.dst )
+                 src.col.off,
+                 dst.col.off,
+                 src.col.ptr,
+                 dst.col.ptr )
         },
         `1` = {
           .Call( paste0( "cuR_transfer_12_12_", type ),
-                 src,
-                 dst,
+                 src.ptr,
+                 dst.ptr,
                  dims,
-                 off.cols.src,
-                 off.cols.dst,
-                 obj.cols.src,
-                 obj.cols.dst )
+                 src.col.off,
+                 dst.col.off,
+                 src.col.ptr,
+                 dst.col.ptr )
         },
         `2` = {
           .Call( paste0( "cuR_transfer_12_12_", type ),
-                 src,
-                 dst,
+                 src.ptr,
+                 dst.ptr,
                  dims,
-                 off.cols.src,
-                 off.cols.dst,
-                 obj.cols.src,
-                 obj.cols.dst )
+                 src.col.off,
+                 dst.col.off,
+                 src.col.ptr,
+                 dst.col.ptr )
         },
         `3` = {
           .Call( paste0( "cuR_transfer_2_3_", type ),
-                 src,
-                 dst,
+                 src.ptr,
+                 dst.ptr,
                  dims,
-                 off.cols.src,
-                 off.cols.dst,
+                 src.col.off,
+                 dst.col.off,
                  stream )
         },
         stop( "Invalid level" )
@@ -316,31 +312,31 @@ transfer.core = function( src,
     },
     `3` = {
       switch(
-        as.character(get.level(dst)),
+        as.character( dst.level ),
         `1` = {
           .Call( paste0( "cuR_transfer_3_1_", type ),
-                 src,
-                 dst,
+                 src.ptr,
+                 dst.ptr,
                  dims,
-                 off.cols.src,
-                 off.cols.dst )
+                 src.col.off,
+                 dst.col.off )
         },
         `2` = {
           .Call( paste0( "cuR_transfer_3_2_", type ),
-                 src,
-                 dst,
+                 src.ptr,
+                 dst.ptr,
                  dims,
-                 off.cols.src,
-                 off.cols.dst,
+                 src.col.off,
+                 dst.col.off,
                  stream )
         },
         `3` = {
           .Call( paste0( "cuR_transfer_3_3_", type ),
-                 src,
-                 dst,
+                 src.ptr,
+                 dst.ptr,
                  dims,
-                 off.cols.src,
-                 off.cols.dst,
+                 src.col.off,
+                 dst.col.off,
                  stream )
         },
         stop( "Invalid level" )
@@ -352,4 +348,6 @@ transfer.core = function( src,
   if( is.null(res) ){
     stop( "Transfer was unsuccessful" )
   }
+
+  invisible( TRUE )
 }

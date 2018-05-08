@@ -9,16 +9,17 @@ vect.x <- rnorm( 10 )
 tens.x <- tensor$new( vect.x )
 
 # Tensors can actually be in 4 different stages (levels), which are defined by
-# the combination of how the data is stored, and where. The 4 levels are the
-# following:
-# - Level 0: The tensor is an R object, a matrix or a vector. It is stored in
+# the combination of how the data is stored, and where. We are only touching on
+# floating point values, other data types will be introduced in a later script.
+# The 4 levels are the following:
+# - Level 0: The tensor is an R object, a matrix or a vector. Float is stored in
 # host memory as double precision floating point values.
-# - Level 1: The tensor is still in host memory, but it is converted to single
-# precision floating point values.
+# - Level 1: The tensor is still in host memory, but floats are converted to
+# single precision floating point values.
 # - Level 2: The tensor is in the host memory, but inhibits a page-locked space,
-# and is stored as single precision floats.
-# - Level 3: The tensor is stored in the device memory as single precision
-# floats.
+# and floats are stored as single precision floats.
+# - Level 3: The tensor is stored in the device memory, floats are single
+# precision floats.
 
 # When calling dive() or surface(), the tensor goes through all of these levels.
 # The tensor can be individually set on any level by calling transform( level ).
@@ -28,19 +29,28 @@ tens.x$dive
 tens.x$surface
 
 # Let's look at the individual levels:
-# On level 0, the tensor is a common R object, as can be seen now:
-tens.x$get.obj
+# On level 0, the tensor wraps a common R object, as can be seen now:
+tens.x$ptr
 
-# The tensor's data should not be accessed with the get.obj accessor.
-# This is because different tensors and R objects sharing the same memopry space
+# On level 0, the tensor's data can be accessed by reading or assigning to this
+# $ptr accessor. This interface is intended to be used when some calculations
+# need to be done on the R side in an otherwise GPU heavy workflow. For this
+# a 'tunnel' tensor is required that serves as a L0 endpoint to data transferred
+# from the gpu, or any other levels. If the tensor resides on any other level,
+# ony the reading of the $ptr is allowed.
+
+# On the other hand, the previously shown $pull() and $push() functions are
+# intended to serve as very basic interfaces between tensors on all levels and
+# R, mainly for debugging.
+
+# Care should be taken when accessing the tensor content with the $ptr accessor.
+# This is because different tensors and R objects sharing the same memory space
 # could be modified unintentionally, without R's lazy copy guarding them from
-# this. Instead, the pull() or transfer() (more on this later) operation should
-# be used whenever accessing the data in any way in the tensor. These operations
-# create a hard copy of the data that is safe from unintentional modification.
-# When creating a tensor, the initial information is also hard copied this way.
+# this. When creating a tensor, the initial information is hard copied to
+# mitigate this problem.
 
 # An example of an unintentional modification:
-not.really.copied.data <- tens.x$get.obj
+not.really.copied.data <- tens.x$ptr
 properly.copied.data   <- tens.x$pull()
 
 print( not.really.copied.data )
@@ -60,7 +70,7 @@ print( properly.copied.data )
 # and move the information between tensors by calling transfer( source, dest ).
 big.n <- 10^6
 tens.X <- tensor$new( rnorm( big.n ) )
-tens.Y <- tensor$new( rnorm( big.n ), 1 )
+tens.Y <- tensor$new( rnorm( big.n ), 1L )
 
 microbenchmark( transfer( tens.X, tens.Y ), times = 10 ) # L0 -> L0 transfer
 microbenchmark( transfer( tens.X, tens.X ), times = 10 ) # L0 -> L1 transfer
@@ -86,7 +96,6 @@ microbenchmark( transfer( tens.X, tens.X ), times = 10 ) # L0 -> L1 transfer
 # Here is an example:
 
 stream <- cuda.stream$new()
-stream$activate()
 
 tens.X$transform( 2 )
 tens.Y$transform( 3 )
@@ -94,11 +103,11 @@ tens.Y$transform( 3 )
 # sync
 print( microbenchmark( transfer( tens.X, tens.Y ), times = 10 ) )
 # async
-print( microbenchmark( transfer( tens.X, tens.Y, stream=stream ), times = 10 ) )
+print( microbenchmark( transfer( tens.X, tens.Y, stream = stream ), times = 10 ) )
 
 # The asynchronous call is much faster, because it returns before the actual
 # data transfer is completed. This can be useful for overlapping data transfers
 # with computations, also known as data streaming. This will be shown in a later
 # sample script.
 
-clean.global()
+clean()

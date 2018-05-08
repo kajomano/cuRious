@@ -65,11 +65,6 @@ SEXP cuR_create_tensor_1( SEXP dims_r ){
   SEXP tens_r = Rf_protect( R_MakeExternalPtr( tens, R_NilValue, R_NilValue ) );
   R_RegisterCFinalizerEx( tens_r, cuR_fin_tensor_1<t>, TRUE );
 
-  Rf_setAttrib( tens_r, R_ClassSymbol,        Rf_mkString("tensor.ptr") );
-  Rf_setAttrib( tens_r, Rf_mkString("level"), Rf_ScalarInteger(1) );
-  Rf_setAttrib( tens_r, Rf_mkString("dim0"),  Rf_ScalarInteger(dims[0]) );
-  Rf_setAttrib( tens_r, Rf_mkString("dim1"),  Rf_ScalarInteger(dims[1]) );
-
   Rf_unprotect(1);
   return tens_r;
 }
@@ -77,8 +72,6 @@ SEXP cuR_create_tensor_1( SEXP dims_r ){
 extern "C"
 SEXP cuR_create_tensor_1_n( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_1<float>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("n") );
-
   Rf_unprotect(1);
   return tens_r;
 }
@@ -86,8 +79,6 @@ SEXP cuR_create_tensor_1_n( SEXP dims_r ){
 extern "C"
 SEXP cuR_create_tensor_1_i( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_1<int>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("i") );
-
   Rf_unprotect(1);
   return tens_r;
 }
@@ -95,8 +86,6 @@ SEXP cuR_create_tensor_1_i( SEXP dims_r ){
 extern "C"
 SEXP cuR_create_tensor_1_l( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_1<bool>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("l") );
-
   Rf_unprotect(1);
   return tens_r;
 }
@@ -194,11 +183,6 @@ SEXP cuR_create_tensor_2( SEXP dims_r ){
   SEXP tens_r = Rf_protect( R_MakeExternalPtr( tens, R_NilValue, R_NilValue ) );
   R_RegisterCFinalizerEx( tens_r, cuR_fin_tensor_2<t>, TRUE );
 
-  Rf_setAttrib( tens_r, R_ClassSymbol,        Rf_mkString("tensor.ptr") );
-  Rf_setAttrib( tens_r, Rf_mkString("level"), Rf_ScalarInteger(2) );
-  Rf_setAttrib( tens_r, Rf_mkString("dim0"),  Rf_ScalarInteger(dims[0]) );
-  Rf_setAttrib( tens_r, Rf_mkString("dim1"),  Rf_ScalarInteger(dims[1]) );
-
   Rf_unprotect(1);
   return tens_r;
 }
@@ -206,8 +190,6 @@ SEXP cuR_create_tensor_2( SEXP dims_r ){
 extern "C"
 SEXP cuR_create_tensor_2_n( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_2<float>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("n") );
-
   Rf_unprotect(1);
   return tens_r;
 }
@@ -215,8 +197,6 @@ SEXP cuR_create_tensor_2_n( SEXP dims_r ){
 extern "C"
 SEXP cuR_create_tensor_2_i( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_2<int>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("i") );
-
   Rf_unprotect(1);
   return tens_r;
 }
@@ -224,8 +204,6 @@ SEXP cuR_create_tensor_2_i( SEXP dims_r ){
 extern "C"
 SEXP cuR_create_tensor_2_l( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_2<bool>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("l") );
-
   Rf_unprotect(1);
   return tens_r;
 }
@@ -321,12 +299,6 @@ SEXP cuR_create_tensor_3( SEXP dims_r ){
   // Wrap pointer in a SEXP and register a finalizer
   SEXP tens_r = Rf_protect( R_MakeExternalPtr( tens, R_NilValue, R_NilValue ) );
   R_RegisterCFinalizerEx( tens_r, cuR_fin_tensor_3<t>, TRUE );
-
-  Rf_setAttrib( tens_r, R_ClassSymbol,        Rf_mkString("tensor.ptr"));
-  Rf_setAttrib( tens_r, Rf_mkString("level"), Rf_ScalarInteger(3));
-  Rf_setAttrib( tens_r, Rf_mkString("dim0"),  Rf_ScalarInteger(dims[0]));
-  Rf_setAttrib( tens_r, Rf_mkString("dim1"),  Rf_ScalarInteger(dims[1]));
-
   Rf_unprotect(1);
   return tens_r;
 }
@@ -334,8 +306,6 @@ SEXP cuR_create_tensor_3( SEXP dims_r ){
 extern "C"
 SEXP cuR_create_tensor_3_n( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_3<float>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("n") );
-
   Rf_unprotect(1);
   return tens_r;
 }
@@ -343,8 +313,6 @@ SEXP cuR_create_tensor_3_n( SEXP dims_r ){
 extern "C"
 SEXP cuR_create_tensor_3_i( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_3<int>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("i") );
-
   Rf_unprotect(1);
   return tens_r;
 }
@@ -352,8 +320,6 @@ SEXP cuR_create_tensor_3_i( SEXP dims_r ){
 extern "C"
 SEXP cuR_create_tensor_3_l( SEXP dims_r ){
   SEXP tens_r = Rf_protect( cuR_create_tensor_3<bool>( dims_r ) );
-  Rf_setAttrib(tens_r, Rf_mkString("type"), Rf_mkString("l") );
-
   Rf_unprotect(1);
   return tens_r;
 }

@@ -1,22 +1,5 @@
 # .Calls: src/streams.cpp
 
-cuda.stream.sync.all <- function(){
-  if( is.null( .Call( "cuR_sync_device" ) ) ){
-    stop( "Streams could not be synced" )
-  }
-  invisible( TRUE )
-}
-
-cuda.stream.sync <- function( stream ){
-  stream <- check.cuda.stream( stream )
-
-  if( is.null( .Call( "cuR_sync_cuda_stream", stream$stream ) ) ){
-    stop( "Stream could not be synced" )
-  }
-
-  invisible( TRUE )
-}
-
 # CUDA stream class ====
 cuda.stream <- R6Class(
   "cuda.stream",
@@ -47,3 +30,21 @@ cuda.stream <- R6Class(
     }
   )
 )
+
+cuda.stream.sync.all <- function(){
+  if( is.null( .Call( "cuR_sync_device" ) ) ){
+    stop( "Streams could not be synced" )
+  }
+  invisible( TRUE )
+}
+
+cuda.stream.sync <- function( stream ){
+  stream <- check.cuda.stream( stream )
+
+  if( is.null( .Call( "cuR_sync_cuda_stream", stream$stream ) ) ){
+    stop( "Stream could not be synced" )
+  }
+
+  invisible( TRUE )
+}
+

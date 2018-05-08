@@ -1,32 +1,29 @@
 library( cuRious )
-library( microbenchmark )
 
-m     <- 6
-n     <- 5
+# Create matrix tensors and store them in GPU memory
+# GEMM: C = A( m, k ) %*% B( k, n ) + C( m, n )
+cols <- 10
+rows <- 6
+subs <- c( 2, 7 )
 
-mat.A.n       <- matrix( 1, ncol = n, nrow = m )
-mat.A.i       <- matrix( 1L, ncol = n, nrow = m )
-mat.A.l       <- matrix( TRUE, ncol = n, nrow = m )
+mat.A <- matrix( as.double( 1:(cols*rows) ), ncol = cols )
+mat.B <- matrix( as.double( 1:(cols*rows) ), ncol = cols )
+mat.C <- matrix( as.double( 1:(cols*rows) ), ncol = cols )
 
-mat.A.check.n <- matrix( 0, ncol = n, nrow = m )
-mat.A.check.i <- matrix( 0L, ncol = n, nrow = m )
-mat.A.check.l <- matrix( FALSE, ncol = n, nrow = m )
+tens.A.3 <- tensor$new( mat.A , 3 )
+tens.B.3 <- tensor$new( mat.B , 3 )
+tens.C.3 <- tensor$new( mat.C , 3 )
 
-for( l in c( 0L, 1L, 2L, 3L ) ){
-  tens.A.n <- tensor$new( mat.A.n, l )
-  tens.A.i <- tensor$new( mat.A.i, l )
-  tens.A.l <- tensor$new( mat.A.l, l )
+tens.A.0 <- tensor$new( mat.A , 0 )
+tens.B.0 <- tensor$new( mat.B , 0 )
+tens.C.0 <- tensor$new( mat.C , 0 )
 
-  clear.obj( tens.A.n )
-  clear.obj( tens.A.i )
-  clear.obj( tens.A.l )
+handle <- cublas.handle$new()
 
-  print( identical( tens.A.n$pull(), mat.A.check.n ) )
-  print( identical( tens.A.i$pull(), mat.A.check.i ) )
-  print( identical( tens.A.l$pull(), mat.A.check.l ) )
+cublas.sgemm( tens.A.3, tens.B.3, tens.C.3, subs, subs, subs, handle = handle )
+cublas.sgemm( tens.A.0, tens.B.0, tens.C.0, subs, subs, subs )
 
-  destroy.obj( tens.A.n )
-  destroy.obj( tens.A.i )
-  destroy.obj( tens.A.l )
-}
+print( tens.C.3$pull() )
+print( tens.C.0$pull() )
 
+clean()

@@ -9,81 +9,32 @@
 cublas.handle <- R6Class(
   "cublas.handle",
   public = list(
-    activate = function(){
-      if( self$is.active ){
-        warning( "The cuBLAS handle has already been activated" )
-        return( invisible( self ) )
-      }
-      private$handle <- .Call( "cuR_activate_cublas_handle" )
-
-      if( is.null( private$handle ) ){
-        stop( "The cuBLAS handle could not be activated" )
-      }
-
-      invisible( self )
-    },
-    deactivate = function(){
-      if( !self$is.active ){
-        warning( "The cuBLAS handle is not active" )
-        return( invisible( self ) )
-      }
-
-      .Call( "cuR_deactivate_cublas_handle", private$handle )
-      private$handle <- NULL
-
-      invisible( self )
+    initialize = function(){
+      private$.handle <- .Call( "cuR_create_cublas_handle" )
     }
   ),
 
   private = list(
-    handle = NULL
+    .handle = NULL,
+
+    check.destroyed = function(){
+      if( self$is.destroyed ){
+        stop( "The handle is destroyed" )
+      }
+    }
   ),
 
   active = list(
-    get.handle = function( val ){
-      if( missing(val) ){
-        # This produces an error because wherever you need a cublas handle it is
-        # not optional
-        if( !self$is.active ){
-          stop( "The cuBLAS handle has not yet been activated" )
-        }
-        private$handle
-      }
+    handle = function( val ){
+      private$check.destroyed()
+      if( missing( val ) ) return( private$.handle )
     },
-    is.active = function(){
-      !is.null( private$handle )
+
+    is.destroyed = function( val ){
+      if( missing( val ) ) return( is.null( private$.handle ) )
     }
   )
 )
-
-# Helper functions ====
-is.cublas.handle <- function( ... ){
-  objs <- list( ... )
-  sapply( objs, function( obj ){
-    "cublas.handle" %in% class( obj )
-  })
-}
-
-check.cublas.handle <- function( ... ){
-  if( !all( is.cublas.handle( ... ) ) ){
-    stop( "Not all objects are cuBLAS handles" )
-  }
-}
-
-is.cublas.handle.active <- function( ... ){
-  check.cublas.handle( ... )
-
-  handles <- list( ... )
-  sapply( handles, function( handle ){
-    handle$is.active
-  })
-}
-
-check.cublas.handle.active <- function( ... ){
-  if( !all( is.cublas.handle.active( ... ) ) ){
-    stop( "Not all cuBLAS handles are active" )
-  }
-}
 
 # cuBLAS linear algebra operations ====
 
@@ -217,50 +168,84 @@ cublas.sgemm <- function( tens.A,
                           handle = NULL,
                           stream = NULL ){
   # Sanity checks
-  if( !all( is.under( tens.A, tens.B, tens.C ) ) &&
-      !all( is.surfaced( tens.A, tens.B, tens.C ) ) ){
-    stop( "All inputs need to be on L0 or L3" )
+  tens.A <- check.tensor( tens.A )
+  tens.B <- check.tensor( tens.B )
+  tens.C <- check.tensor( tens.C )
+
+  if( !all( c( tens.A$is.under, tens.B$is.under, tens.C$is.under ) ) &&
+      !all( c( tens.A$is.surfaced, tens.B$is.surfaced, tens.C$is.surfaced ) ) ){
+    stop( "All input tensors need to be on L0 or L3" )
   }
 
-  if( is.under( tens.A ) ){
-    check.cublas.handle.active( handle )
+  if( !all( c( tens.A$type == "n", tens.B$type == "n", tens.C$type == "n" ) ) ){
+    stop( "All input tensors need to be numeric" )
   }
 
-  dims.A <- tens.A$get.dims
-  dims.B <- tens.B$get.dims
-  dims.C <- tens.C$get.dims
+  if( tens.A$is.under ){
+    check.cublas.handle( handle )
+    handle <- handle$handle
+  }
 
-  off.cols.A <- 1L
-  off.cols.B <- 1L
-  off.cols.C <- 1L
+  if( !is.null( stream ) ){
+    check.cuda.stream( stream )
+    stream <- stream$stream
+  }
+
+  # Dims logic
+  dims.A <- tens.A$dims
+  dims.B <- tens.B$dims
+  dims.C <- tens.C$dims
+
+  off.cols.A <- NULL
+  off.cols.B <- NULL
+  off.cols.C <- NULL
 
   if( !is.null( cols.A ) ){
-    if( !is.list( cols.A ) ){
+    if( !is.numeric( cols.A ) || !length( cols.A ) == 2 ){
       stop( "Only column ranges are accepted" )
     }
+
+    if( as.logical( cols.A %% 1 ) ||
+        cols.A[[2]] > tens.A$dims[[2]] ||
+        cols.A[[2]] < cols.A[[1]] ||
+        cols.A[[1]] < 0 ){
+      stop( "Invalid column range for tensor A" )
+    }
+
     off.cols.A  <- as.integer( cols.A[[1]] )
     dims.A[[2]] <- as.integer( cols.A[[2]] - cols.A[[1]] + 1L )
   }
 
   if( !is.null( cols.B ) ){
-    if( !is.list( cols.B ) ){
+    if( !is.numeric( cols.B ) || !length( cols.B ) == 2 ){
       stop( "Only column ranges are accepted" )
     }
+
+    if( as.logical( cols.B %% 1 ) ||
+        cols.B[[2]] > tens.B$dims[[2]] ||
+        cols.B[[2]] < cols.B[[1]] ||
+        cols.B[[1]] < 0 ){
+      stop( "Invalid column range for tensor B" )
+    }
+
     off.cols.B  <- as.integer( cols.B[[1]] )
     dims.B[[2]] <- as.integer( cols.B[[2]] - cols.B[[1]] + 1L )
   }
 
   if( !is.null( cols.C ) ){
-    if( !is.list( cols.C ) ){
+    if( !is.numeric( cols.C ) || !length( cols.C ) == 2 ){
       stop( "Only column ranges are accepted" )
     }
+
+    if( as.logical( cols.C %% 1 ) ||
+        cols.C[[2]] > tens.C$dims[[2]] ||
+        cols.C[[2]] < cols.C[[1]] ||
+        cols.C[[1]] < 0 ){
+      stop( "Invalid column range for tensor C" )
+    }
+
     off.cols.C  <- as.integer( cols.C[[1]] )
     dims.C[[2]] <- as.integer( cols.C[[2]] - cols.C[[1]] + 1L )
-  }
-
-  if( !is.null( stream ) ){
-    check.cuda.stream( stream )
-    stream <- stream$get.stream
   }
 
   dims.check.A <- dims.A
@@ -280,11 +265,13 @@ cublas.sgemm <- function( tens.A,
     stop( "Not all tensors have matching dimensions" )
   }
 
-  if( is.under( tens.A ) ){
+  # Actual calls
+  # L3
+  if( tens.A$is.under ){
     ret <- .Call( "cuR_cublas_sgemm",
-                  tens.A$get.obj,
-                  tens.B$get.obj,
-                  tens.C$get.obj,
+                  tens.A$ptr,
+                  tens.B$ptr,
+                  tens.C$ptr,
                   dims.A,
                   dims.B,
                   off.cols.A,
@@ -294,7 +281,7 @@ cublas.sgemm <- function( tens.A,
                   tp.B,
                   alpha,
                   beta,
-                  handle$get.handle,
+                  handle,
                   stream )
 
     if( is.null( ret ) ) stop( "Subroutine failed" )
@@ -303,10 +290,16 @@ cublas.sgemm <- function( tens.A,
     if( is.null( stream ) ){
       cuda.stream.sync.all()
     }
+
+  # L0 fallback call
   }else{
-    tmp.A <- transfer( tens.A, cols.src = cols.A )
-    tmp.B <- transfer( tens.B, cols.src = cols.B )
-    tmp.C <- transfer( tens.C, cols.src = cols.C )
+    tmp.A <- obj.create( dims.A )
+    tmp.B <- obj.create( dims.B )
+    tmp.C <- obj.create( dims.C )
+
+    transfer.core( tens.A$ptr, tmp.A, 0L, 0L, "n", dims.A, off.cols.A )
+    transfer.core( tens.B$ptr, tmp.B, 0L, 0L, "n", dims.B, off.cols.B )
+    transfer.core( tens.C$ptr, tmp.C, 0L, 0L, "n", dims.C, off.cols.C )
 
     if( tp.A ){
       tmp.A <- t(tmp.A)
@@ -316,8 +309,10 @@ cublas.sgemm <- function( tens.A,
       tmp.B <- t(tmp.B)
     }
 
+    # Math
     tmp.C <- ( alpha * tmp.A ) %*% tmp.B + ( beta * tmp.C )
-    transfer( tmp.C, tens.C, cols.dst = cols.C )
+
+    transfer.core( tmp.C, tens.C$ptr, 0L, 0L, "n", dims.C, NULL, off.cols.C )
   }
 
   invisible( TRUE )

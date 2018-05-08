@@ -14,14 +14,14 @@ mat.A <- matrix( as.double( 1:(m*k) ), ncol = k )
 mat.B <- matrix( as.double( 1:(k*n) ), ncol = n )
 mat.C <- matrix( as.double( 1:(m*n) ), ncol = n )
 
-tens.A <- tensor$new( mat.A, 3 )
-tens.B <- tensor$new( mat.B, 3 )
-tens.C <- tensor$new( mat.C, 3 )
+tens.A <- tensor$new( mat.A , 3 )
+tens.B <- tensor$new( mat.B , 3 )
+tens.C <- tensor$new( mat.C , 3 )
 
 # Create a cuBLAS handle and activate it. An activated cuBLAS handle is needed
 # for each cuBLAS call. As it is costly to create a handle, it is advised to
 # reuse the handle throughout multiple calls, or even the whole session.
-handle <- cublas.handle$new()$activate()
+handle <- cublas.handle$new()
 
 # Mutliply the two matrices, the result ending up in tens.C
 cublas.sgemm( tens.A, tens.B, tens.C, handle = handle )
@@ -30,4 +30,4 @@ cublas.sgemm( tens.A, tens.B, tens.C, handle = handle )
 print( tens.C$pull() )
 print( mat.A %*% mat.B + mat.C )
 
-clean.global()
+clean()

@@ -4,7 +4,7 @@
 # easily passed to the GPU as function arguments, no need to use the tensor
 # framework for them.
 
-# Level 0: R object (        host memory, double, int, bool )
+# Level 0: R object (        host memory, double, int, int  )
 # Level 1: C array  (        host memory, float,  int, bool )
 # Level 2: C array  ( pinned host memory, float,  int, bool )
 # Level 3: C array  (      device memory, float,  int, bool )
@@ -17,9 +17,9 @@ tensor <- R6Class(
   "tensor",
   public = list(
     initialize = function( obj   = NULL,
-                           dims  = get.dims( obj ),
-                           type  = get.type( obj ),
-                           level = 0L ){
+                           level = 0L,
+                           dims  = NULL,
+                           type  = "n" ){
 
       # If object is not supported
       if( is.null( obj ) ){
@@ -27,8 +27,8 @@ tensor <- R6Class(
         private$.type <- check.type( type )
       # If supported
       }else{
-        private$.dims <- get.dims( obj )
-        private$.type <- get.type( obj )
+        private$.dims <- obj.dims( obj )
+        private$.type <- obj.type( obj )
       }
 
       private$.level <- check.level( level )
@@ -86,12 +86,30 @@ tensor <- R6Class(
     # to R
     push = function( obj ){
       private$check.destroyed()
-      transfer( obj, self )
+
+      obj <- check.obj( obj )
+      private$compare.dims( obj )
+      private$compare.type( obj )
+
+      transfer.core( obj,
+                     private$.ptr,
+                     0L,
+                     private$.level,
+                     private$.type,
+                     private$.dims )
     },
 
-    pull = function( obj = NULL ){
+    pull = function(){
       private$check.destroyed()
-      transfer( self, obj )
+
+      tmp <- private$create.ptr( 0L )
+      transfer.core( private$.ptr,
+                     tmp,
+                     private$.level,
+                     0L,
+                     private$.type,
+                     private$.dims )
+      tmp
     },
 
     clear = function(){
@@ -108,9 +126,9 @@ tensor <- R6Class(
 
   private = list(
     .ptr   = NULL,
+    .level = NULL,
     .dims  = NULL,
     .type  = NULL,
-    .level = NULL,
 
     create.ptr = function( level = private$.level ){
       if( prod( private$.dims ) > 2^32-1 ){
@@ -121,15 +139,7 @@ tensor <- R6Class(
 
       switch(
         as.character( level ),
-        `0` = {
-          if( private$.dims[2] == 1 ){
-            vector( types[[private$.type]], private$.dims[1] )
-          }else{
-            matrix( vector( types[[private$.type]], 1 ),
-                    nrow = private$.dims[1],
-                    ncol = private$.dims[2] )
-          }
-        },
+        `0` = obj.create( private$.dims, private$.type ),
         `1` = .Call( paste0("cuR_create_tensor_1_", private$.type ), private$.dims ),
         `2` = .Call( paste0("cuR_create_tensor_2_", private$.type ), private$.dims ),
         `3` = .Call( paste0("cuR_create_tensor_3_", private$.type ), private$.dims )
@@ -137,11 +147,11 @@ tensor <- R6Class(
     },
 
     compare.dims = function( obj ){
-      if( get.dims( obj ) != private$.dims ) stop( "Dims do not match" )
+      if( !identical( obj.dims( obj ), private$.dims ) ) stop( "Dims do not match" )
     },
 
     compare.type = function( obj ){
-      if( get.type( obj ) != private$.type ) stop( "Types do not match" )
+      if( obj.type( obj ) != private$.type ) stop( "Types do not match" )
     },
 
     check.destroyed = function(){
@@ -184,7 +194,7 @@ tensor <- R6Class(
     },
 
     l = function( val ){
-      if( missing( val ) ) return( prod( self$dims ) )
+      if( missing( val ) ) return( as.integer( prod( self$dims ) ) )
     },
 
     is.under = function( val ){
@@ -200,70 +210,3 @@ tensor <- R6Class(
     }
   )
 )
-
-# Utility functions ====
-# Dimension encoder
-get.dims <- function( obj ){
-  obj <- check.obj( obj )
-
-  switch(
-    class( obj )[[1]],
-    matrix  = c( nrow( obj ), ncol( obj ) ),
-    numeric = c( length( obj ), 1L ),
-    integer = c( length( obj ), 1L ),
-    logical = c( length( obj ), 1L )
-  )
-}
-
-# Get storage type
-get.type <- function( obj ){
-  obj <- check.obj( obj )
-
-  switch(
-    class( obj )[[1]],
-    matrix     = {
-      mode <- storage.mode( obj )
-      if( mode == "double" ) mode <- "numeric"
-
-      if( !(mode %in% types) ){
-        stop("Invalid type")
-      }
-
-      names(types)[[ which( types == mode ) ]]
-    },
-    numeric = "n",
-    integer = "i",
-    logical = "l"
-  )
-}
-
-# Helper functions ====
-# is.under <- function( ... ){
-#   check.tensor( ... )
-#
-#   tenss <- list( ... )
-#   sapply( tenss, function( tens ){
-#     tens$is.under
-#   })
-# }
-#
-# check.tensor.under <- function( ... ){
-#   if( !all( is.under( ... ) ) ){
-#     stop( "Not all tensors are under" )
-#   }
-# }
-#
-# is.surfaced <- function( ... ){
-#   check.tensor( ... )
-#
-#   tenss <- list( ... )
-#   sapply( tenss, function( tens ){
-#     tens$is.surfaced
-#   })
-# }
-#
-# check.tensor.surfaced <- function( ... ){
-#   if( !all( is.surfaced( ... ) ) ){
-#     stop( "Not all tensors are surfaced" )
-#   }
-# }

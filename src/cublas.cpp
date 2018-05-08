@@ -19,13 +19,13 @@ void cuR_finalize_cublas_handle( SEXP ptr ){
 }
 
 extern "C"
-SEXP cuR_deactivate_cublas_handle( SEXP ptr ){
+SEXP cuR_destroy_cublas_handle( SEXP ptr ){
   cuR_finalize_cublas_handle( ptr );
   return R_NilValue;
 }
 
 extern "C"
-SEXP cuR_activate_cublas_handle(){
+SEXP cuR_create_cublas_handle(){
   cublasHandle_t* handle = new cublasHandle_t;
 
   debugPrint( Rprintf( "<%p> Creating handle\n", (void*)handle ) );

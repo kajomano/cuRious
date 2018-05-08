@@ -26,7 +26,7 @@ transfer <- function( src,
   src.col.off <- NULL
 
   if( !is.null( src.cols ) ){
-    if( is.obj( src.cols ) ){
+    if( is.tensor( src.cols ) ){
       if( src$level == 3 || dst$level == 3 || src.cols$level == 3 ){
         stop( "Individual source column subsets do not work with L3 tensors" )
       }
@@ -37,7 +37,7 @@ transfer <- function( src,
 
       src.col.ptr <- src.cols$ptr
       src.dims[[2]] <- src.cols$l
-    }else if( is.numeric( src.cols ) && length( src.cols ) ){
+    }else if( is.numeric( src.cols ) && length( src.cols ) == 2 ){
       if( as.logical( src.cols %% 1 ) ||
           src.cols[[2]] > src$dims[[2]] ||
           src.cols[[2]] < src.cols[[1]] ||
@@ -46,7 +46,7 @@ transfer <- function( src,
       }
 
       src.col.off <- as.integer( src.cols[[1]] )
-      src.dims[[2]] <- as.integer( src.cols[[2]] - src.cols[[1]] + 1 )
+      src.dims[[2]] <- as.integer( src.cols[[2]] - src.cols[[1]] + 1L )
     }else{
       stop( "Invalid source column subset" )
     }
@@ -57,7 +57,7 @@ transfer <- function( src,
   dst.col.off <- NULL
 
   if( !is.null( dst.cols ) ){
-    if( is.obj( dst.cols ) ){
+    if( is.tensor( dst.cols ) ){
       if( dst$level == 3 || dst$level == 3 || dst.cols$level == 3 ){
         stop( "Individual destination column subsets do not work with L3 tensors" )
       }
@@ -68,7 +68,7 @@ transfer <- function( src,
 
       dst.col.ptr <- dst.cols$ptr
       dst.dims[[2]] <- dst.cols$l
-    }else if( is.numeric( dst.cols ) && length( dst.cols ) ){
+    }else if( is.numeric( dst.cols ) && length( dst.cols ) == 2 ){
       if( as.logical( dst.cols %% 1 ) ||
           dst.cols[[2]] > dst$dims[[2]] ||
           dst.cols[[2]] < dst.cols[[1]] ||
@@ -77,7 +77,7 @@ transfer <- function( src,
       }
 
       dst.col.off <- as.integer( dst.cols[[1]] )
-      dst.dims[[2]] <- as.integer( dst.cols[[2]] - dst.cols[[1]] + 1 )
+      dst.dims[[2]] <- as.integer( dst.cols[[2]] - dst.cols[[1]] + 1L )
     }else{
       stop( "Invalid destination column subset" )
     }
@@ -129,7 +129,7 @@ transfer.core = function( src.ptr,
       src.level == 3L && dst.level == 0L ){
 
     # Multi-transfer call 0L-2L-3L or 3L-2L-0L
-    tmp <- tensor$new( NULL, dims, type, 2L )
+    tmp <- tensor$new( NULL, 2L, dims, type )
 
     transfer.ptr( src.ptr,
                   tmp$ptr,

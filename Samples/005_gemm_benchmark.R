@@ -21,7 +21,7 @@ alpha <- -1.5
 beta  <- 0.5
 
 # Create a cublas handle
-handle <- cublas.handle$new()$activate()
+handle <- cublas.handle$new()
 
 # Define functions for a better microbenchmark print
 R.dgemm <- function(){
@@ -37,4 +37,4 @@ cuda.sgemm <- function(){
 print( microbenchmark( R.dgemm(),    times = 10 ) )
 print( microbenchmark( cuda.sgemm(), times = 10 ) )
 
-clean.global()
+clean()

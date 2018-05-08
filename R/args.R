@@ -80,3 +80,12 @@ check.cuda.stream <- function( stream ){
   invisible( stream )
 }
 
+is.cublas.handle <- function( handle ){
+  "cublas.handle" %in% class( handle )
+}
+
+check.cublas.handle <- function( handle ){
+  if( !is.cublas.handle( handle ) ) stop( "Invalid cuBLAS handle" )
+  invisible( handle )
+}
+

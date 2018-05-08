@@ -25,7 +25,7 @@ library( cuRious )
 # and the columns are the individual observations.
 
 # Curious implements two forms of column subsetting: range-based subsets and
-# individually picked columns.
+# individually selected columns.
 
 # Range-based subsetting ====
 # Subsetting a continous range of columns can be done on any transfer calls, by
@@ -33,22 +33,25 @@ library( cuRious )
 # last column ids respectively. Both source and destination can be subsetted
 # this way:
 
-tens.X <- tensor$new( matrix( as.numeric(1:6), 2, 3 ), 1 )
-tens.Y <- tensor$new( matrix( 0, 2, 3 ), 1 )
+tens.X <- tensor$new( matrix( as.numeric( 1:6 ), 2, 3 ), 1L )
+tens.Y <- tensor$new( matrix( as.numeric( 0   ), 2, 3 ), 1L )
 
-transfer( tens.X, tens.Y, list( 1L,2L ), list( 2L,3L ) )
+transfer( tens.X, tens.Y, src.cols = c( 1L,2L ), dst.cols = c( 2L,3L ) )
 
-tens.Y$pull()
+print( tens.Y$pull() )
 
 # Individual subsetting ====
 # Individual columns can be subsetted an reordered by supplying an integer
-# vector as subset. Both source and destination can be subsetted, by this form
-# of subsetting only work on host-host transfers (transfers not involving L3
+# tensor as subset. Both source and destination can be subsetted, but this form
+# of subsetting only works on host-host transfers (transfers not involving L3
 # tensors):
 
-tens.Y$push( matrix( 0, 2, 3 ) )
-transfer( tens.X, tens.Y, c(1L,3L,2L), c(3L,2L,1L) )
-tens.Y$pull()
+tens.src.sub <- tensor$new( c(1L,3L,2L) )
+tens.dst.sub <- tensor$new( c(3L,2L,1L) )
+
+tens.Y$push( matrix( as.numeric( 0 ), 2, 3 ) )
+transfer( tens.X, tens.Y, src.cols = tens.src.sub, dst.cols = tens.dst.sub )
+print( tens.Y$pull() )
 
 # Tensor types ====
 # So far we only used tensors that contained numeric data. However, cuRious
@@ -68,17 +71,8 @@ tens.num <- tensor$new( rep( 1, times = 6 ) )
 tens.int <- tensor$new( rep( 1L, times = 6 ) )
 tens.log <- tensor$new( rep( TRUE, times = 6 ) )
 
-get.type( tens.num )
-get.type( tens.int )
-get.type( tens.log )
+print( tens.num$type )
+print( tens.int$type )
+print( tens.log$type )
 
-# Individual subsetting with integer tensors ====
-# Individual matrix subsetting can be done with integer tensors too, if the
-# tensor is in host memory:
-tens.sub <- tensor$new( c(1L,3L,2L), 1 )
-
-tens.Y$push( matrix( 0, 2, 3 ) )
-transfer( tens.X, tens.Y, tens.sub )
-tens.Y$pull()
-
-clean.global()
+clean()

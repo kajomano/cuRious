@@ -130,9 +130,9 @@ cublas.sger <- function( x,
 
   if( A$is.under ){
     ret <- .Call( "cuR_cublas_sger",
-                  x$get.obj,
-                  y$get.obj,
-                  A$get.obj,
+                  x$ptr,
+                  y$ptr,
+                  A$ptr,
                   A.subs$dims,
                   x.subs$off,
                   y.subs$off,

@@ -39,12 +39,12 @@ tensor <- R6Class(
       # Copy the data (in C) even if it is an R object, to not have soft copies
       # that could later be messed up by pull() or other transfers
       if( !is.null( obj ) ){
-        transfer.core( obj,
-                       private$.ptr,
-                       0L,
-                       private$.level,
-                       private$.type,
-                       private$.dims )
+        .transfer.core( obj,
+                        private$.ptr,
+                        0L,
+                        private$.level,
+                        private$.type,
+                        private$.dims )
       }else{
         self$clear()
       }
@@ -57,12 +57,12 @@ tensor <- R6Class(
       if( private$.level != level ){
         # Create a placeholder and copy
         tmp <- private$create.ptr( level )
-        transfer.core( private$.ptr,
-                       tmp,
-                       private$.level,
-                       level,
-                       private$.type,
-                       private$.dims )
+        .transfer.core( private$.ptr,
+                        tmp,
+                        private$.level,
+                        level,
+                        private$.type,
+                        private$.dims )
 
         # Update
         private$.ptr   <- tmp
@@ -91,24 +91,24 @@ tensor <- R6Class(
       private$compare.dims( obj )
       private$compare.type( obj )
 
-      transfer.core( obj,
-                     private$.ptr,
-                     0L,
-                     private$.level,
-                     private$.type,
-                     private$.dims )
+      .transfer.core( obj,
+                      private$.ptr,
+                      0L,
+                      private$.level,
+                      private$.type,
+                      private$.dims )
     },
 
     pull = function(){
       private$check.destroyed()
 
       tmp <- private$create.ptr( 0L )
-      transfer.core( private$.ptr,
-                     tmp,
-                     private$.level,
-                     0L,
-                     private$.type,
-                     private$.dims )
+      .transfer.core( private$.ptr,
+                      tmp,
+                      private$.level,
+                      0L,
+                      private$.type,
+                      private$.dims )
       tmp
     },
 

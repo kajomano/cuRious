@@ -6,8 +6,10 @@
 # exact columns to be transferred (transferred to).
 transfer <- function( src,
                       dst,
-                      src.cols = NULL,
-                      dst.cols = NULL,
+                      src.perm = NULL,
+                      dst.perm = NULL,
+                      src.span = NULL,
+                      dst.span = NULL,
                       stream   = NULL ){
 
   src <- check.tensor( src )
@@ -18,31 +20,15 @@ transfer <- function( src,
     stop( "Tensor types do not match" )
   }
 
-  # Source column subset/ranges
-  if( !is.null( src.cols ) ){
-    if( is.tensor( src.cols ) ){
-      src.subs <- column.indiv( src, src.cols )
-    }else if( is.obj( src.cols ) ){
-      src.subs <- column.range( src, src.cols )
-    }else{
-      stop( "Invalid source column subset" )
-    }
-  }else{
-    src.subs <- column.empty( src, src.cols )
-  }
+  # Source permutation/span
+  src.subs <- .tensor.subset$new( src )
+  src.subs$check.perm( src.perm )
+  src.subs$check.span( src.span )
 
-  # Destination column subset/ranges
-  if( !is.null( dst.cols ) ){
-    if( is.tensor( dst.cols ) ){
-      dst.subs <- column.indiv( dst, dst.cols )
-    }else if( is.obj( dst.cols ) ){
-      dst.subs <- column.range( dst, dst.cols )
-    }else{
-      stop( "Invalid destination column subset" )
-    }
-  }else{
-    dst.subs <- column.empty( dst, dst.cols )
-  }
+  # Destination permutation/span
+  dst.subs <- .tensor.subset$new( dst )
+  dst.subs$check.perm( dst.perm )
+  dst.subs$check.span( dst.span )
 
   # Dimension matching
   if( !identical( src.subs$dims, dst.subs$dims ) ){
@@ -56,74 +42,74 @@ transfer <- function( src,
   }
 
   # Main core transfer call
-  transfer.core( src$ptr,
-                 dst$ptr,
-                 src$level,
-                 dst$level,
-                 src$type,
-                 src.subs$dims,
-                 src.subs$off,
-                 dst.subs$off,
-                 src.subs$ptr,
-                 dst.subs$ptr,
-                 stream )
+  .transfer.core( src$ptr,
+                  dst$ptr,
+                  src$level,
+                  dst$level,
+                  src$type,
+                  src.subs$dims,
+                  src.subs$ptr,
+                  dst.subs$ptr,
+                  src.subs$off,
+                  dst.subs$off,
+                  stream )
 
   invisible( TRUE )
 }
 
 # Mid-level transfer call, without argument checks. Can still handle
 # multi-transfer calls. Should not be used interactively!
-transfer.core = function( src.ptr,
-                          dst.ptr,
-                          src.level,
-                          dst.level,
-                          type,
-                          dims,
-                          src.col.off = NULL,
-                          dst.col.off = NULL,
-                          src.col.ptr = NULL,
-                          dst.col.ptr = NULL,
-                          stream      = NULL ){
+.transfer.core = function( src.ptr,
+                           dst.ptr,
+                           src.level,
+                           dst.level,
+                           type,
+                           dims,
+                           src.subs.ptr = NULL,
+                           dst.subs.ptr = NULL,
+                           src.subs.off = NULL,
+                           dst.subs.off = NULL,
+                           stream       = NULL ){
 
   # Main low level transfer calls
-  if( src.level == 0L && dst.level == 3L ||
-      src.level == 3L && dst.level == 0L ){
+  if( ( src.level == 0L && dst.level == 3L ) ||
+      ( src.level == 3L && dst.level == 0L ) ){
 
     # Multi-transfer call 0L-2L-3L or 3L-2L-0L
     tmp <- tensor$new( NULL, 2L, dims, type )
 
-    transfer.ptr( src.ptr,
-                  tmp$ptr,
-                  src.level,
-                  2L,
-                  type,
-                  dims,
-                  src.col.off,
-                  NULL )
+    .transfer.ptr( src.ptr,
+                   tmp$ptr,
+                   src.level,
+                   2L,
+                   type,
+                   dims,
+                   src.subs.off,
+                   NULL )
 
-    transfer.ptr( tmp$ptr,
-                  dst.ptr,
-                  2L,
-                  dst.level,
-                  type,
-                  dims,
-                  NULL,
-                  dst.col.off )
+    .transfer.ptr( tmp$ptr,
+                   dst.ptr,
+                   2L,
+                   dst.level,
+                   type,
+                   dims,
+                   NULL,
+                   dst.subs.off )
 
     tmp$destroy()
   }else{
     # Single-transfer calls
-    transfer.ptr( src.ptr,
-                  dst.ptr,
-                  src.level,
-                  dst.level,
-                  type,
-                  dims,
-                  src.col.off,
-                  dst.col.off,
-                  src.col.ptr,
-                  dst.col.ptr,
-                  stream )
+    .transfer.ptr( src.ptr,
+                   dst.ptr,
+                   src.level,
+                   dst.level,
+                   type,
+                   dims,
+                   src.subs.ptr,
+                   dst.subs.ptr,
+                   src.subs.off,
+                   dst.subs.off,
+                   stream )
   }
 
   invisible( TRUE )
@@ -133,17 +119,17 @@ transfer.core = function( src.ptr,
 # no argument checks are done, don't use interactively or in any place where
 # speed is not critical!
 # Switch hell
-transfer.ptr = function( src.ptr,
-                         dst.ptr,
-                         src.level,
-                         dst.level,
-                         type,
-                         dims,
-                         src.col.off = NULL,
-                         dst.col.off = NULL,
-                         src.col.ptr = NULL,
-                         dst.col.ptr = NULL,
-                         stream      = NULL ){
+.transfer.ptr = function( src.ptr,
+                          dst.ptr,
+                          src.level,
+                          dst.level,
+                          type,
+                          dims,
+                          src.subs.ptr = NULL,
+                          dst.subs.ptr = NULL,
+                          src.subs.off = NULL,
+                          dst.subs.off = NULL,
+                          stream       = NULL ){
   res <- switch(
     as.character( src.level ),
     `0` = {
@@ -154,30 +140,30 @@ transfer.ptr = function( src.ptr,
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.col.off,
-                 dst.col.off,
-                 src.col.ptr,
-                 dst.col.ptr )
+                 src.subs.ptr,
+                 dst.subs.ptr,
+                 src.subs.off,
+                 dst.subs.off )
         },
         `1` = {
           .Call( paste0( "cuR_transfer_0_12_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.col.off,
-                 dst.col.off,
-                 src.col.ptr,
-                 dst.col.ptr )
+                 src.subs.ptr,
+                 dst.subs.ptr,
+                 src.subs.off,
+                 dst.subs.off )
         },
         `2` = {
           .Call( paste0( "cuR_transfer_0_12_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.col.off,
-                 dst.col.off,
-                 src.col.ptr,
-                 dst.col.ptr )
+                 src.subs.ptr,
+                 dst.subs.ptr,
+                 src.subs.off,
+                 dst.subs.off )
         },
         stop( "Invalid level" )
       )
@@ -190,38 +176,38 @@ transfer.ptr = function( src.ptr,
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.col.off,
-                 dst.col.off,
-                 src.col.ptr,
-                 dst.col.ptr )
+                 src.subs.ptr,
+                 dst.subs.ptr,
+                 src.subs.off,
+                 dst.subs.off )
         },
         `1` = {
           .Call( paste0( "cuR_transfer_12_12_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.col.off,
-                 dst.col.off,
-                 src.col.ptr,
-                 dst.col.ptr )
+                 src.subs.ptr,
+                 dst.subs.ptr,
+                 src.subs.off,
+                 dst.subs.off )
         },
         `2` = {
           .Call( paste0( "cuR_transfer_12_12_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.col.off,
-                 dst.col.off,
-                 src.col.ptr,
-                 dst.col.ptr )
+                 src.subs.ptr,
+                 dst.subs.ptr,
+                 src.subs.off,
+                 dst.subs.off )
         },
         `3` = {
           .Call( paste0( "cuR_transfer_1_3_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.col.off,
-                 dst.col.off )
+                 src.subs.off,
+                 dst.subs.off )
         },
         stop( "Invalid level" )
       )
@@ -234,38 +220,38 @@ transfer.ptr = function( src.ptr,
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.col.off,
-                 dst.col.off,
-                 src.col.ptr,
-                 dst.col.ptr )
+                 src.subs.ptr,
+                 dst.subs.ptr,
+                 src.subs.off,
+                 dst.subs.off )
         },
         `1` = {
           .Call( paste0( "cuR_transfer_12_12_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.col.off,
-                 dst.col.off,
-                 src.col.ptr,
-                 dst.col.ptr )
+                 src.subs.ptr,
+                 dst.subs.ptr,
+                 src.subs.off,
+                 dst.subs.off )
         },
         `2` = {
           .Call( paste0( "cuR_transfer_12_12_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.col.off,
-                 dst.col.off,
-                 src.col.ptr,
-                 dst.col.ptr )
+                 src.subs.ptr,
+                 dst.subs.ptr,
+                 src.subs.off,
+                 dst.subs.off )
         },
         `3` = {
           .Call( paste0( "cuR_transfer_2_3_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.col.off,
-                 dst.col.off,
+                 src.subs.off,
+                 dst.subs.off,
                  stream )
         },
         stop( "Invalid level" )
@@ -279,16 +265,16 @@ transfer.ptr = function( src.ptr,
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.col.off,
-                 dst.col.off )
+                 src.subs.off,
+                 dst.subs.off )
         },
         `2` = {
           .Call( paste0( "cuR_transfer_3_2_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.col.off,
-                 dst.col.off,
+                 src.subs.off,
+                 dst.subs.off,
                  stream )
         },
         `3` = {
@@ -296,8 +282,8 @@ transfer.ptr = function( src.ptr,
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.col.off,
-                 dst.col.off,
+                 src.subs.off,
+                 dst.subs.off,
                  stream )
         },
         stop( "Invalid level" )

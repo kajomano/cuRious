@@ -1,17 +1,23 @@
 #include "common.h"
-#include <cstring>
+//#include <cstring>
 
 template <typename s, typename d>
 void cuR_transfer_host_host( s* src, d* dst, int* dims, int osrc, int odst, int* csrc, int* cdst ){
-  // Offsets disable column subsetting for safety
+  // Offsets now work with column subsetting
   if( osrc ){
-    src  = src + (osrc * dims[0]);
-    csrc = NULL;
+    if( csrc ){
+      csrc = csrc + osrc;
+    }else{
+      src  = src + (osrc * dims[0]);
+    }
   }
 
   if( odst ){
-    dst  = dst + (odst * dims[0]);
-    cdst = NULL;
+    if( cdst ){
+      cdst = cdst + odst;
+    }else{
+      dst  = dst + (odst * dims[0]);
+    }
   }
 
   // Copy
@@ -59,7 +65,7 @@ void cuR_transfer_host_host( s* src, d* dst, int* dims, int osrc, int odst, int*
 // -----------------------------------------------------------------------------
 
 extern "C"
-SEXP cuR_transfer_0_0_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+SEXP cuR_transfer_0_0_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP osrc_r, SEXP odst_r ){
 
   double* src = REAL( src_r );
   double* dst = REAL( dst_r );
@@ -79,7 +85,7 @@ SEXP cuR_transfer_0_0_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP 
 }
 
 extern "C"
-SEXP cuR_transfer_0_0_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+SEXP cuR_transfer_0_0_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP osrc_r, SEXP odst_r ){
 
   int* src    = INTEGER( src_r );
   int* dst    = INTEGER( dst_r );
@@ -99,7 +105,7 @@ SEXP cuR_transfer_0_0_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP 
 }
 
 extern "C"
-SEXP cuR_transfer_0_0_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+SEXP cuR_transfer_0_0_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP osrc_r, SEXP odst_r ){
 
   int* src    = LOGICAL( src_r );
   int* dst    = LOGICAL( dst_r );
@@ -118,7 +124,7 @@ SEXP cuR_transfer_0_0_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP 
 }
 
 extern "C"
-SEXP cuR_transfer_0_12_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+SEXP cuR_transfer_0_12_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP osrc_r, SEXP odst_r ){
 
   double* src = REAL( src_r );
   float* dst  = (float*)R_ExternalPtrAddr( dst_r );
@@ -138,7 +144,7 @@ SEXP cuR_transfer_0_12_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP
 }
 
 extern "C"
-SEXP cuR_transfer_0_12_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+SEXP cuR_transfer_0_12_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP osrc_r, SEXP odst_r ){
 
   int* src    = INTEGER( src_r );
   int* dst    = (int*)R_ExternalPtrAddr( dst_r );
@@ -158,7 +164,7 @@ SEXP cuR_transfer_0_12_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP
 }
 
 extern "C"
-SEXP cuR_transfer_0_12_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+SEXP cuR_transfer_0_12_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP osrc_r, SEXP odst_r ){
 
   int* src    = LOGICAL( src_r );
   bool* dst   = (bool*)R_ExternalPtrAddr( dst_r );
@@ -178,7 +184,7 @@ SEXP cuR_transfer_0_12_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP
 }
 
 extern "C"
-SEXP cuR_transfer_12_0_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+SEXP cuR_transfer_12_0_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP osrc_r, SEXP odst_r ){
 
   float* src  = (float*)R_ExternalPtrAddr( src_r );
   double* dst = REAL( dst_r );
@@ -198,7 +204,7 @@ SEXP cuR_transfer_12_0_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP
 }
 
 extern "C"
-SEXP cuR_transfer_12_0_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+SEXP cuR_transfer_12_0_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP osrc_r, SEXP odst_r ){
 
   int* src    = (int*)R_ExternalPtrAddr( src_r );
   int* dst    = INTEGER( dst_r );
@@ -218,7 +224,7 @@ SEXP cuR_transfer_12_0_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP
 }
 
 extern "C"
-SEXP cuR_transfer_12_0_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+SEXP cuR_transfer_12_0_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP osrc_r, SEXP odst_r ){
 
   bool* src   = (bool*)R_ExternalPtrAddr( src_r );
   int* dst    = LOGICAL( dst_r );
@@ -238,7 +244,7 @@ SEXP cuR_transfer_12_0_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP
 }
 
 extern "C"
-SEXP cuR_transfer_12_12_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+SEXP cuR_transfer_12_12_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP osrc_r, SEXP odst_r ){
 
   float* src  = (float*)R_ExternalPtrAddr( src_r );
   float* dst  = (float*)R_ExternalPtrAddr( dst_r );
@@ -258,7 +264,7 @@ SEXP cuR_transfer_12_12_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEX
 }
 
 extern "C"
-SEXP cuR_transfer_12_12_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+SEXP cuR_transfer_12_12_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP osrc_r, SEXP odst_r ){
 
   int* src    = (int*)R_ExternalPtrAddr( src_r );
   int* dst    = (int*)R_ExternalPtrAddr( dst_r );
@@ -278,7 +284,7 @@ SEXP cuR_transfer_12_12_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEX
 }
 
 extern "C"
-SEXP cuR_transfer_12_12_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP odst_r, SEXP csrc_r, SEXP cdst_r ){
+SEXP cuR_transfer_12_12_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP osrc_r, SEXP odst_r ){
 
   bool* src   = (bool*)R_ExternalPtrAddr( src_r );
   bool* dst   = (bool*)R_ExternalPtrAddr( dst_r );

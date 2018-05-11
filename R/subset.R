@@ -22,8 +22,8 @@
 
       if( any( !is.tensor( perm ),
                perm$type != "i",
-               self$tens$level == 3,
-               perm$level == 3 ) ){
+               self$tens$level == 3 && perm$level != 3,
+               self$tens$level != 3 && perm$level == 3 ) ){
         stop( "Invalid tensor permutation" )
       }
 

@@ -282,6 +282,8 @@ transfer <- function( src,
                  src.ptr,
                  dst.ptr,
                  dims,
+                 src.subs.ptr,
+                 dst.subs.ptr,
                  src.subs.off,
                  dst.subs.off,
                  stream )

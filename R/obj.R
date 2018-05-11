@@ -5,9 +5,9 @@ obj.dims <- function( obj ){
   switch(
     class( obj )[[1]],
     matrix  = c( nrow( obj ), ncol( obj ) ),
-    numeric = c( length( obj ), 1L ),
-    integer = c( length( obj ), 1L ),
-    logical = c( length( obj ), 1L )
+    numeric = c( 1L, length( obj ) ),
+    integer = c( 1L, length( obj ) ),
+    logical = c( 1L, length( obj ) )
   )
 }
 
@@ -38,8 +38,8 @@ obj.create <- function( dims, type = "n" ){
   dims <- check.dims( dims )
   type <- check.type( type )
 
-  if( dims[[2]] == 1 ){
-    vector( types[[type]], dims[[1]] )
+  if( dims[[1]] == 1 ){
+    vector( types[[type]], dims[[2]] )
   }else{
     matrix( vector( types[[type]], 1 ),
             nrow = dims[1],

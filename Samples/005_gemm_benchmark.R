@@ -27,6 +27,7 @@ handle <- cublas.handle$new()
 R.dgemm <- function(){
   mat.C <<- ( mat.A %*% mat.B ) * alpha + mat.C * beta
 }
+
 cuda.sgemm <- function(){
   cublas.sgemm( tens.A, tens.B, tens.C, handle = handle )
 }

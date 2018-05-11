@@ -13,78 +13,39 @@ transfer <- function( src,
   src <- check.tensor( src )
   dst <- check.tensor( dst )
 
-  src.dims <- src$dims
-  dst.dims <- dst$dims
-
   # Type matching
   if( src$type != dst$type ){
     stop( "Tensor types do not match" )
   }
 
   # Source column subset/ranges
-  src.col.ptr <- NULL
-  src.col.off <- NULL
-
   if( !is.null( src.cols ) ){
     if( is.tensor( src.cols ) ){
-      if( src$level == 3 || dst$level == 3 || src.cols$level == 3 ){
-        stop( "Individual source column subsets do not work with L3 tensors" )
-      }
-
-      if( src.cols$type != "i" ){
-        stop( "Source column subset is not integer" )
-      }
-
-      src.col.ptr <- src.cols$ptr
-      src.dims[[2]] <- src.cols$l
-    }else if( is.numeric( src.cols ) && length( src.cols ) == 2 ){
-      if( as.logical( src.cols %% 1 ) ||
-          src.cols[[2]] > src$dims[[2]] ||
-          src.cols[[2]] < src.cols[[1]] ||
-          src.cols[[1]] < 0 ){
-        stop( "Invalid source column range" )
-      }
-
-      src.col.off <- as.integer( src.cols[[1]] )
-      src.dims[[2]] <- as.integer( src.cols[[2]] - src.cols[[1]] + 1L )
+      src.subs <- column.indiv( src, src.cols )
+    }else if( is.obj( src.cols ) ){
+      src.subs <- column.range( src, src.cols )
     }else{
       stop( "Invalid source column subset" )
     }
+  }else{
+    src.subs <- column.empty( src, src.cols )
   }
 
   # Destination column subset/ranges
-  dst.col.ptr <- NULL
-  dst.col.off <- NULL
-
   if( !is.null( dst.cols ) ){
     if( is.tensor( dst.cols ) ){
-      if( dst$level == 3 || dst$level == 3 || dst.cols$level == 3 ){
-        stop( "Individual destination column subsets do not work with L3 tensors" )
-      }
-
-      if( dst.cols$type != "i" ){
-        stop( "Destination column subset is not integer" )
-      }
-
-      dst.col.ptr <- dst.cols$ptr
-      dst.dims[[2]] <- dst.cols$l
-    }else if( is.numeric( dst.cols ) && length( dst.cols ) == 2 ){
-      if( as.logical( dst.cols %% 1 ) ||
-          dst.cols[[2]] > dst$dims[[2]] ||
-          dst.cols[[2]] < dst.cols[[1]] ||
-          dst.cols[[1]] < 0 ){
-        stop( "Invalid destination column range" )
-      }
-
-      dst.col.off <- as.integer( dst.cols[[1]] )
-      dst.dims[[2]] <- as.integer( dst.cols[[2]] - dst.cols[[1]] + 1L )
+      dst.subs <- column.indiv( dst, dst.cols )
+    }else if( is.obj( dst.cols ) ){
+      dst.subs <- column.range( dst, dst.cols )
     }else{
       stop( "Invalid destination column subset" )
     }
+  }else{
+    dst.subs <- column.empty( dst, dst.cols )
   }
 
   # Dimension matching
-  if( !identical( src.dims, dst.dims ) ){
+  if( !identical( src.subs$dims, dst.subs$dims ) ){
     stop( "Dimensions do not match" )
   }
 
@@ -100,11 +61,11 @@ transfer <- function( src,
                  src$level,
                  dst$level,
                  src$type,
-                 src.dims,
-                 src.col.off,
-                 dst.col.off,
-                 src.col.ptr,
-                 dst.col.ptr,
+                 src.subs$dims,
+                 src.subs$off,
+                 dst.subs$off,
+                 src.subs$ptr,
+                 dst.subs$ptr,
                  stream )
 
   invisible( TRUE )

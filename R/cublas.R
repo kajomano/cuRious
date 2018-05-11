@@ -55,133 +55,30 @@ cublas.handle <- R6Class(
 # tp = transpose
 # x and y are column vectors here, but it does not actually matter, the data
 # stored behind x or tp(x) is the same, hence the rows.x argument name
-cublas.sger <- function( tens.x,
-                         tens.y,
-                         tens.A,
-                         rows.x = NULL,
-                         rows.y = NULL,
-                         cols.A = NULL,
+cublas.sger <- function( x,
+                         y,
+                         A,
+                         x.rows = NULL,
+                         y.rows = NULL,
+                         A.cols = NULL,
                          alpha  = 1,
                          handle = NULL,
                          stream = NULL ){
   # Sanity checks
-  if( !all( is.under( tens.x, tens.y, tens.A ) ) &&
-      !all( is.surfaced( tens.x, tens.y, tens.A ) ) ){
-    stop( "All inputs need to be on L0 or L3" )
-  }
+  x <- check.tensor( x )
+  y <- check.tensor( y )
+  A <- check.tensor( A )
 
-  if( is.under( tens.x ) ){
-    check.cublas.handle.active( handle )
-  }
-
-  dims.x <- tens.x$get.dims
-  dims.y <- tens.y$get.dims
-  dims.A <- tens.A$get.dims
-
-  if( dims.x[2] != 1L || dims.y[2] != 1L ){
-    stop( "x and y need to be vectors" )
-  }
-
-  off.rows.x <- 1L
-  off.rows.y <- 1L
-  off.cols.A <- 1L
-
-  if( !is.null( rows.x ) ){
-    if( !is.list( rows.x ) ){
-      stop( "Only row ranges are accepted" )
-    }
-    off.rows.x  <- as.integer( rows.x[[1]] )
-    dims.x[[1]] <- as.integer( rows.x[[2]] - rows.x[[1]] + 1L )
-  }
-
-  if( !is.null( rows.y ) ){
-    if( !is.list( rows.y ) ){
-      stop( "Only row ranges are accepted" )
-    }
-    off.rows.y  <- as.integer( rows.y[[1]] )
-    dims.y[[1]] <- as.integer( rows.y[[2]] - rows.y[[1]] + 1L )
-  }
-
-  if( !is.null( cols.A ) ){
-    if( !is.list( cols.A ) ){
-      stop( "Only column ranges are accepted" )
-    }
-    off.cols.A  <- as.integer( cols.A[[1]] )
-    dims.A[[2]] <- as.integer( cols.A[[2]] - cols.A[[1]] + 1L )
-  }
-
-  if( !is.null( stream ) ){
-    check.cuda.stream( stream )
-    stream <- stream$get.stream
-  }
-
-  if( dims.x[1] != dims.A[1] ||
-      dims.y[1] != dims.A[2] ){
-    stop( "Not all tensors have matching dimensions" )
-  }
-
-  if( is.under( tens.A ) ){
-    ret <- .Call( "cuR_cublas_sger",
-                  tens.x$get.obj,
-                  tens.y$get.obj,
-                  tens.A$get.obj,
-                  dims.A,
-                  off.rows.x,
-                  off.rows.y,
-                  off.cols.A,
-                  alpha,
-                  handle$get.handle,
-                  stream )
-
-    if( is.null( ret ) ) stop( "Subroutine failed" )
-
-    # If no stream is given, make this call blocking
-    if( is.null( stream ) ){
-      cuda.stream.sync.all()
-    }
-  }else{
-    tmp.x <- transfer( tens.x, cols.src = rows.x )
-    tmp.y <- transfer( tens.y, cols.src = rows.y )
-    tmp.A <- transfer( tens.A, cols.src = cols.A )
-
-    tmp.A <- ( alpha * tmp.x ) %*% t(tmp.y) + tmp.A
-    transfer( tmp.A, tens.A, cols.dst = cols.A )
-  }
-
-  invisible( TRUE )
-}
-
-
-# sgemm ====
-# cols.C(C) = alpha*tp.a(cols.A(A)) %*% tp.b(cols.B(B)) + beta*(cols.C(C))
-# tp = transpose
-cublas.sgemm <- function( tens.A,
-                          tens.B,
-                          tens.C,
-                          cols.A = NULL,
-                          cols.B = NULL,
-                          cols.C = NULL,
-                          tp.A   = FALSE,
-                          tp.B   = FALSE,
-                          alpha  = 1,
-                          beta   = 1,
-                          handle = NULL,
-                          stream = NULL ){
-  # Sanity checks
-  tens.A <- check.tensor( tens.A )
-  tens.B <- check.tensor( tens.B )
-  tens.C <- check.tensor( tens.C )
-
-  if( !all( c( tens.A$is.under, tens.B$is.under, tens.C$is.under ) ) &&
-      !all( c( tens.A$is.surfaced, tens.B$is.surfaced, tens.C$is.surfaced ) ) ){
+  if( !all( c( x$is.under, y$is.under, A$is.under ) ) &&
+      !all( c( x$is.surfaced, y$is.surfaced, A$is.surfaced ) ) ){
     stop( "All input tensors need to be on L0 or L3" )
   }
 
-  if( !all( c( tens.A$type == "n", tens.B$type == "n", tens.C$type == "n" ) ) ){
+  if( !all( c( x$type == "n", y$type == "n", A$type == "n" ) ) ){
     stop( "All input tensors need to be numeric" )
   }
 
-  if( tens.A$is.under ){
+  if( A$is.under ){
     check.cublas.handle( handle )
     handle <- handle$handle
   }
@@ -192,93 +89,183 @@ cublas.sgemm <- function( tens.A,
   }
 
   # Dims logic
-  dims.A <- tens.A$dims
-  dims.B <- tens.B$dims
-  dims.C <- tens.C$dims
-
-  off.cols.A <- NULL
-  off.cols.B <- NULL
-  off.cols.C <- NULL
-
-  if( !is.null( cols.A ) ){
-    if( !is.numeric( cols.A ) || !length( cols.A ) == 2 ){
-      stop( "Only column ranges are accepted" )
+  if( !is.null( x.rows ) ){
+    if( is.obj( x.rows ) ){
+      x.subs <- column.range( x, x.rows )
+    }else{
+      stop( "Invalid row subset for x" )
     }
-
-    if( as.logical( cols.A %% 1 ) ||
-        cols.A[[2]] > tens.A$dims[[2]] ||
-        cols.A[[2]] < cols.A[[1]] ||
-        cols.A[[1]] < 0 ){
-      stop( "Invalid column range for tensor A" )
-    }
-
-    off.cols.A  <- as.integer( cols.A[[1]] )
-    dims.A[[2]] <- as.integer( cols.A[[2]] - cols.A[[1]] + 1L )
+  }else{
+    x.subs <- column.empty( x, x.rows )
   }
 
-  if( !is.null( cols.B ) ){
-    if( !is.numeric( cols.B ) || !length( cols.B ) == 2 ){
-      stop( "Only column ranges are accepted" )
+  if( !is.null( y.rows ) ){
+    if( is.obj( y.rows ) ){
+      y.subs <- column.range( y, y.rows )
+    }else{
+      stop( "Invalid row subset for y" )
     }
-
-    if( as.logical( cols.B %% 1 ) ||
-        cols.B[[2]] > tens.B$dims[[2]] ||
-        cols.B[[2]] < cols.B[[1]] ||
-        cols.B[[1]] < 0 ){
-      stop( "Invalid column range for tensor B" )
-    }
-
-    off.cols.B  <- as.integer( cols.B[[1]] )
-    dims.B[[2]] <- as.integer( cols.B[[2]] - cols.B[[1]] + 1L )
+  }else{
+    y.subs <- column.empty( y, y.rows )
   }
 
-  if( !is.null( cols.C ) ){
-    if( !is.numeric( cols.C ) || !length( cols.C ) == 2 ){
-      stop( "Only column ranges are accepted" )
+  if( !is.null( A.cols ) ){
+    if( is.obj( A.cols ) ){
+      A.subs <- column.range( A, A.cols )
+    }else{
+      stop( "Invalid column subset for A" )
     }
+  }else{
+    A.subs <- column.empty( A, A.cols )
+  }
 
-    if( as.logical( cols.C %% 1 ) ||
-        cols.C[[2]] > tens.C$dims[[2]] ||
-        cols.C[[2]] < cols.C[[1]] ||
-        cols.C[[1]] < 0 ){
-      stop( "Invalid column range for tensor C" )
+  if( x.subs$dims[[2]] != A.subs$dims[[1]] ||
+      y.subs$dims[[2]] != A.subs$dims[[2]] ){
+    stop( "Not all tensors have matching dimensions" )
+  }
+
+  if( x.subs$dims[[1]] != 1L || y.subs$dims[[1]] != 1L ){
+    stop( "x or y is not a vector" )
+  }
+
+  if( A$is.under ){
+    ret <- .Call( "cuR_cublas_sger",
+                  x$get.obj,
+                  y$get.obj,
+                  A$get.obj,
+                  A.subs$dims,
+                  x.subs$off,
+                  y.subs$off,
+                  A.subs$off,
+                  alpha,
+                  handle,
+                  stream )
+
+    if( is.null( ret ) ) stop( "Subroutine failed" )
+
+    # If no stream is given, make this call blocking
+    if( is.null( stream ) ){
+      cuda.stream.sync.all()
     }
+  }else{
+    tmp.x <- obj.create( x.subs$dims )
+    tmp.y <- obj.create( y.subs$dims )
+    tmp.A <- obj.create( A.subs$dims )
 
-    off.cols.C  <- as.integer( cols.C[[1]] )
-    dims.C[[2]] <- as.integer( cols.C[[2]] - cols.C[[1]] + 1L )
+    transfer.core( x$ptr, tmp.x, 0L, 0L, "n", x.subs$dims, x.subs$off )
+    transfer.core( y$ptr, tmp.y, 0L, 0L, "n", y.subs$dims, y.subs$off )
+    transfer.core( A$ptr, tmp.A, 0L, 0L, "n", A.subs$dims, A.subs$off )
+
+    tmp.A <- ( alpha * tmp.x ) %*% t(tmp.y) + tmp.A
+
+    transfer.core( tmp.A, A$ptr, 0L, 0L, "n", A.subs$dims, NULL, A.subs$off )
   }
 
-  dims.check.A <- dims.A
-  dims.check.B <- dims.B
+  invisible( TRUE )
+}
 
-  if( tp.A ){
-    dims.check.A <- rev(dims.A)
+
+# sgemm ====
+# cols.C(C) = alpha*tp.a(cols.A(A)) %*% tp.b(cols.B(B)) + beta*(cols.C(C))
+# tp = transpose
+cublas.sgemm <- function( A,
+                          B,
+                          C,
+                          A.cols = NULL,
+                          B.cols = NULL,
+                          C.cols = NULL,
+                          A.tp   = FALSE,
+                          B.tp   = FALSE,
+                          alpha  = 1,
+                          beta   = 1,
+                          handle = NULL,
+                          stream = NULL ){
+  # Sanity checks
+  A <- check.tensor( A )
+  B <- check.tensor( B )
+  C <- check.tensor( C )
+
+  if( !all( c( A$is.under, B$is.under, C$is.under ) ) &&
+      !all( c( A$is.surfaced, B$is.surfaced,C$is.surfaced ) ) ){
+    stop( "All input tensors need to be on L0 or L3" )
   }
 
-  if( tp.B ){
-    dims.check.B <- rev(dims.B)
+  if( !all( c( A$type == "n", B$type == "n", C$type == "n" ) ) ){
+    stop( "All input tensors need to be numeric" )
   }
 
-  if( dims.check.A[2] != dims.check.B[1] ||
-      dims.check.B[2] != dims.C[2] ||
-      dims.check.A[1] != dims.C[1] ){
+  if( A$is.under ){
+    check.cublas.handle( handle )
+    handle <- handle$handle
+  }
+
+  if( !is.null( stream ) ){
+    check.cuda.stream( stream )
+    stream <- stream$stream
+  }
+
+  # Dims logic
+  if( !is.null( A.cols ) ){
+    if( is.obj( A.cols ) ){
+      A.subs <- column.range( A, A.cols )
+    }else{
+      stop( "Invalid column subset for A" )
+    }
+  }else{
+    A.subs <- column.empty( A, A.cols )
+  }
+
+  if( !is.null( B.cols ) ){
+    if( is.obj( B.cols ) ){
+      B.subs <- column.range( B, B.cols )
+    }else{
+      stop( "Invalid column subset for B" )
+    }
+  }else{
+    B.subs <- column.empty( B, B.cols )
+  }
+
+  if( !is.null( C.cols ) ){
+    if( is.obj( C.cols ) ){
+      C.subs <- column.range( C, C.cols )
+    }else{
+      stop( "Invalid column subset for C" )
+    }
+  }else{
+    C.subs <- column.empty( C, C.cols )
+  }
+
+  dims.check.A <- A.subs$dims
+  dims.check.B <- B.subs$dims
+
+  if( A.tp ){
+    dims.check.A <- rev( A.subs$dims )
+  }
+
+  if( B.tp ){
+    dims.check.B <- rev( B.subs$dims )
+  }
+
+  if( dims.check.A[[2]] != dims.check.B[[1]] ||
+      dims.check.B[[2]] != C.subs$dims[[2]] ||
+      dims.check.A[[1]] != C.subs$dims[[1]] ){
     stop( "Not all tensors have matching dimensions" )
   }
 
   # Actual calls
   # L3
-  if( tens.A$is.under ){
+  if( A$is.under ){
     ret <- .Call( "cuR_cublas_sgemm",
-                  tens.A$ptr,
-                  tens.B$ptr,
-                  tens.C$ptr,
-                  dims.A,
-                  dims.B,
-                  off.cols.A,
-                  off.cols.B,
-                  off.cols.C,
-                  tp.A,
-                  tp.B,
+                  A$ptr,
+                  B$ptr,
+                  C$ptr,
+                  A.subs$dims,
+                  B.subs$dims,
+                  A.subs$off,
+                  A.subs$off,
+                  C.subs$off,
+                  A.tp,
+                  B.tp,
                   alpha,
                   beta,
                   handle,
@@ -293,26 +280,26 @@ cublas.sgemm <- function( tens.A,
 
   # L0 fallback call
   }else{
-    tmp.A <- obj.create( dims.A )
-    tmp.B <- obj.create( dims.B )
-    tmp.C <- obj.create( dims.C )
+    tmp.A <- obj.create( A.subs$dims )
+    tmp.B <- obj.create( B.subs$dims )
+    tmp.C <- obj.create( C.subs$dims )
 
-    transfer.core( tens.A$ptr, tmp.A, 0L, 0L, "n", dims.A, off.cols.A )
-    transfer.core( tens.B$ptr, tmp.B, 0L, 0L, "n", dims.B, off.cols.B )
-    transfer.core( tens.C$ptr, tmp.C, 0L, 0L, "n", dims.C, off.cols.C )
+    transfer.core( A$ptr, tmp.A, 0L, 0L, "n", A.subs$dims, A.subs$off )
+    transfer.core( B$ptr, tmp.B, 0L, 0L, "n", B.subs$dims, B.subs$off )
+    transfer.core( C$ptr, tmp.C, 0L, 0L, "n", C.subs$dims, C.subs$off )
 
-    if( tp.A ){
+    if( A.tp ){
       tmp.A <- t(tmp.A)
     }
 
-    if( tp.B ){
+    if( B.tp ){
       tmp.B <- t(tmp.B)
     }
 
     # Math
     tmp.C <- ( alpha * tmp.A ) %*% tmp.B + ( beta * tmp.C )
 
-    transfer.core( tmp.C, tens.C$ptr, 0L, 0L, "n", dims.C, NULL, off.cols.C )
+    transfer.core( tmp.C, C$ptr, 0L, 0L, "n", C.subs$dims, NULL, C.subs$off )
   }
 
   invisible( TRUE )

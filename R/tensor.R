@@ -131,7 +131,7 @@ tensor <- R6Class(
     .type  = NULL,
 
     create.ptr = function( level = private$.level ){
-      if( prod( private$.dims ) > 2^32-1 ){
+      if( self$l > 2^32-1 ){
         # TODO ====
         # Use long int or the correct R type to remove this constraint
         stop( "Object is too large" )

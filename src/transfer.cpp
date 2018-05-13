@@ -625,8 +625,12 @@ SEXP cuR_transfer_3_3_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP 
   //   cudaTry( cudaDeviceSynchronize() )
   // }
 
-  // Flush for WDDM
-  cudaStreamQuery(0);
+  if( stream_r != R_NilValue ){
+    // Flush for WDDM
+    cudaStreamQuery(0);
+  }else{
+    cudaTry( cudaDeviceSynchronize() )
+  }
 
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
   Rf_unprotect(1);

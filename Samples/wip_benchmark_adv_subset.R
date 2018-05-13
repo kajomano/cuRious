@@ -5,7 +5,7 @@ library( microbenchmark )
 # Definitely core-bound, need to use mutliple threads/blocks, and use
 # cudaMemcpy wherever possible
 
-cols <- 10^4
+cols <- 10^3
 
 tens.X.1 <- tensor$new( NULL, 1L, c( 1000, cols ), "n" )
 tens.Y.1 <- tensor$new( NULL, 1L, c( 1000, cols ), "n" )

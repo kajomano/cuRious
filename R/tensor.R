@@ -50,8 +50,36 @@ tensor <- R6Class(
       }
     },
 
+    finalize = function(){
+      private$.alertables <- list()
+    },
+
+    alert.add = function( alertable ){
+      alertable <- check.alertable( alertable )
+
+      private$.alertables <- c( private$.alertables, list( alertable ) )
+
+      invisible( self )
+    },
+
+    alert.remove = function( obj ){
+      match <- sapply( private$.alertables, function( alertable ){
+        identical( .Internal( inspect( obj ) ),
+                   .Internal( inspect( alertable ) ) )
+      })
+
+      if( !any( match ) ){
+        stop( "Object not amongst alertables" )
+      }
+
+      private$.alertables <- private$.alertables[ !which( match ) ]
+
+      invisible( self )
+    },
+
     transform = function( level = 0L ){
       private$check.destroyed()
+      private$alert()
       level <- check.level( level )
 
       if( private$.level != level ){
@@ -74,11 +102,13 @@ tensor <- R6Class(
 
     dive = function(){
       private$check.destroyed()
+      private$alert()
       self$transform( 3L )
     },
 
     surface = function(){
       private$check.destroyed()
+      private$alert()
       self$transform()
     },
 
@@ -129,6 +159,14 @@ tensor <- R6Class(
     .level = NULL,
     .dims  = NULL,
     .type  = NULL,
+
+    .alertables = list(),
+
+    alert = function(){
+      lapply( private$.alertables, function( alertable ){
+        alertable$alert()
+      })
+    },
 
     create.ptr = function( level = private$.level ){
       if( prod( private$.dims ) > 2^32-1 ){

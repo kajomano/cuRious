@@ -89,3 +89,12 @@ check.cublas.handle <- function( handle ){
   invisible( handle )
 }
 
+is.alertable <- function( alertable ){
+  "alertable" %in% class( alertable )
+}
+
+check.alertable <- function( alertable ){
+  if( !is.alertable( alertable ) ) stop( "Invalid alertable" )
+  invisible( alertable )
+}
+

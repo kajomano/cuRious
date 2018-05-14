@@ -2,18 +2,18 @@
 
 # B = alpha*A + B
 alg.saxpy <- function( tens.A, tens.B, alpha = 1, stream = NULL ){
-  check.tensor.under( tens.A, tens.B )
+  # check.tensor.under( tens.A, tens.B )
 
   if( !is.null( stream ) ){
     check.cuda.stream( stream )
-    stream <- stream$get.stream
+    stream <- stream$stream
   }
 
   # Results go into tens.B
   ret <- .Call( "cuR_alg_saxpy",
-                tens.A$get.obj,
-                tens.B$get.obj,
-                tens.A$get.l,
+                tens.A$ptr,
+                tens.B$ptr,
+                tens.A$l,
                 alpha,
                 stream )
 

@@ -19,7 +19,6 @@ tens.y.alg <- tensor$new( vect.y, 3 )
 
 # Create cuBLAS handle
 handle <- cublas.handle$new()
-handle$activate()
 
 # Define functions for a better microbenchmark print
 R.daxpy      <- function(){ vect.x * 0.5 + vect.y }

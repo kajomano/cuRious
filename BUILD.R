@@ -17,7 +17,7 @@ if( file.exists( cuda.source ) ){
 }
 file.append( cuda.source, dir( "./src_cuda", full.names = TRUE ) )
 
-build(  )
+build()
 install( args = "--no-lock" )
 
 require( cuRious )

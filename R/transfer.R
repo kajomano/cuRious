@@ -57,6 +57,31 @@ transfer <- function( src,
   invisible( TRUE )
 }
 
+
+transfer.core = function( src.ptr,
+                          dst.ptr,
+                          src.level,
+                          dst.level,
+                          type,
+                          dims,
+                          src.subs.ptr = NULL,
+                          dst.subs.ptr = NULL,
+                          src.subs.off = NULL,
+                          dst.subs.off = NULL,
+                          stream       = NULL ){
+  .transfer.core( src.ptr,
+                  dst.ptr,
+                  src.level,
+                  dst.level,
+                  type,
+                  dims,
+                  src.subs.ptr,
+                  dst.subs.ptr,
+                  src.subs.off,
+                  dst.subs.off,
+                  stream )
+}
+
 # Mid-level transfer call, without argument checks. Can still handle
 # multi-transfer calls. Should not be used interactively!
 .transfer.core = function( src.ptr,
@@ -278,15 +303,16 @@ transfer <- function( src,
                  stream )
         },
         `3` = {
-          .Call( paste0( "cuR_transfer_3_3_", type ),
-                 src.ptr,
-                 dst.ptr,
-                 dims,
-                 src.subs.ptr,
-                 dst.subs.ptr,
-                 src.subs.off,
-                 dst.subs.off,
-                 stream )
+          # .Call( paste0( "cuR_transfer_3_3_", type ),
+          #        src.ptr,
+          #        dst.ptr,
+          #        dims,
+          #        src.subs.ptr,
+          #        dst.subs.ptr,
+          #        src.subs.off,
+          #        dst.subs.off,
+          #        stream )
+          TRUE
         },
         stop( "Invalid level" )
       )

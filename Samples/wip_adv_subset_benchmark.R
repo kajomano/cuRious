@@ -25,6 +25,15 @@ transfer.1 <- function(){
 }
 
 transfer.3.bothsub <- function(){
+  # transfer.core( tens.X.1$ptr,
+  #                tens.Y.1$ptr,
+  #                3L,
+  #                3L,
+  #                "n",
+  #                c( 1000L, 1000L ),
+  #                tens.X.perm.3$ptr,
+  #                tens.Y.perm.3$ptr )
+
   transfer( tens.X.3,
             tens.Y.3,
             tens.X.perm.3,
@@ -32,17 +41,41 @@ transfer.3.bothsub <- function(){
 }
 
 transfer.3.nosub <- function(){
+  # transfer.core( tens.X.1$ptr,
+  #                tens.Y.1$ptr,
+  #                3L,
+  #                3L,
+  #                "n",
+  #                c( 1000L, 1000L ) )
+
   transfer( tens.X.3,
             tens.Y.3 )
 }
 
 transfer.3.srcsub <- function(){
+  # transfer.core( tens.X.1$ptr,
+  #                tens.Y.1$ptr,
+  #                3L,
+  #                3L,
+  #                "n",
+  #                c( 1000L, 1000L ),
+  #                tens.X.perm.3$ptr )
+
   transfer( tens.X.3,
             tens.Y.3,
             tens.X.perm.3 )
 }
 
 transfer.3.dstsub <- function(){
+  # transfer.core( tens.X.1$ptr,
+  #                tens.Y.1$ptr,
+  #                3L,
+  #                3L,
+  #                "n",
+  #                c( 1000L, 1000L ),
+  #                NULL,
+  #                tens.Y.perm.3$ptr )
+
   transfer( tens.X.3,
             tens.Y.3,
             NULL,
@@ -51,7 +84,7 @@ transfer.3.dstsub <- function(){
 
 # ----------------------------------------------------------------------
 
-times <- 10
+times <- 100
 
 print( microbenchmark( transfer.1(), times = times ) )
 

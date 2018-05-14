@@ -15,6 +15,8 @@ tens.Y.perm.1 <- tensor$new( as.integer( 1:cols ), 1L )
 tens.X.perm.3 <- tensor$new( as.integer( 1:cols ), 3L )
 tens.Y.perm.3 <- tensor$new( as.integer( 1:cols ), 3L )
 
+stream <- cuda.stream$new()
+
 transfer.1 <- function(){
   transfer( tens.X.1,
             tens.Y.1,

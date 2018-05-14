@@ -604,26 +604,9 @@ SEXP cuR_transfer_3_3_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP 
     ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
   int* cdst   = R_NilValue == cdst_r ? NULL :
     ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
-
-  // int l       = dims[0]*dims[1];
-
   cudaStream_t* stream = ( R_NilValue == stream_r ) ? NULL : (cudaStream_t*)R_ExternalPtrAddr( stream_r );
 
-  // src  = src + (osrc * dims[0]);
-  // dst  = dst + (odst * dims[0]);
-
   cuR_transfer_device_device_n_cu( src, dst, dims, osrc, odst, csrc, cdst, stream );
-
-  // if( stream_r != R_NilValue ){
-  //   cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
-  //   cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(float), cudaMemcpyDeviceToDevice, *stream ) );
-  //
-  //   // Flush for WDDM
-  //   cudaStreamQuery(0);
-  // }else{
-  //   cudaTry( cudaMemcpy( dst, src, l*sizeof(float), cudaMemcpyDeviceToDevice ) );
-  //   cudaTry( cudaDeviceSynchronize() )
-  // }
 
   if( stream_r != R_NilValue ){
     // Flush for WDDM
@@ -642,26 +625,21 @@ SEXP cuR_transfer_3_3_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP 
 
   int* src    = (int*)R_ExternalPtrAddr( src_r );
   int* dst    = (int*)R_ExternalPtrAddr( dst_r );
+  int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
   int* csrc   = R_NilValue == csrc_r ? NULL :
     ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
   int* cdst   = R_NilValue == cdst_r ? NULL :
     ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
-  int* dims   = INTEGER( dims_r );
-  int l       = dims[0]*dims[1];
+  cudaStream_t* stream = ( R_NilValue == stream_r ) ? NULL : (cudaStream_t*)R_ExternalPtrAddr( stream_r );
 
-  src  = src + (osrc * dims[0]);
-  dst  = dst + (odst * dims[0]);
+  cuR_transfer_device_device_i_cu( src, dst, dims, osrc, odst, csrc, cdst, stream );
 
   if( stream_r != R_NilValue ){
-    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
-    cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(int), cudaMemcpyDeviceToDevice, *stream ) );
-
     // Flush for WDDM
     cudaStreamQuery(0);
   }else{
-    cudaTry( cudaMemcpy( dst, src, l*sizeof(int), cudaMemcpyDeviceToDevice ) );
     cudaTry( cudaDeviceSynchronize() )
   }
 
@@ -675,26 +653,21 @@ SEXP cuR_transfer_3_3_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP 
 
   bool* src   = (bool*)R_ExternalPtrAddr( src_r );
   bool* dst   = (bool*)R_ExternalPtrAddr( dst_r );
+  int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
   int* csrc   = R_NilValue == csrc_r ? NULL :
     ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
   int* cdst   = R_NilValue == cdst_r ? NULL :
     ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
-  int* dims   = INTEGER( dims_r );
-  int l       = dims[0]*dims[1];
+  cudaStream_t* stream = ( R_NilValue == stream_r ) ? NULL : (cudaStream_t*)R_ExternalPtrAddr( stream_r );
 
-  src  = src + (osrc * dims[0]);
-  dst  = dst + (odst * dims[0]);
+  cuR_transfer_device_device_l_cu( src, dst, dims, osrc, odst, csrc, cdst, stream );
 
   if( stream_r != R_NilValue ){
-    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
-    cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(bool), cudaMemcpyDeviceToDevice, *stream ) );
-
     // Flush for WDDM
     cudaStreamQuery(0);
   }else{
-    cudaTry( cudaMemcpy( dst, src, l*sizeof(bool), cudaMemcpyDeviceToDevice ) );
     cudaTry( cudaDeviceSynchronize() )
   }
 

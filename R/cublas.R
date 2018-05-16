@@ -8,29 +8,48 @@
 # cuBLAS handle class ====
 cublas.handle <- R6Class(
   "cublas.handle",
+  inherit = alert.send,
   public = list(
-    initialize = function(){
-      private$.handle <- .Call( "cuR_create_cublas_handle" )
+    initialize = function( active = T ){
+      if( active ){
+        self$activate()
+      }
+    },
+
+    activate = function(){
+      if( is.null( private$.handle ) ){
+        private$.handle <- .Call( "cuR_create_cublas_handle" )
+        private$.alert()
+      }else{
+        warning( "cuBLAS handle is already activated" )
+      }
+
+      invisible( self )
+    },
+
+    deactivate = function(){
+      if( !is.null( private$.handle ) ){
+        .Call( "cuR_destroy_cublas_handle", private$.handle )
+        private$.handle <- NULL
+        private$.alert()
+      }else{
+        warning( "cuBLAS handle is not yet activated" )
+      }
+
+      invisible( self )
     }
   ),
 
   private = list(
-    .handle = NULL,
-
-    check.destroyed = function(){
-      if( self$is.destroyed ){
-        stop( "The handle is destroyed" )
-      }
-    }
+    .handle = NULL
   ),
 
   active = list(
     handle = function( val ){
-      private$check.destroyed()
       if( missing( val ) ) return( private$.handle )
     },
 
-    is.destroyed = function( val ){
+    is.active = function( val ){
       if( missing( val ) ) return( is.null( private$.handle ) )
     }
   )

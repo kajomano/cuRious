@@ -1,9 +1,8 @@
 # .Calls: src/transfer.cpp
+# Highly connected to code in tunnel.R
 
-# This function is a general tool for copying data between tensors
-# residing on any level. cols.dst and .src are either 2 long integer vectors
-# defining column ranges, or n long integer tensors on levels 0-2, defining
-# exact columns to be transferred (transferred to).
+# High level transfer call. Thin wrapper around a temporary tunnel. Should only
+# be used in non speed-critical places.
 transfer <- function( src,
                       dst,
                       src.perm = NULL,
@@ -12,137 +11,12 @@ transfer <- function( src,
                       dst.span = NULL,
                       stream   = NULL ){
 
-  src <- check.tensor( src )
-  dst <- check.tensor( dst )
-
-  # Type matching
-  if( src$type != dst$type ){
-    stop( "Tensor types do not match" )
-  }
-
-  # Source permutation/span
-  src.subs <- .tensor.subset$new( src )
-  src.subs$check.perm( src.perm )
-  src.subs$check.span( src.span )
-
-  # Destination permutation/span
-  dst.subs <- .tensor.subset$new( dst )
-  dst.subs$check.perm( dst.perm )
-  dst.subs$check.span( dst.span )
-
-  # Dimension matching
-  if( !identical( src.subs$dims, dst.subs$dims ) ){
-    stop( "Dimensions do not match" )
-  }
-
-  # Stream check
-  if( !is.null( stream ) ){
-    check.cuda.stream( stream )
-    stream <- stream$stream
-  }
-
-  # Main core transfer call
-  .transfer.core( src$ptr,
-                  dst$ptr,
-                  src$level,
-                  dst$level,
-                  src$type,
-                  src.subs$dims,
-                  src.subs$ptr,
-                  dst.subs$ptr,
-                  src.subs$off,
-                  dst.subs$off,
-                  stream )
-
-  invisible( TRUE )
+  tun <- tunnel$new( src, dst, src.perm, dst.perm, src.span, dst.span, stream )
+  tun$transfer()
 }
 
-
-transfer.core = function( src.ptr,
-                          dst.ptr,
-                          src.level,
-                          dst.level,
-                          type,
-                          dims,
-                          src.subs.ptr = NULL,
-                          dst.subs.ptr = NULL,
-                          src.subs.off = NULL,
-                          dst.subs.off = NULL,
-                          stream       = NULL ){
-  .transfer.core( src.ptr,
-                  dst.ptr,
-                  src.level,
-                  dst.level,
-                  type,
-                  dims,
-                  src.subs.ptr,
-                  dst.subs.ptr,
-                  src.subs.off,
-                  dst.subs.off,
-                  stream )
-}
-
-# Mid-level transfer call, without argument checks. Can still handle
-# multi-transfer calls. Should not be used interactively!
-.transfer.core = function( src.ptr,
-                           dst.ptr,
-                           src.level,
-                           dst.level,
-                           type,
-                           dims,
-                           src.subs.ptr = NULL,
-                           dst.subs.ptr = NULL,
-                           src.subs.off = NULL,
-                           dst.subs.off = NULL,
-                           stream       = NULL ){
-
-  # Main low level transfer calls
-  if( ( src.level == 0L && dst.level == 3L ) ||
-      ( src.level == 3L && dst.level == 0L ) ){
-
-    # Multi-transfer call 0L-2L-3L or 3L-2L-0L
-    tmp <- tensor$new( NULL, 2L, dims, type )
-
-    .transfer.ptr( src.ptr,
-                   tmp$ptr,
-                   src.level,
-                   2L,
-                   type,
-                   dims,
-                   src.subs.off,
-                   NULL )
-
-    .transfer.ptr( tmp$ptr,
-                   dst.ptr,
-                   2L,
-                   dst.level,
-                   type,
-                   dims,
-                   NULL,
-                   dst.subs.off )
-
-    tmp$destroy()
-  }else{
-    # Single-transfer calls
-    .transfer.ptr( src.ptr,
-                   dst.ptr,
-                   src.level,
-                   dst.level,
-                   type,
-                   dims,
-                   src.subs.ptr,
-                   dst.subs.ptr,
-                   src.subs.off,
-                   dst.subs.off,
-                   stream )
-  }
-
-  invisible( TRUE )
-}
-
-# Low level transfer call that handles objects, for speed considerations
-# no argument checks are done, don't use interactively or in any place where
-# speed is not critical!
+# Low level transfer call that handles ptrs, for speed considerations
+# no argument checks are done, don't use interactively!
 # Switch hell
 .transfer.ptr = function( src.ptr,
                           dst.ptr,
@@ -303,6 +177,7 @@ transfer.core = function( src.ptr,
                  stream )
         },
         `3` = {
+          stop( "Fill me out" )
           # .Call( paste0( "cuR_transfer_3_3_", type ),
           #        src.ptr,
           #        dst.ptr,
@@ -323,6 +198,45 @@ transfer.core = function( src.ptr,
   if( is.null(res) ){
     stop( "Transfer was unsuccessful" )
   }
+
+  invisible( TRUE )
+}
+
+# Multi-transfer call 0L-2L-3L or 3L-2L-0L
+.transfer.ptr.multi = function( src.ptr,
+                                dst.ptr,
+                                src.level,
+                                dst.level,
+                                type,
+                                dims,
+                                src.subs.ptr = NULL,
+                                dst.subs.ptr = NULL,
+                                src.subs.off = NULL,
+                                dst.subs.off = NULL,
+                                stream       = NULL ){
+
+  # Multi-transfer call 0L-2L-3L or 3L-2L-0L
+  tmp <- tensor$new( NULL, 2L, dims, type )
+
+  .transfer.ptr( src.ptr,
+                 tmp$ptr,
+                 src.level,
+                 2L,
+                 type,
+                 dims,
+                 src.subs.off,
+                 NULL )
+
+  .transfer.ptr( tmp$ptr,
+                 dst.ptr,
+                 2L,
+                 dst.level,
+                 type,
+                 dims,
+                 NULL,
+                 dst.subs.off )
+
+  tmp$destroy()
 
   invisible( TRUE )
 }

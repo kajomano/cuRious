@@ -9,32 +9,58 @@
 # Level 2: C array  ( pinned host memory, float,  int, bool )
 # Level 3: C array  (      device memory, float,  int, bool )
 
-# TODO ====
-# Check for missing values on init, pull, push
-
 # Tensor class ====
 tensor <- R6Class(
   "tensor",
+  inherit = alert.send,
   public = list(
-    initialize = function( obj   = NULL,
-                           level = 0L,
-                           dims  = NULL,
-                           type  = "n" ){
+    initialize = function( init  = NULL, # Default: NULL | obj or tensor
+                           level = NULL, # Default: 0L   | tensor level
+                           dims  = NULL, # Default: 1x1  | obj or tensor dims
+                           type  = NULL, # Default: "n"  | obj or tensor type
+                           copy  = TRUE,
+                           wrap  = FALSE # Only works if obj was supplied
+    ){
 
-      # If object is not supported
-      if( is.null( obj ) ){
-        private$.dims <- check.dims( dims )
-        private$.type <- check.type( type )
+      # TODO ====
+      # Make creation wrappable on objects
+      # Make creation be able to copy another tensor
+      # Make copy a flag, turning it off mimics the other object without content
+
+      # If init is not given
+      if( is.null( init ) ){
+        private$.dims  <- check.dims( dims )
+        private$.type  <- check.type( type )
+        private$.level <- check.level( level )
       # If supported
       }else{
-        private$.dims <- obj.dims( obj )
-        private$.type <- obj.type( obj )
+        if( is.obj( init ) ){
+          private$.dims  <- obj.dims( obj )
+          private$.type  <- obj.type( obj )
+        }else if( is.tensor( init ) ){
+          private$.dims  <- obj.dims( obj )
+          private$.type  <- obj.type( obj )
+        }else{
+          stop( "Invalid init argument" )
+        }
       }
 
       private$.level <- check.level( level )
 
+        if( !wrap ){
+          private$.level <- check.level( level )
+        }
+
+      }
+
+      if( !wrap ){
+        private$.level <- check.level( level )
+      }else{
+
+      }
+
       # Allocate space for the tensor
-      private$.ptr <- private$create.ptr()
+      private$.ptr <- private$.create.ptr()
 
       # Copy the data (in C) even if it is an R object, to not have soft copies
       # that could later be messed up by pull() or other transfers
@@ -50,41 +76,15 @@ tensor <- R6Class(
       }
     },
 
-    finalize = function(){
-      private$.alertables <- list()
-    },
-
-    alert.add = function( alertable ){
-      alertable <- check.alertable( alertable )
-
-      private$.alertables <- c( private$.alertables, list( alertable ) )
-
-      invisible( self )
-    },
-
-    alert.remove = function( obj ){
-      match <- sapply( private$.alertables, function( alertable ){
-        identical( .Internal( inspect( obj ) ),
-                   .Internal( inspect( alertable ) ) )
-      })
-
-      if( !any( match ) ){
-        stop( "Object not amongst alertables" )
-      }
-
-      private$.alertables <- private$.alertables[ !which( match ) ]
-
-      invisible( self )
-    },
-
     transform = function( level = 0L ){
-      private$check.destroyed()
-      private$alert()
+      private$.check.destroyed()
+      private$.alert()
+
       level <- check.level( level )
 
       if( private$.level != level ){
         # Create a placeholder and copy
-        tmp <- private$create.ptr( level )
+        tmp <- private$.create.ptr( level )
         .transfer.core( private$.ptr,
                         tmp,
                         private$.level,
@@ -101,25 +101,25 @@ tensor <- R6Class(
     },
 
     dive = function(){
-      private$check.destroyed()
-      private$alert()
+      private$.check.destroyed()
+      private$.alert()
       self$transform( 3L )
     },
 
     surface = function(){
-      private$check.destroyed()
-      private$alert()
+      private$.check.destroyed()
+      private$.alert()
       self$transform()
     },
 
     # These functions are only there for objs, are essentially interfaces
     # to R
     push = function( obj ){
-      private$check.destroyed()
+      private$.check.destroyed()
 
       obj <- check.obj( obj )
-      private$compare.dims( obj )
-      private$compare.type( obj )
+      private$.compare.dims( obj )
+      private$.compare.type( obj )
 
       .transfer.core( obj,
                       private$.ptr,
@@ -130,7 +130,7 @@ tensor <- R6Class(
     },
 
     pull = function(){
-      private$check.destroyed()
+      private$.check.destroyed()
 
       tmp <- private$create.ptr( 0L )
       .transfer.core( private$.ptr,
@@ -143,14 +143,23 @@ tensor <- R6Class(
     },
 
     clear = function(){
-      private$check.destroyed()
+      private$.check.destroyed()
       .Call( paste0("cuR_clear_tensor_", private$.level, "_", private$.type ),
              private$.ptr,
              private$.dims )
     },
 
     destroy = function(){
-      private$.ptr <- NULL
+      # TODO ====
+      # Figure out wether we need explicit destruction
+      # Call the destructor
+
+      private$.ptr   <- NULL
+      private$.level <- NULL
+      private$.dims  <- NULL
+      private$.type  <- NULL
+
+      private$.alert()
     }
   ),
 
@@ -160,15 +169,7 @@ tensor <- R6Class(
     .dims  = NULL,
     .type  = NULL,
 
-    .alertables = list(),
-
-    alert = function(){
-      lapply( private$.alertables, function( alertable ){
-        alertable$alert()
-      })
-    },
-
-    create.ptr = function( level = private$.level ){
+    .create.ptr = function( level = private$.level ){
       if( prod( private$.dims ) > 2^32-1 ){
         # TODO ====
         # Use long int or the correct R type to remove this constraint
@@ -184,15 +185,15 @@ tensor <- R6Class(
       )
     },
 
-    compare.dims = function( obj ){
-      if( !identical( obj.dims( obj ), private$.dims ) ) stop( "Dims do not match" )
-    },
+    # .compare.dims = function( obj ){
+    #   if( !identical( obj.dims( obj ), private$.dims ) ) stop( "Dims do not match" )
+    # },
+    #
+    # .compare.type = function( obj ){
+    #   if( obj.type( obj ) != private$.type ) stop( "Types do not match" )
+    # },
 
-    compare.type = function( obj ){
-      if( obj.type( obj ) != private$.type ) stop( "Types do not match" )
-    },
-
-    check.destroyed = function(){
+    .check.destroyed = function(){
       if( self$is.destroyed ){
         stop( "The tensor is destroyed" )
       }
@@ -201,7 +202,7 @@ tensor <- R6Class(
 
   active = list(
     ptr = function( val ){
-      private$check.destroyed()
+      private$.check.destroyed()
 
       if( missing( val ) ){
         return( private$.ptr )
@@ -209,25 +210,25 @@ tensor <- R6Class(
         if( !self$is.surfaced ) stop( "Not surfaced, direct access denied" )
 
         val <- check.object( val )
-        private$compare.dims( val )
-        private$compare.type( val )
+        private$.compare.dims( val )
+        private$.compare.type( val )
 
         private$.ptr <- val
       }
     },
 
     dims = function( val ){
-      private$check.destroyed()
+      private$.check.destroyed()
       if( missing( val ) ) return( private$.dims )
     },
 
     type = function( val ){
-      private$check.destroyed()
+      private$.check.destroyed()
       if( missing( val ) ) return( private$.type )
     },
 
     level = function( val ){
-      private$check.destroyed()
+      private$.check.destroyed()
       if( missing( val ) ) return( private$.level )
     },
 
@@ -235,12 +236,16 @@ tensor <- R6Class(
       if( missing( val ) ) return( as.integer( prod( self$dims ) ) )
     },
 
-    is.under = function( val ){
-      if( missing( val ) ) return( self$level == 3 )
-    },
-
     is.surfaced = function( val ){
       if( missing( val ) ) return( self$level == 0 )
+    },
+
+    is.under = function( val ){
+      if( missing( val ) ) return( self$level %in% c( 1L, 2L ) )
+    },
+
+    is.deep = function( val ){
+      if( missing( val ) ) return( self$level == 3L )
     },
 
     is.destroyed = function( val ){

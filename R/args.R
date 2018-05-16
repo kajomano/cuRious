@@ -90,7 +90,7 @@ check.cublas.handle <- function( handle ){
 }
 
 is.alertable <- function( alertable ){
-  "alertable" %in% class( alertable )
+  "alert.recv" %in% class( alertable )
 }
 
 check.alertable <- function( alertable ){

@@ -3,29 +3,48 @@
 # CUDA stream class ====
 cuda.stream <- R6Class(
   "cuda.stream",
+  inherit = alert.send,
   public = list(
-    initialize = function(){
-      private$.stream <- .Call( "cuR_create_cuda_stream" )
+    initialize = function( active = T ){
+      if( active ){
+        self$activate()
+      }
+    },
+
+    activate = function(){
+      if( is.null( private$.stream ) ){
+        private$.stream <- .Call( "cuR_create_cuda_stream" )
+        private$.alert()
+      }else{
+        warning( "CUDA stream is already activated" )
+      }
+
+      invisible( self )
+    },
+
+    deactivate = function(){
+      if( !is.null( private$.stream ) ){
+        .Call( "cuR_destroy_cuda_stream", private$.stream )
+        private$.stream <- NULL
+        private$.alert()
+      }else{
+        warning( "CUDA stream is not yet activated" )
+      }
+
+      invisible( self )
     }
   ),
 
   private = list(
-    .stream = NULL,
-
-    check.destroyed = function(){
-      if( self$is.destroyed ){
-        stop( "The stream is destroyed" )
-      }
-    }
+    .stream = NULL
   ),
 
   active = list(
     stream = function( val ){
-      private$check.destroyed()
       if( missing( val ) ) return( private$.stream )
     },
 
-    is.destroyed = function( val ){
+    is.active = function( val ){
       if( missing( val ) ) return( is.null( private$.stream ) )
     }
   )

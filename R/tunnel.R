@@ -88,10 +88,6 @@ tunnel <- R6Class(
       }
     },
 
-    finalize = function(){
-      print( "Removed" )
-    },
-
     alert = function(){
       private$.check.destroyed()
       print( "Alerted" )
@@ -125,19 +121,21 @@ tunnel <- R6Class(
     destroy = function(){
       private$.check.destroyed()
 
-      private$.src$listener.remove( self )
-      private$.dst$listener.remove( self )
+      private$.listener.remove <- TRUE
+
+      private$.src$listener.remove()
+      private$.dst$listener.remove()
 
       if( !is.null( private$.src.perm ) ){
-        private$.src.perm$listener.remove( self )
+        private$.src.perm$listener.remove()
       }
 
       if( !is.null( private$.dst.perm ) ){
-        private$.dst.perm$listener.remove( self )
+        private$.dst.perm$listener.remove()
       }
 
       if( !is.null( private$.stream ) ){
-        private$.stream$listener.remove( self )
+        private$.stream$listener.remove()
       }
 
       private$.src      <- NULL
@@ -178,7 +176,6 @@ tunnel <- R6Class(
     .changed      = TRUE,
 
     .update = function(){
-      print( "Updating" )
       # Since levels are the primary dynamically changing attribute of tensors,
       # these checks mostly concern them
       private$.src.ptr <- private$.src$ptr

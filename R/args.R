@@ -97,4 +97,3 @@ check.alertable <- function( alertable ){
   if( !is.alertable( alertable ) ) stop( "Invalid alertable" )
   invisible( alertable )
 }
-

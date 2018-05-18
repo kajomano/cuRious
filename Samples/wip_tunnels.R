@@ -7,9 +7,4 @@ dst <- tensor$new( src, init = "mimic" )
 
 tun <- tunnel$new( src, dst )
 
-
-# dst$pull()[1]
-# tun$transfer()
-#
-# src$transform( 1L )
-# src$transform( 0L )
+src$transform( 1L )

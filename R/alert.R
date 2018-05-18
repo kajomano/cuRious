@@ -19,10 +19,13 @@ alert.send <- R6Class(
     },
 
     listener.remove = function( obj ){
-      match <- sapply( private$.listeners, function( listener ){
-        identical( .Internal( inspect( obj ) ),
-                   .Internal( inspect( listener ) ) )
-      })
+      # TODO ====
+      # Solve this, and faster
+      # Huge infinite recursion in inspect
+      # match <- sapply( private$.listeners, function( listener ){
+      #   identical( .Internal( inspect( obj ) ),
+      #              .Internal( inspect( listener ) ) )
+      # })
 
       if( !any( match ) ){
         stop( "Object not amongst listeners" )

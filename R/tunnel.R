@@ -89,28 +89,18 @@ tunnel <- R6Class(
     },
 
     finalize = function(){
-      private$.src$listener.remove( self )
-      private$.dst$listener.remove( self )
-
-      if( !is.null( private$.src.perm ) ){
-        private$.src.perm$listener.remove( self )
-      }
-
-      if( !is.null( private$.dst.perm ) ){
-        private$.dst.perm$listener.remove( self )
-      }
-
-      if( !is.null( private$.stream ) ){
-        private$.stream$listener.remove( self )
-      }
+      print( "Removed" )
     },
 
     alert = function(){
+      private$.check.destroyed()
       print( "Alerted" )
       private$.changed <- TRUE
     },
 
     transfer = function(){
+      private$.check.destroyed()
+
       if( private$.changed ){
         private$.update()
       }
@@ -128,6 +118,33 @@ tunnel <- R6Class(
         dst.subs.off = private$.dst.off,
         stream       = private$.stream
       )
+
+      invisible( private$.dst )
+    },
+
+    destroy = function(){
+      private$.check.destroyed()
+
+      private$.src$listener.remove( self )
+      private$.dst$listener.remove( self )
+
+      if( !is.null( private$.src.perm ) ){
+        private$.src.perm$listener.remove( self )
+      }
+
+      if( !is.null( private$.dst.perm ) ){
+        private$.dst.perm$listener.remove( self )
+      }
+
+      if( !is.null( private$.stream ) ){
+        private$.stream$listener.remove( self )
+      }
+
+      private$.src      <- NULL
+      private$.dst      <- NULL
+      private$.src.perm <- NULL
+      private$.dst.perm <- NULL
+      private$.stream   <- NULL
     }
   ),
 
@@ -161,6 +178,7 @@ tunnel <- R6Class(
     .changed      = TRUE,
 
     .update = function(){
+      print( "Updating" )
       # Since levels are the primary dynamically changing attribute of tensors,
       # these checks mostly concern them
       private$.src.ptr <- private$.src$ptr
@@ -219,6 +237,18 @@ tunnel <- R6Class(
       }
 
       private$.changed <- FALSE
+    },
+
+    .check.destroyed = function(){
+      if( self$is.destroyed ){
+        stop( "The tunnel is destroyed" )
+      }
+    }
+  ),
+
+  active = list(
+    is.destroyed = function( val ){
+      if( missing( val ) ) return( is.null( private$.src ) )
     }
   )
 )

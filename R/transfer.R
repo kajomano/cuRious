@@ -12,7 +12,10 @@ transfer <- function( src,
                       stream   = NULL ){
 
   tun <- tunnel$new( src, dst, src.perm, dst.perm, src.span, dst.span, stream )
-  tun$transfer()
+  res <- tun$transfer()
+  tun$destroy()
+
+  res
 }
 
 # Low level transfer call that handles ptrs, for speed considerations

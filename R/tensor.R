@@ -91,22 +91,19 @@ tensor <- R6Class(
 
     transform = function( level = 0L ){
       private$.check.destroyed()
-      private$.alert()
-
       level <- check.level( level )
 
       if( private$.level != level ){
         # Create a placeholder and copy
-        tmp <- tensor$new( NULL, 2L, dims, type )
-        .transfer.core( private$.ptr,
-                        tmp,
-                        private$.level,
-                        level,
-                        private$.type,
-                        private$.dims )
+        tmp <- tensor$new( self, level, init = "mimic" )
+        transfer( self, tmp )
+
+        # Free old memory
+        # This command also alert()s
+        self$destroy()
 
         # Update
-        private$.ptr   <- tmp
+        private$.ptr   <- tmp$ptr
         private$.level <- level
       }
 
@@ -114,14 +111,10 @@ tensor <- R6Class(
     },
 
     dive = function(){
-      private$.check.destroyed()
-      private$.alert()
       self$transform( 3L )
     },
 
     surface = function(){
-      private$.check.destroyed()
-      private$.alert()
       self$transform()
     },
 
@@ -134,25 +127,17 @@ tensor <- R6Class(
       private$.compare.dims( obj )
       private$.compare.type( obj )
 
-      .transfer.core( obj,
-                      private$.ptr,
-                      0L,
-                      private$.level,
-                      private$.type,
-                      private$.dims )
+      obj.tensor <- tensor$new( obj,  init = "wrap" )
+      transfer( obj.tensor, self )
     },
 
     pull = function(){
       private$.check.destroyed()
 
-      tmp <- private$create.ptr( 0L )
-      .transfer.core( private$.ptr,
-                      tmp,
-                      private$.level,
-                      0L,
-                      private$.type,
-                      private$.dims )
-      tmp
+      tmp <- tensor$new( self, 0L, init = "mimic" )
+      transfer( self, tmp )
+
+      tmp$ptr
     },
 
     clear = function(){
@@ -165,6 +150,7 @@ tensor <- R6Class(
     destroy = function(){
       private$.check.destroyed()
       private$.destroy.ptr()
+      private$.ptr <- NULL
       private$.alert()
     }
   ),
@@ -193,7 +179,7 @@ tensor <- R6Class(
 
     .destroy.ptr = function(){
       switch(
-        as.character( level ),
+        as.character( private$.level ),
         `1` = .Call( paste0("cuR_destroy_tensor_1_", private$.type ), private$.ptr ),
         `2` = .Call( paste0("cuR_destroy_tensor_2_", private$.type ), private$.ptr ),
         `3` = .Call( paste0("cuR_destroy_tensor_3_", private$.type ), private$.ptr )

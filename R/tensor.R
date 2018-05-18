@@ -14,65 +14,78 @@ tensor <- R6Class(
   "tensor",
   inherit = alert.send,
   public = list(
-    initialize = function( init  = NULL, # Default: NULL | obj or tensor
-                           level = NULL, # Default: 0L   | tensor level
-                           dims  = NULL, # Default: 1x1  | obj or tensor dims
-                           type  = NULL, # Default: "n"  | obj or tensor type
-                           copy  = TRUE,
-                           wrap  = FALSE # Only works if obj was supplied
+    initialize = function( data  = NULL,
+                           level = NULL,
+                           dims  = c( 1L, 1L ),
+                           type  = "n",
+                           init  = c( "copy", "mimic", "wrap" )
     ){
-
-      # TODO ====
-      # Make creation wrappable on objects
-      # Make creation be able to copy another tensor
-      # Make copy a flag, turning it off mimics the other object without content
+      init <- match.arg( init, c( "copy", "mimic", "wrap" ) )
 
       # If init is not given
-      if( is.null( init ) ){
+      if( is.null( data ) ){
         private$.dims  <- check.dims( dims )
         private$.type  <- check.type( type )
-        private$.level <- check.level( level )
-      # If supported
-      }else{
-        if( is.obj( init ) ){
-          private$.dims  <- obj.dims( obj )
-          private$.type  <- obj.type( obj )
-        }else if( is.tensor( init ) ){
-          private$.dims  <- obj.dims( obj )
-          private$.type  <- obj.type( obj )
+
+        if( is.null( level ) ){
+          private$.level <- 0L
         }else{
-          stop( "Invalid init argument" )
-        }
-      }
-
-      private$.level <- check.level( level )
-
-        if( !wrap ){
           private$.level <- check.level( level )
         }
+        # If supported
+      }else{
+        if( is.obj( data ) ){
+          private$.dims  <- obj.dims( data )
+          private$.type  <- obj.type( data )
 
+          if( is.null( level ) ){
+            private$.level <- 0L
+          }else{
+            private$.level <- check.level( level )
+          }
+        }else if( is.tensor( data ) ){
+          private$.dims  <- data$dims
+          private$.type  <- data$type
+
+          if( is.null( level ) ){
+            private$.level <- data$level
+          }else{
+            private$.level <- check.level( level )
+          }
+        }else{
+          stop( "Invalid data argument" )
+        }
       }
 
-      if( !wrap ){
-        private$.level <- check.level( level )
-      }else{
-
-      }
-
-      # Allocate space for the tensor
-      private$.ptr <- private$.create.ptr()
-
-      # Copy the data (in C) even if it is an R object, to not have soft copies
-      # that could later be messed up by pull() or other transfers
-      if( !is.null( obj ) ){
-        .transfer.core( obj,
-                        private$.ptr,
-                        0L,
-                        private$.level,
-                        private$.type,
-                        private$.dims )
-      }else{
+      # Initialize the tensor according to init
+      if( is.null( data ) ){
         self$clear()
+      }else{
+        switch(
+          init,
+          copy = {
+            private$.ptr <- private$.create.ptr()
+
+            if( is.tensor( data ) ){
+              data.tensor <- data
+            }else{
+              data.tensor <- tensor$new( data, init = "wrap" )
+            }
+
+            transfer( data.tensor, self )
+          },
+          mimic = {
+            private$.ptr <- private$.create.ptr()
+            self$clear()
+          },
+          wrap = {
+            if( is.obj( data ) ){
+              private$.ptr <- data
+            }else{
+              stop( "Tensors are not wrappable" )
+            }
+          }
+        )
       }
     },
 
@@ -84,7 +97,7 @@ tensor <- R6Class(
 
       if( private$.level != level ){
         # Create a placeholder and copy
-        tmp <- private$.create.ptr( level )
+        tmp <- tensor$new( NULL, 2L, dims, type )
         .transfer.core( private$.ptr,
                         tmp,
                         private$.level,
@@ -150,15 +163,8 @@ tensor <- R6Class(
     },
 
     destroy = function(){
-      # TODO ====
-      # Figure out wether we need explicit destruction
-      # Call the destructor
-
-      private$.ptr   <- NULL
-      private$.level <- NULL
-      private$.dims  <- NULL
-      private$.type  <- NULL
-
+      private$.check.destroyed()
+      private$.destroy.ptr()
       private$.alert()
     }
   ),
@@ -185,13 +191,24 @@ tensor <- R6Class(
       )
     },
 
-    # .compare.dims = function( obj ){
-    #   if( !identical( obj.dims( obj ), private$.dims ) ) stop( "Dims do not match" )
-    # },
-    #
-    # .compare.type = function( obj ){
-    #   if( obj.type( obj ) != private$.type ) stop( "Types do not match" )
-    # },
+    .destroy.ptr = function(){
+      switch(
+        as.character( level ),
+        `1` = .Call( paste0("cuR_destroy_tensor_1_", private$.type ), private$.ptr ),
+        `2` = .Call( paste0("cuR_destroy_tensor_2_", private$.type ), private$.ptr ),
+        `3` = .Call( paste0("cuR_destroy_tensor_3_", private$.type ), private$.ptr )
+      )
+
+      private$.ptr <- NULL
+    },
+
+    .compare.dims = function( obj ){
+      if( !identical( obj.dims( obj ), private$.dims ) ) stop( "Dims do not match" )
+    },
+
+    .compare.type = function( obj ){
+      if( obj.type( obj ) != private$.type ) stop( "Types do not match" )
+    },
 
     .check.destroyed = function(){
       if( self$is.destroyed ){
@@ -207,7 +224,7 @@ tensor <- R6Class(
       if( missing( val ) ){
         return( private$.ptr )
       }else{
-        if( !self$is.surfaced ) stop( "Not surfaced, direct access denied" )
+        if( !self$is.surfaced ) stop( "Not surfaced, direct tensor access denied" )
 
         val <- check.object( val )
         private$.compare.dims( val )

@@ -115,7 +115,19 @@ tunnel <- R6Class(
         private$.update()
       }
 
-      private$.transfer()
+      private$.transfer(
+        src.ptr      = private$.src.ptr,
+        dst.ptr      = private$.dst.ptr,
+        src.level    = private$.src.level,
+        dst.level    = private$.dst.level,
+        type         = private$.type,
+        dims         = private$.dims,
+        src.subs.ptr = private$.src.subs.ptr,
+        dst.subs.ptr = private$.dst.subs.ptr,
+        src.subs.off = private$.src.off,
+        dst.subs.off = private$.dst.off,
+        stream       = private$.stream
+      )
     }
   ),
 

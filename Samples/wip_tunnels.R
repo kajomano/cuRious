@@ -1,8 +1,8 @@
 library( cuRious )
 
 src <- tensor$new( c(1) )
-dst <- tensor$new( c(1) )
+dst <- tensor$new( c(3) )
 
-tunnel <- tunnel$new( src, dst )
+tun <- tunnel$new( src, dst )
 
 src$transform( 1L )

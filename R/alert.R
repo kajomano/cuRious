@@ -23,14 +23,15 @@ alert.send <- R6Class(
     listener.add = function( obj ){
       listener <- check.alertable( obj )
       private$.listeners <- c( private$.listeners, list( listener ) )
-      print( private$.listeners )
+
       invisible( self )
     },
 
     listener.remove = function(){
       match <- sapply( private$.listeners, `[[`, "listener.remove" )
-      private$.listeners <- private$.listeners[ !which( match ) ]
+      private$.listeners <- private$.listeners[ !match ]
       invisible( self )
+
     }
   ),
 
@@ -38,10 +39,11 @@ alert.send <- R6Class(
     .listeners = list(),
 
     .alert = function(){
-      print( "Alerting" )
       lapply( private$.listeners, function( listener ){
         listener$alert()
       })
+
+      invisible( TRUE )
     }
   )
 )

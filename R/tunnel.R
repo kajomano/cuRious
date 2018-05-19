@@ -90,7 +90,6 @@ tunnel <- R6Class(
 
     alert = function(){
       private$.check.destroyed()
-      print( "Alerted" )
       private$.changed <- TRUE
     },
 

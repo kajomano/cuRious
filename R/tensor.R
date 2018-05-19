@@ -150,7 +150,6 @@ tensor <- R6Class(
     destroy = function(){
       private$.check.destroyed()
       private$.destroy.ptr()
-      private$.ptr <- NULL
       private$.alert()
     }
   ),

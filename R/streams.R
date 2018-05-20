@@ -2,7 +2,7 @@
 
 # CUDA stream class ====
 cuda.stream <- R6Class(
-  "cuda.stream",
+  "cuR.cuda.stream",
   inherit = alert.send,
   public = list(
     initialize = function( active = T ){

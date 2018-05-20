@@ -1,3 +1,5 @@
+library( cuRious )
+
 tens.X <- tensor$new( matrix( as.numeric( 1:6 ), 2, 3 ), 3L )
 tens.Y <- tensor$new( matrix( as.numeric( 0   ), 2, 3 ), 3L )
 

@@ -7,7 +7,7 @@
 
 # cuBLAS handle class ====
 cublas.handle <- R6Class(
-  "cublas.handle",
+  "cuR.cublas.handle",
   inherit = alert.send,
   public = list(
     initialize = function( active = T ){

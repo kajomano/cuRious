@@ -11,7 +11,7 @@
 
 # Tensor class ====
 tensor <- R6Class(
-  "tensor",
+  "cuR.tensor",
   inherit = alert.send,
   public = list(
     initialize = function( data  = NULL,
@@ -24,8 +24,8 @@ tensor <- R6Class(
 
       # If init is not given
       if( is.null( data ) ){
-        private$.dims  <- check.dims( dims )
-        private$.type  <- check.type( type )
+        private$.dims <- check.dims( dims )
+        private$.type <- check.type( type )
 
         if( is.null( level ) ){
           private$.level <- 0L
@@ -35,8 +35,8 @@ tensor <- R6Class(
         # If supported
       }else{
         if( is.obj( data ) ){
-          private$.dims  <- obj.dims( data )
-          private$.type  <- obj.type( data )
+          private$.dims <- obj.dims( data )
+          private$.type <- obj.type( data )
 
           if( is.null( level ) ){
             private$.level <- 0L
@@ -59,6 +59,7 @@ tensor <- R6Class(
 
       # Initialize the tensor according to init
       if( is.null( data ) ){
+        private$.ptr <- private$.create.ptr()
         self$clear()
       }else{
         switch(
@@ -124,8 +125,8 @@ tensor <- R6Class(
       private$.check.destroyed()
 
       obj <- check.obj( obj )
-      private$.compare.dims( obj )
-      private$.compare.type( obj )
+      private$.match.dims( obj )
+      private$.match.type( obj )
 
       obj.tensor <- tensor$new( obj,  init = "wrap" )
       transfer( obj.tensor, self )
@@ -151,6 +152,10 @@ tensor <- R6Class(
       private$.check.destroyed()
       private$.destroy.ptr()
       private$.alert()
+    },
+
+    is.level = function( levels = 0L ){
+      self$level %in% levels
     }
   ),
 
@@ -187,11 +192,11 @@ tensor <- R6Class(
       private$.ptr <- NULL
     },
 
-    .compare.dims = function( obj ){
+    .match.dims = function( obj ){
       if( !identical( obj.dims( obj ), private$.dims ) ) stop( "Dims do not match" )
     },
 
-    .compare.type = function( obj ){
+    .match.type = function( obj ){
       if( obj.type( obj ) != private$.type ) stop( "Types do not match" )
     },
 
@@ -212,8 +217,8 @@ tensor <- R6Class(
         if( !self$is.surfaced ) stop( "Not surfaced, direct tensor access denied" )
 
         val <- check.object( val )
-        private$.compare.dims( val )
-        private$.compare.type( val )
+        private$.match.dims( val )
+        private$.match.type( val )
 
         private$.ptr <- val
       }
@@ -236,18 +241,6 @@ tensor <- R6Class(
 
     l = function( val ){
       if( missing( val ) ) return( as.integer( prod( self$dims ) ) )
-    },
-
-    is.surfaced = function( val ){
-      if( missing( val ) ) return( self$level == 0 )
-    },
-
-    is.under = function( val ){
-      if( missing( val ) ) return( self$level %in% c( 1L, 2L ) )
-    },
-
-    is.deep = function( val ){
-      if( missing( val ) ) return( self$level == 3L )
     },
 
     is.destroyed = function( val ){

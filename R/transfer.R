@@ -1,7 +1,7 @@
 # .Calls: src/transfer.cpp
 # Highly connected to code in tunnel.R
 
-# High level transfer call. Thin wrapper around a temporary tunnel. Should only
+# High level transfer call. Thin wrapper around a temporary pipe. Should only
 # be used in non speed-critical places.
 transfer <- function( src,
                       dst,
@@ -11,11 +11,11 @@ transfer <- function( src,
                       dst.span = NULL,
                       stream   = NULL ){
 
-  tun <- tunnel$new( src, dst, src.perm, dst.perm, src.span, dst.span, stream )
-  res <- tun$transfer()
-  tun$destroy()
+  tmp <- pipe$new( src, dst, src.perm, dst.perm, src.span, dst.span, stream )
+  res <- tmp$run()
+  tmp$destroy()
 
-  res
+  invisible( res )
 }
 
 # Low level transfer call that handles ptrs, for speed considerations
@@ -27,10 +27,10 @@ transfer <- function( src,
                           dst.level,
                           type,
                           dims,
-                          src.subs.ptr = NULL,
-                          dst.subs.ptr = NULL,
-                          src.subs.off = NULL,
-                          dst.subs.off = NULL,
+                          src.perm.ptr = NULL,
+                          dst.perm.ptr = NULL,
+                          src.span.off = NULL,
+                          dst.span.off = NULL,
                           stream       = NULL ){
   res <- switch(
     as.character( src.level ),
@@ -42,30 +42,30 @@ transfer <- function( src,
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.subs.ptr,
-                 dst.subs.ptr,
-                 src.subs.off,
-                 dst.subs.off )
+                 src.perm.ptr,
+                 dst.perm.ptr,
+                 src.span.off,
+                 dst.span.off )
         },
         `1` = {
           .Call( paste0( "cuR_transfer_0_12_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.subs.ptr,
-                 dst.subs.ptr,
-                 src.subs.off,
-                 dst.subs.off )
+                 src.perm.ptr,
+                 dst.perm.ptr,
+                 src.span.off,
+                 dst.span.off )
         },
         `2` = {
           .Call( paste0( "cuR_transfer_0_12_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.subs.ptr,
-                 dst.subs.ptr,
-                 src.subs.off,
-                 dst.subs.off )
+                 src.perm.ptr,
+                 dst.perm.ptr,
+                 src.span.off,
+                 dst.span.off )
         },
         stop( "Invalid level" )
       )
@@ -78,38 +78,38 @@ transfer <- function( src,
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.subs.ptr,
-                 dst.subs.ptr,
-                 src.subs.off,
-                 dst.subs.off )
+                 src.perm.ptr,
+                 dst.perm.ptr,
+                 src.span.off,
+                 dst.span.off )
         },
         `1` = {
           .Call( paste0( "cuR_transfer_12_12_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.subs.ptr,
-                 dst.subs.ptr,
-                 src.subs.off,
-                 dst.subs.off )
+                 src.perm.ptr,
+                 dst.perm.ptr,
+                 src.span.off,
+                 dst.span.off )
         },
         `2` = {
           .Call( paste0( "cuR_transfer_12_12_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.subs.ptr,
-                 dst.subs.ptr,
-                 src.subs.off,
-                 dst.subs.off )
+                 src.perm.ptr,
+                 dst.perm.ptr,
+                 src.span.off,
+                 dst.span.off )
         },
         `3` = {
           .Call( paste0( "cuR_transfer_1_3_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.subs.off,
-                 dst.subs.off )
+                 src.span.off,
+                 dst.span.off )
         },
         stop( "Invalid level" )
       )
@@ -122,38 +122,38 @@ transfer <- function( src,
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.subs.ptr,
-                 dst.subs.ptr,
-                 src.subs.off,
-                 dst.subs.off )
+                 src.perm.ptr,
+                 dst.perm.ptr,
+                 src.span.off,
+                 dst.span.off )
         },
         `1` = {
           .Call( paste0( "cuR_transfer_12_12_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.subs.ptr,
-                 dst.subs.ptr,
-                 src.subs.off,
-                 dst.subs.off )
+                 src.perm.ptr,
+                 dst.perm.ptr,
+                 src.span.off,
+                 dst.span.off )
         },
         `2` = {
           .Call( paste0( "cuR_transfer_12_12_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.subs.ptr,
-                 dst.subs.ptr,
-                 src.subs.off,
-                 dst.subs.off )
+                 src.perm.ptr,
+                 dst.perm.ptr,
+                 src.span.off,
+                 dst.span.off )
         },
         `3` = {
           .Call( paste0( "cuR_transfer_2_3_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.subs.off,
-                 dst.subs.off,
+                 src.span.off,
+                 dst.span.off,
                  stream )
         },
         stop( "Invalid level" )
@@ -167,29 +167,28 @@ transfer <- function( src,
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.subs.off,
-                 dst.subs.off )
+                 src.span.off,
+                 dst.span.off )
         },
         `2` = {
           .Call( paste0( "cuR_transfer_3_2_", type ),
                  src.ptr,
                  dst.ptr,
                  dims,
-                 src.subs.off,
-                 dst.subs.off,
+                 src.span.off,
+                 dst.span.off,
                  stream )
         },
         `3` = {
-          stop( "Fill me out" )
-          # .Call( paste0( "cuR_transfer_3_3_", type ),
-          #        src.ptr,
-          #        dst.ptr,
-          #        dims,
-          #        src.subs.ptr,
-          #        dst.subs.ptr,
-          #        src.subs.off,
-          #        dst.subs.off,
-          #        stream )
+          .Call( paste0( "cuR_transfer_3_3_", type ),
+                 src.ptr,
+                 dst.ptr,
+                 dims,
+                 src.perm.ptr,
+                 dst.perm.ptr,
+                 src.span.off,
+                 dst.span.off,
+                 stream )
           TRUE
         },
         stop( "Invalid level" )
@@ -212,10 +211,10 @@ transfer <- function( src,
                                 dst.level,
                                 type,
                                 dims,
-                                src.subs.ptr = NULL,
-                                dst.subs.ptr = NULL,
-                                src.subs.off = NULL,
-                                dst.subs.off = NULL,
+                                src.perm.ptr = NULL,
+                                dst.perm.ptr = NULL,
+                                src.span.off = NULL,
+                                dst.span.off = NULL,
                                 stream       = NULL ){
 
   # Multi-transfer call 0L-2L-3L or 3L-2L-0L
@@ -227,7 +226,7 @@ transfer <- function( src,
                  2L,
                  type,
                  dims,
-                 src.subs.off,
+                 src.span.off,
                  NULL )
 
   .transfer.ptr( tmp$ptr,
@@ -237,7 +236,7 @@ transfer <- function( src,
                  type,
                  dims,
                  NULL,
-                 dst.subs.off )
+                 dst.span.off )
 
   tmp$destroy()
 

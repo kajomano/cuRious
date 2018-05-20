@@ -17,7 +17,7 @@ check.obj <- function( obj ){
 }
 
 is.tensor <- function( tensor ){
-  "tensor" %in% class( tensor )
+  "cuR.tensor" %in% class( tensor )
 }
 
 check.tensor <- function( tensor ){
@@ -72,7 +72,7 @@ check.level <- function( level ){
 }
 
 is.cuda.stream <- function( stream ){
-  "cuda.stream" %in% class( stream )
+  "cuR.cuda.stream" %in% class( stream )
 }
 
 check.cuda.stream <- function( stream ){
@@ -81,7 +81,7 @@ check.cuda.stream <- function( stream ){
 }
 
 is.cublas.handle <- function( handle ){
-  "cublas.handle" %in% class( handle )
+  "cuR.cublas.handle" %in% class( handle )
 }
 
 check.cublas.handle <- function( handle ){
@@ -90,10 +90,19 @@ check.cublas.handle <- function( handle ){
 }
 
 is.alertable <- function( alertable ){
-  "alert.recv" %in% class( alertable )
+  "cuR.alert.receiver" %in% class( alertable )
 }
 
 check.alertable <- function( alertable ){
   if( !is.alertable( alertable ) ) stop( "Invalid alertable" )
   invisible( alertable )
+}
+
+is.alerting <- function( alerting ){
+  "cuR.alert.sender" %in% class( alerting )
+}
+
+check.alerting <- function( alerting ){
+  if( !is.alerting( alerting ) ) stop( "Invalid alerting" )
+  invisible( alerting )
 }

@@ -1,5 +1,5 @@
 alert.recv <- R6Class(
-  "alert.recv",
+  "cuR.alert.receiver",
   public = list(
     alert = function(){
       stop( "Alert not implemented" )
@@ -18,7 +18,7 @@ alert.recv <- R6Class(
 )
 
 alert.send <- R6Class(
-  "alert.send",
+  "cuR.alert.sender",
   public = list(
     listener.add = function( obj ){
       listener <- check.alertable( obj )
@@ -31,7 +31,6 @@ alert.send <- R6Class(
       match <- sapply( private$.listeners, `[[`, "listener.remove" )
       private$.listeners <- private$.listeners[ !match ]
       invisible( self )
-
     }
   ),
 

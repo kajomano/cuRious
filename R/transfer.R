@@ -189,7 +189,6 @@ transfer <- function( src,
                  src.span.off,
                  dst.span.off,
                  stream )
-          TRUE
         },
         stop( "Invalid level" )
       )

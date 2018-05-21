@@ -146,6 +146,8 @@ tensor <- R6Class(
       .Call( paste0("cuR_clear_tensor_", private$.level, "_", private$.type ),
              private$.ptr,
              private$.dims )
+
+      invisible( TRUE )
     },
 
     destroy = function(){

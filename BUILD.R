@@ -1,6 +1,6 @@
 # Source this script to build the package
 
-clean.build <- FALSE
+clean.build <- TRUE
 
 # ------------------------------------------------------------------------------
 

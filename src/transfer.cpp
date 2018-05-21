@@ -600,11 +600,20 @@ SEXP cuR_transfer_3_3_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP 
   int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = R_NilValue == csrc_r ? NULL :
+  int* csrc   = ( R_NilValue == csrc_r ) ? NULL :
     ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
-  int* cdst   = R_NilValue == cdst_r ? NULL :
+  int* cdst   = ( R_NilValue == cdst_r ) ? NULL :
     ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
   cudaStream_t* stream = ( R_NilValue == stream_r ) ? NULL : (cudaStream_t*)R_ExternalPtrAddr( stream_r );
+
+  // printf( "src: %p\n", (void *)src);
+  // printf( "dst: %p\n", (void *)dst);
+  // printf( "dims: %d, %d\n", dims[0], dims[1]);
+  // printf( "osrc: %d\n", osrc);
+  // printf( "odst: %d\n", odst);
+  // printf( "csrc: %p\n", (void *)csrc);
+  // printf( "cdst: %p\n", (void *)cdst);
+  // printf( "stream: %p\n", (void *)stream);
 
   cuR_transfer_device_device_n_cu( src, dst, dims, osrc, odst, csrc, cdst, stream );
 
@@ -628,9 +637,9 @@ SEXP cuR_transfer_3_3_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP 
   int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = R_NilValue == csrc_r ? NULL :
+  int* csrc   = ( R_NilValue == csrc_r ) ? NULL :
     ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
-  int* cdst   = R_NilValue == cdst_r ? NULL :
+  int* cdst   = ( R_NilValue == cdst_r ) ? NULL :
     ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
   cudaStream_t* stream = ( R_NilValue == stream_r ) ? NULL : (cudaStream_t*)R_ExternalPtrAddr( stream_r );
 
@@ -656,9 +665,9 @@ SEXP cuR_transfer_3_3_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP 
   int* dims   = INTEGER( dims_r );
   int osrc    = ( R_NilValue == osrc_r ) ? 0 : (Rf_asInteger( osrc_r ) - 1);
   int odst    = ( R_NilValue == odst_r ) ? 0 : (Rf_asInteger( odst_r ) - 1);
-  int* csrc   = R_NilValue == csrc_r ? NULL :
+  int* csrc   = ( R_NilValue == csrc_r ) ? NULL :
     ( TYPEOF( csrc_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( csrc_r ) : INTEGER( csrc_r ) );
-  int* cdst   = R_NilValue == cdst_r ? NULL :
+  int* cdst   = ( R_NilValue == cdst_r ) ? NULL :
     ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
   cudaStream_t* stream = ( R_NilValue == stream_r ) ? NULL : (cudaStream_t*)R_ExternalPtrAddr( stream_r );
 

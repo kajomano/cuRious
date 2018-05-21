@@ -7,7 +7,7 @@ void cuR_alg_saxpy_cu_dev( float* tens_x, float* tens_y, int l, float al )
     tens_y[i] = tens_x[i] * al + tens_y[i];
 }
 
-extern "C" __declspec(dllexport)
+extern "C"
 void cuR_alg_saxpy_cu(  float* tens_x, float* tens_y, int l, float al, cudaStream_t* stream ){
   int blockSize = 256;
   int numBlocks = (l + blockSize - 1) / blockSize;

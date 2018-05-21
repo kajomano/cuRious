@@ -37,7 +37,7 @@
                as.logical( span %% 1 ),
                span[[2]] > self$dims[[2]],
                span[[2]] < span[[1]],
-               span[[1]] < 0 ) ){
+               span[[1]] < 1 ) ){
         stop( "Invalid tensor span" )
       }
 

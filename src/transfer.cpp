@@ -606,15 +606,6 @@ SEXP cuR_transfer_3_3_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP 
     ( TYPEOF( cdst_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( cdst_r ) : INTEGER( cdst_r ) );
   cudaStream_t* stream = ( R_NilValue == stream_r ) ? NULL : (cudaStream_t*)R_ExternalPtrAddr( stream_r );
 
-  // printf( "src: %p\n", (void *)src);
-  // printf( "dst: %p\n", (void *)dst);
-  // printf( "dims: %d, %d\n", dims[0], dims[1]);
-  // printf( "osrc: %d\n", osrc);
-  // printf( "odst: %d\n", odst);
-  // printf( "csrc: %p\n", (void *)csrc);
-  // printf( "cdst: %p\n", (void *)cdst);
-  // printf( "stream: %p\n", (void *)stream);
-
   cuR_transfer_device_device_n_cu( src, dst, dims, osrc, odst, csrc, cdst, stream );
 
   if( stream_r != R_NilValue ){

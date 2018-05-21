@@ -6,6 +6,7 @@
 #include <cuda_runtime_api.h>
 
 extern "C"
+__declspec( dllimport )
 void cuR_alg_saxpy_cu( float* tens_x, float* tens_y, int l, float al, cudaStream_t* stream );
 
 #endif

@@ -9,7 +9,7 @@
 R_INC     = $(R_HOME)/include
 
 ## CUDA related
-CUDA_HOME = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v9.1"
+CUDA_HOME = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v9.2"
 NVCC      = $(CUDA_HOME)/bin/nvcc
 CUDA_INC  = $(CUDA_HOME)/include
 
@@ -32,15 +32,15 @@ cpp_srcs  = $(wildcard *.cpp)
 cpp_objs  = $(patsubst %.cpp, %.o, $(cpp_srcs))
 
 cu_srcs   = $(wildcard *.cu)
-cu_objs   = $(patsubst %.cu, %.o, $(cu_srcs))
+cu_objs   = $(patsubst %.cu, %.dll, $(cu_srcs))
 
 all_objs  = $(cpp_objs) $(cu_objs)
 
 ### Linker options
 # Linux (untested)
 # PKG_LIBS  = "-L$(CUDA_HOME)/lib/x64 -Wl, -rpath, $(CUDA_HOME)/lib/x64 -lcuda -lcudart"
-# Windows (also includes special windows .wincpp objects)
-PKG_LIBS = $(cu_objs) -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas
+# $(cu_objs)
+PKG_LIBS = -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas -L"E:/Rprojects/cuRious/src" -lcudar
 
 ### Recipes
 
@@ -51,5 +51,5 @@ cuRious.so: $(all_objs)
 %.o: %.cpp $(h_srcs)
 	$(CXX) -O3 -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
 
-%.o: %.cu $(h_srcs)
-	$(NVCC) -ccbin=$(VC_BIN) $(NVCC_ARGS) $< -o $@ -c
+%.dll: %.cu $(h_srcs)
+	$(NVCC) -ccbin=$(VC_BIN) $(NVCC_ARGS) $< -o $@ --shared

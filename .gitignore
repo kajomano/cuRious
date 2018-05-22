@@ -6,5 +6,8 @@
 src/*.dll
 src/*.o
 src/*.so
+src/*.lib
+src/*.exp
+
 src/*.cu
 src_cuda/*.cu

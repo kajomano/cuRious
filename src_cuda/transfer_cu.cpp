@@ -48,6 +48,9 @@ void cuR_transfer_device_device_n_cu_kern( T* src,
 }
 
 extern "C"
+#ifdef _WIN32
+__declspec( dllexport )
+#endif
 void cuR_transfer_device_device_n_cu( float* src,
                                       float* dst,
                                       int* dims,
@@ -86,6 +89,9 @@ void cuR_transfer_device_device_n_cu( float* src,
 }
 
 extern "C"
+#ifdef _WIN32
+__declspec( dllexport )
+#endif
 void cuR_transfer_device_device_i_cu( int* src,
                                       int* dst,
                                       int* dims,
@@ -122,6 +128,9 @@ void cuR_transfer_device_device_i_cu( int* src,
 }
 
 extern "C"
+#ifdef _WIN32
+__declspec( dllexport )
+#endif
 void cuR_transfer_device_device_l_cu( bool* src,
                                       bool* dst,
                                       int* dims,

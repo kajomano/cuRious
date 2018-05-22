@@ -1,6 +1,6 @@
 # Source this script to build the package
 
-clean.build <- FALSE
+clean.build <- TRUE
 
 # ------------------------------------------------------------------------------
 
@@ -13,33 +13,38 @@ if( "package:cuRious" %in% search() ){
 
 # Pre-clean
 if( clean.build ){
-  file.remove( dir( "./src",
-                    pattern = "(\\.o|\\.dll|\\.cu|\\.so)$",
-                    full.names = TRUE ) )
+  file.remove( dir( "./src", "\\.(o|dll|cu|so|lib|exp)$", full.names = TRUE ) )
 }
 
 # TODO ====
 # Automatically filled path variables in Makevars files
 
-# TODO ====
-# This might not be required anymore
+# Source files containing cuda (device) code and host code with kernel launches
+# are found in ./src_cuda, with a .cpp extension so that Rstudio syntax
+# highlighting works correctly. These files are copied (if changed) to ./src.
 
-# Source files containing CUDA gpu code need to be pasted into one single file,
-# otherwise the MinGW/g++ linker creates an invalid .dll on windows
-cuda.file <- "cudaR.cu"
-cuda.src.path <- paste0( "./src/", cuda.file )
-cuda.tmp.path <- paste0( "./src_cuda/", cuda.file )
+# Windows:
+# Cuda sources are compiled into a shared library called cudaR.dll. The
+# functions are then imported from this library by the final cuRious.dll. This
+# workaround was needed so that mingw64/gcc and NVCC/MSVC compiled objects don't
+# need to be linked together.
 
-file.remove( dir( "./src_cuda", pattern = "\\.cu$", full.names = TRUE ) )
-file.append( cuda.tmp.path, dir( "./src_cuda", full.names = TRUE ) )
+# Linux:
+# The cuda sources are compiled with NVCC into objects, which are then linked
+# with regular objects by gcc.
 
-if( file.exists( cuda.src.path ) ){
-  if( md5sum( cuda.src.path ) != md5sum( cuda.tmp.path ) ){
-    file.copy( cuda.tmp.path, cuda.src, overwrite = TRUE )
+lapply( dir( "./src_cuda", "\\.cpp$" ), function( file ){
+  file               <- sub( "\\.cpp$", "", file )
+  file.src.path      <- paste0( "./src/", file, ".cu" )
+  file.src.cuda.path <- paste0( "./src_cuda/", file, ".cpp" )
+
+  if( file.exists( file.src.path ) ){
+    if( md5sum( file.src.cuda.path ) == md5sum( file.src.cuda.path ) ){
+      return( FALSE )
+    }
   }
-}else{
-  file.copy( cuda.tmp.path, cuda.src.path, overwrite = TRUE )
-}
+  file.copy( file.src.cuda.path, file.src.path, overwrite = TRUE )
+})
 
 build()
 install( args = "--no-lock" )

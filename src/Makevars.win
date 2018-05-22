@@ -32,9 +32,9 @@ cpp_srcs  = $(wildcard *.cpp)
 cpp_objs  = $(patsubst %.cpp, %.o, $(cpp_srcs))
 
 cu_srcs   = $(wildcard *.cu)
-cu_objs   = $(patsubst %.cu, %.dll, $(cu_srcs))
+#cu_objs   = $(patsubst %.cu, %.dll, $(cu_srcs))
 
-all_objs  = $(cpp_objs) $(cu_objs)
+all_objs  = $(cpp_objs) cudaR.dll
 
 ### Linker options
 PKG_LIBS = -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas -L"E:/Rprojects/cuRious/src" -lcudaR
@@ -47,5 +47,5 @@ cuRious.so: $(all_objs)
 %.o: %.cpp $(h_srcs)
 	$(CXX) -O3 -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
 
-%.dll: %.cu $(h_srcs)
-	$(NVCC) -ccbin=$(VC_BIN) $(NVCC_ARGS) $< -o $@ --shared
+cudaR.dll: $(cu_srcs) $(h_srcs)
+	$(NVCC) -ccbin=$(VC_BIN) $(NVCC_ARGS) $(cu_srcs) -o cudaR.dll --shared

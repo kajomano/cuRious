@@ -8,6 +8,9 @@ void cuR_alg_saxpy_cu_dev( float* tens_x, float* tens_y, int l, float al )
 }
 
 extern "C"
+#ifdef _WIN32
+__declspec( dllexport )
+#endif
 void cuR_alg_saxpy_cu(  float* tens_x, float* tens_y, int l, float al, cudaStream_t* stream ){
   int blockSize = 256;
   int numBlocks = (l + blockSize - 1) / blockSize;

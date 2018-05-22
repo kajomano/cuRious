@@ -47,12 +47,14 @@
 
     check.trans = function( trans ){
       if( trans ){
-        self$dims <- rev( self$dims )
+        rev( self$dims )
+      }else{
+        self$dims
       }
     },
 
     check.vect = function(){
-      if( self$dims[[1]] == 1L ){
+      if( self$dims[[1]] != 1L ){
         stop( "Tensor is not vector" )
       }
     }

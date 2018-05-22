@@ -42,13 +42,11 @@ SEXP cuR_create_cublas_handle(){
 }
 
 // This returns a cublasStatus
-cublasStatus_t cuR_cublas_recover_stream( SEXP stream_r, cublasHandle_t* handle ){
+cublasStatus_t cuR_cublas_recover_stream( cudaStream_t* stream, cublasHandle_t* handle ){
   // If a stream is given, set it before the calculation
   cublasStatus_t stat = CUBLAS_STATUS_SUCCESS;
-  if( stream_r != R_NilValue ){
+  if( stream ){
     debugPrint( Rprintf( "Async cublas call\n" ) );
-
-    cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
     stat = cublasSetStream( *handle, *stream );
   }else{
     debugPrint( Rprintf( "Sync cublas call\n" ) );
@@ -71,6 +69,7 @@ SEXP cuR_cublas_sger( SEXP tens_x_r,
 
   // Recover handle
   cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
+  cudaStream_t* stream = ( R_NilValue == stream_r ) ? NULL : (cudaStream_t*)R_ExternalPtrAddr( stream_r );
 
   // Recover tensors, the dims and the scalars
   int* dims_A = INTEGER( dims_A_r );
@@ -91,20 +90,23 @@ SEXP cuR_cublas_sger( SEXP tens_x_r,
   int n = dims_A[1];
 
   // Handle stream
-  cublasTry( cuR_cublas_recover_stream( stream_r, handle ) );
+  cublasTry( cuR_cublas_recover_stream( stream, handle ) );
 
   // Do the op
-  cublasSger( *handle, m, n, &al, tens_x, 1, tens_y,1, tens_A, m );
+  cublasTry( cublasSger( *handle, m, n, &al, tens_x, 1, tens_y,1, tens_A, m ) );
 
-  // Flush for WDDM
-  cudaStreamQuery(0);
+  if( stream_r != R_NilValue ){
+    // Flush for WDDM
+    cudaStreamQuery(0);
+  }else{
+    cudaTry( cudaDeviceSynchronize() )
+  }
 
   // Return something that is not null
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
   Rf_unprotect(1);
   return ret_r;
 }
-
 
 extern "C"
 SEXP cuR_cublas_sgemm( SEXP tens_A_r,
@@ -124,6 +126,7 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r,
 
   // Recover handle
   cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
+  cudaStream_t* stream = ( R_NilValue == stream_r ) ? NULL : (cudaStream_t*)R_ExternalPtrAddr( stream_r );
 
   // Recover tensors, the dims and the scalars
   int* dims_A = INTEGER( dims_A_r );
@@ -164,13 +167,17 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r,
   }
 
   // Handle stream
-  cublasTry( cuR_cublas_recover_stream( stream_r, handle ) );
+  cublasTry( cuR_cublas_recover_stream( stream, handle ) );
 
   // Do the op
-  cublasTry( cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m ) )
+  cublasTry( cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m ) );
 
-  // Flush for WDDM
-  cudaStreamQuery(0);
+  if( stream_r != R_NilValue ){
+    // Flush for WDDM
+    cudaStreamQuery(0);
+  }else{
+    cudaTry( cudaDeviceSynchronize() )
+  }
 
   // Return something that is not null
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );

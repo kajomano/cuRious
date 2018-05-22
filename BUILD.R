@@ -1,6 +1,6 @@
 # Source this script to build the package
 
-clean.build <- TRUE
+clean.build <- FALSE
 
 # ------------------------------------------------------------------------------
 
@@ -14,26 +14,31 @@ if( "package:cuRious" %in% search() ){
 # Pre-clean
 if( clean.build ){
   file.remove( dir( "./src",
-                    pattern = "(\\.o|\\.dll|\\.cu)$",
+                    pattern = "(\\.o|\\.dll|\\.cu|\\.so)$",
                     full.names = TRUE ) )
 }
 
+# TODO ====
+# Automatically filled path variables in Makevars files
+
+# TODO ====
+# This might not be required anymore
+
 # Source files containing CUDA gpu code need to be pasted into one single file,
 # otherwise the MinGW/g++ linker creates an invalid .dll on windows
-cuda.src <- "./src/cuda.cu"
-cuda.tmp <- "./src_cuda/cuda.cu"
+cuda.file <- "cudaR.cu"
+cuda.src.path <- paste0( "./src/", cuda.file )
+cuda.tmp.path <- paste0( "./src_cuda/", cuda.file )
 
-if( file.exists( cuda.tmp ) ){
-  file.remove( cuda.tmp )
-}
-file.append( cuda.tmp, dir( "./src_cuda", full.names = TRUE ) )
+file.remove( dir( "./src_cuda", pattern = "\\.cu$", full.names = TRUE ) )
+file.append( cuda.tmp.path, dir( "./src_cuda", full.names = TRUE ) )
 
-if( file.exists( cuda.src ) ){
-  if( md5sum( cuda.src ) != md5sum( cuda.tmp ) ){
-    file.copy( cuda.tmp, cuda.src, overwrite = TRUE )
+if( file.exists( cuda.src.path ) ){
+  if( md5sum( cuda.src.path ) != md5sum( cuda.tmp.path ) ){
+    file.copy( cuda.tmp.path, cuda.src, overwrite = TRUE )
   }
 }else{
-  file.copy( cuda.tmp, cuda.src, overwrite = TRUE )
+  file.copy( cuda.tmp.path, cuda.src.path, overwrite = TRUE )
 }
 
 build()

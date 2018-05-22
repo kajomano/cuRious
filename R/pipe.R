@@ -81,8 +81,8 @@ pipe <- R6Class(
       private$.params$src.level <- src$level
       private$.params$dst.level <- dst$level
 
-      low.cross <- ( ( src$is.level( c( 1L, 2L ) ) && dst$is.level( 3L ) ) ||
-                     ( src$is.level( 3L ) && dst$is.level( c( 1L, 2L ) ) ) )
+      cross.transf <- ( ( !src$is.level( 3L ) && dst$is.level( 3L ) ) ||
+                        ( !dst$is.level( 3L ) && src$is.level( 3L ) ) )
 
       deep.transf <- ( src$is.level( 3L ) && dst$is.level( 3L ) )
 
@@ -90,7 +90,7 @@ pipe <- R6Class(
       dst.perm <- private$.eps.opt$dst.perm
 
       if( !is.null( src.perm ) ){
-        if( low.cross ){
+        if( cross.transf ){
           stop( "Source permutation is not available between these levels" )
         }
 
@@ -103,7 +103,7 @@ pipe <- R6Class(
       }
 
       if( !is.null( dst.perm ) ){
-        if( low.cross ){
+        if( cross.transf ){
           stop( "Destination permutation is not available between these levels" )
         }
 

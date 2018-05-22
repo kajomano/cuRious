@@ -21,8 +21,11 @@ tens.y.0 <- tensor$new( vect.y, 0 )
 
 handle <- cublas.handle$new()
 
-cublas.sger( tens.x.3, tens.y.3, tens.A.3, subs, subs, subs, handle = handle )
-cublas.sger( tens.x.0, tens.y.0, tens.A.0, subs, subs, subs )
+L3.sger <- cublas.sger$new( tens.x.3, tens.y.3, tens.A.3, subs, subs, subs, handle = handle )
+L0.sger <- cublas.sger$new( tens.x.0, tens.y.0, tens.A.0, subs, subs, subs )
+
+L3.sger$run()
+L0.sger$run()
 
 print( tens.A.3$pull() )
 print( tens.A.0$pull() )

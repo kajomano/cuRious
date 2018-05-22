@@ -32,10 +32,31 @@ pipe.3.srcsub <- pipe$new( tens.X.3,
                            tens.Y.3,
                            tens.X.perm.3 )
 
-pipe.3.dst <- pipe$new( tens.X.3,
-                        tens.Y.3,
-                        NULL,
-                        tens.Y.perm.3 )
+pipe.3.dstsub <- pipe$new( tens.X.3,
+                           tens.Y.3,
+                           NULL,
+                           tens.Y.perm.3 )
+
+pipe.3.bothsub.async <- pipe$new( tens.X.3,
+                                  tens.Y.3,
+                                  tens.X.perm.3,
+                                  tens.Y.perm.3,
+                                  stream = stream )
+
+pipe.3.nosub.async <- pipe$new( tens.X.3,
+                                tens.Y.3,
+                                stream = stream )
+
+pipe.3.srcsub.async <- pipe$new( tens.X.3,
+                                 tens.Y.3,
+                                 tens.X.perm.3,
+                                 stream = stream )
+
+pipe.3.dstsub.async <- pipe$new( tens.X.3,
+                                 tens.Y.3,
+                                 NULL,
+                                 tens.Y.perm.3,
+                                 stream = stream )
 
 # ----------------------------------------------------------------------
 
@@ -47,5 +68,10 @@ print( microbenchmark( pipe.3.bothsub$run(), times = times ) )
 print( microbenchmark( pipe.3.nosub$run(),   times = times ) )
 print( microbenchmark( pipe.3.srcsub$run(),  times = times ) )
 print( microbenchmark( pipe.3.dstsub$run(),  times = times ) )
+
+print( microbenchmark( pipe.3.bothsub.async$run(), times = times ) )
+print( microbenchmark( pipe.3.nosub.async$run(),   times = times ) )
+print( microbenchmark( pipe.3.srcsub.async$run(),  times = times ) )
+print( microbenchmark( pipe.3.dstsub.async$run(),  times = times ) )
 
 clean()

@@ -216,9 +216,9 @@ tensor <- R6Class(
       if( missing( val ) ){
         return( private$.ptr )
       }else{
-        if( !self$is.surfaced ) stop( "Not surfaced, direct tensor access denied" )
+        if( !self$is.level() ) stop( "Not surfaced, direct tensor access denied" )
 
-        val <- check.object( val )
+        val <- check.obj( val )
         private$.match.dims( val )
         private$.match.type( val )
 

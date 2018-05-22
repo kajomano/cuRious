@@ -11,9 +11,9 @@ transfer <- function( src,
                       dst.span = NULL,
                       stream   = NULL ){
 
-  tmp <- pipe$new( src, dst, src.perm, dst.perm, src.span, dst.span, stream )
-  res <- tmp$run()
-  tmp$destroy()
+  pip <- pipe$new( src, dst, src.perm, dst.perm, src.span, dst.span, stream )
+  res <- pip$run()
+  pip$destroy()
 
   invisible( res )
 }
@@ -31,7 +31,7 @@ transfer <- function( src,
                           dst.perm.ptr = NULL,
                           src.span.off = NULL,
                           dst.span.off = NULL,
-                          stream       = NULL ){
+                          stream.ptr   = NULL ){
   res <- switch(
     as.character( src.level ),
     `0` = {
@@ -154,7 +154,7 @@ transfer <- function( src,
                  dims,
                  src.span.off,
                  dst.span.off,
-                 stream )
+                 stream.ptr )
         },
         stop( "Invalid level" )
       )
@@ -177,7 +177,7 @@ transfer <- function( src,
                  dims,
                  src.span.off,
                  dst.span.off,
-                 stream )
+                 stream.ptr )
         },
         `3` = {
           .Call( paste0( "cuR_transfer_3_3_", type ),
@@ -188,7 +188,7 @@ transfer <- function( src,
                  dst.perm.ptr,
                  src.span.off,
                  dst.span.off,
-                 stream )
+                 stream.ptr )
         },
         stop( "Invalid level" )
       )
@@ -214,7 +214,7 @@ transfer <- function( src,
                                 dst.perm.ptr = NULL,
                                 src.span.off = NULL,
                                 dst.span.off = NULL,
-                                stream       = NULL ){
+                                stream.ptr   = NULL ){
 
   # Multi-transfer call 0L-2L-3L or 3L-2L-0L
   tmp <- tensor$new( NULL, 2L, dims, type )
@@ -225,8 +225,9 @@ transfer <- function( src,
                  2L,
                  type,
                  dims,
-                 src.span.off,
-                 NULL )
+                 NULL,
+                 NULL,
+                 src.span.off )
 
   .transfer.ptr( tmp$ptr,
                  dst.ptr,
@@ -234,6 +235,8 @@ transfer <- function( src,
                  dst.level,
                  type,
                  dims,
+                 NULL,
+                 NULL,
                  NULL,
                  dst.span.off )
 

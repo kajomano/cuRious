@@ -11,40 +11,40 @@ void cuR_transfer_device_device_n_cu_kern( T* src,
   int stride = gridDim.x * blockDim.x;
   int l = dim0 * dim1;
 
-//   // Copy
-//   if( !csrc && !cdst ){
-//     // No subsetting
-//     for ( int i = index; i < l; i += stride ){
-//       dst[ i ] = src[ i ];
-//     }
-//   }else if( csrc && cdst ){
-//     // Both subsetted
-//     for ( int i = index; i < l; i += stride ){
-//       int csrc_ind = ( csrc[ i / dim0 ] - 1 ) * dim0;
-//       int csrc_off = i % dim0;
-//
-//       int cdst_ind = ( cdst[ i / dim0 ] - 1 ) * dim0;
-//       int cdst_off = i % dim0;
-//
-//       dst[ cdst_ind + cdst_off ] = src[ csrc_ind + csrc_off ];
-//     }
-//   }else if( !csrc ){
-//     // Destination subsetted
-//     for ( int i = index; i < l; i += stride ){
-//       int cdst_ind = ( cdst[ i / dim0 ] - 1 ) * dim0;
-//       int cdst_off = i % dim0;
-//
-//       dst[ cdst_ind + cdst_off ] = src[ i ];
-//     }
-//   }else{
-//     // Source subsetted
-//     for ( int i = index; i < l; i += stride ){
-//       int csrc_ind = ( csrc[ i / dim0 ] - 1 ) * dim0;
-//       int csrc_off = i % dim0;
-//
-//       dst[ i ] = src[ csrc_ind + csrc_off ];
-//     }
-//   }
+  // Copy
+  if( !csrc && !cdst ){
+    // No subsetting
+    for ( int i = index; i < l; i += stride ){
+      dst[ i ] = src[ i ];
+    }
+  }else if( csrc && cdst ){
+    // Both subsetted
+    for ( int i = index; i < l; i += stride ){
+      int csrc_ind = ( csrc[ i / dim0 ] - 1 ) * dim0;
+      int csrc_off = i % dim0;
+
+      int cdst_ind = ( cdst[ i / dim0 ] - 1 ) * dim0;
+      int cdst_off = i % dim0;
+
+      dst[ cdst_ind + cdst_off ] = src[ csrc_ind + csrc_off ];
+    }
+  }else if( !csrc ){
+    // Destination subsetted
+    for ( int i = index; i < l; i += stride ){
+      int cdst_ind = ( cdst[ i / dim0 ] - 1 ) * dim0;
+      int cdst_off = i % dim0;
+
+      dst[ cdst_ind + cdst_off ] = src[ i ];
+    }
+  }else{
+    // Source subsetted
+    for ( int i = index; i < l; i += stride ){
+      int csrc_ind = ( csrc[ i / dim0 ] - 1 ) * dim0;
+      int csrc_off = i % dim0;
+
+      dst[ i ] = src[ csrc_ind + csrc_off ];
+    }
+  }
 }
 
 extern "C"
@@ -78,11 +78,11 @@ void cuR_transfer_device_device_n_cu( float* src,
     }
   }
 
-  // if( stream ){
-  //   cuR_transfer_device_device_n_cu_kern<float><<<numBlocks, blockSize, 0, *stream>>>( src, dst, dim0, dim1, csrc, cdst );
-  // }else{
+  if( stream ){
+    cuR_transfer_device_device_n_cu_kern<float><<<numBlocks, blockSize, 0, *stream>>>( src, dst, dim0, dim1, csrc, cdst );
+  }else{
     cuR_transfer_device_device_n_cu_kern<float><<<numBlocks, blockSize>>>( src, dst, dim0, dim1, csrc, cdst );
-  // }
+  }
 }
 
 extern "C"

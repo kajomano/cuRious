@@ -37,13 +37,9 @@ cu_objs   = $(patsubst %.cu, %.dll, $(cu_srcs))
 all_objs  = $(cpp_objs) $(cu_objs)
 
 ### Linker options
-# Linux (untested)
-# PKG_LIBS  = "-L$(CUDA_HOME)/lib/x64 -Wl, -rpath, $(CUDA_HOME)/lib/x64 -lcuda -lcudart"
-# $(cu_objs)
-PKG_LIBS = -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas -L"E:/Rprojects/cuRious/src" -lcudar
+PKG_LIBS = -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas -L"E:/Rprojects/cuRious/src" -lcudaR
 
 ### Recipes
-
 all: cuRious.so
 
 cuRious.so: $(all_objs)

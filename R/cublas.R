@@ -74,115 +74,198 @@ cublas.handle <- R6Class(
 # tp = transpose
 # x and y are column vectors here, but it does not actually matter, the data
 # stored behind x or tp(x) is the same, hence the rows.x argument name
-cublas.sger <- function( x,
-                         y,
-                         A,
-                         x.rows = NULL,
-                         y.rows = NULL,
-                         A.cols = NULL,
-                         alpha  = 1,
-                         handle = NULL,
-                         stream = NULL ){
-  # Sanity checks
-  x <- check.tensor( x )
-  y <- check.tensor( y )
-  A <- check.tensor( A )
+cublas.sger <- R6Class(
+  "cuR.cublas.sger",
+  inherit = fusion,
+  public = list(
+    initialize = function( x,
+                           y,
+                           A,
+                           x.span = NULL,
+                           y.span = NULL,
+                           A.span = NULL,
+                           alpha  = 1,
+                           handle = NULL,
+                           stream = NULL  ){
+      # Sanity checks
+      check.tensor( x )
+      check.tensor( y )
+      check.tensor( A )
 
-  if( !all( c( x$is.under, y$is.under, A$is.under ) ) &&
-      !all( c( x$is.surfaced, y$is.surfaced, A$is.surfaced ) ) ){
-    stop( "All input tensors need to be on L0 or L3" )
-  }
+      if( !all( c( x$type == "n", y$type == "n", A$type == "n" ) ) ){
+        stop( "All input tensors need to be numeric" )
+      }
 
-  if( !all( c( x$type == "n", y$type == "n", A$type == "n" ) ) ){
-    stop( "All input tensors need to be numeric" )
-  }
+      # Dim checks
+      x.dims <- .tensor.dims$new( x )
+      y.dims <- .tensor.dims$new( y )
+      A.dims <- .tensor.dims$new( A )
 
-  if( A$is.under ){
-    check.cublas.handle( handle )
-    handle <- handle$handle
-  }
+      x.dims$check.vect()
+      y.dims$check.vect()
 
-  if( !is.null( stream ) ){
-    check.cuda.stream( stream )
-    stream <- stream$stream
-  }
+      if( !is.null( x.span ) ){
+        x.dims$check.span( x.span )
+      }
 
-  # Dims logic
-  if( !is.null( x.rows ) ){
-    if( is.obj( x.rows ) ){
-      x.subs <- column.range( x, x.rows )
-    }else{
-      stop( "Invalid row subset for x" )
+      if( !is.null( y.span ) ){
+        y.dims$check.span( y.span )
+      }
+
+      if( !is.null( A.span ) ){
+        A.dims$check.span( A.span )
+      }
+
+      if( x.dims$dims[[2]] != A.dims$dims[[1]] ||
+          y.dims$dims[[2]] != A.dims$dims[[2]] ){
+        stop( "Not all tensors have matching dimensions" )
+      }
+
+      if( !is.numeric( alpha ) || !( length( alpha ) == 1L ) ){
+        stop( "Invalid alpha parameter" )
+      }
+
+      # Assignments
+      private$.eps.fix$x <- x
+      private$.eps.fix$y <- y
+      private$.eps.fix$A <- A
+
+      private$.params$dims <- A.dims$dims
+
+      private$.params$x.span.off <- x.dims$span.off
+      private$.params$y.span.off <- y.dims$span.off
+      private$.params$A.span.off <- A.dims$span.off
+
+      private$.params$alpha <- as.numeric( alpha )
+
+      if( !is.null( handle ) ){
+        check.cublas.handle( handle )
+      }
+      private$.eps.opt$handle <- handle
+
+      if( !is.null( stream ) ){
+        check.cuda.stream( stream )
+      }
+      private$.eps.opt$stream <- stream
+
+      super$initialize()
     }
-  }else{
-    x.subs <- column.empty( x, x.rows )
-  }
+  ),
 
-  if( !is.null( y.rows ) ){
-    if( is.obj( y.rows ) ){
-      y.subs <- column.range( y, y.rows )
-    }else{
-      stop( "Invalid row subset for y" )
+  private = list(
+    .L3.call = function( x.ptr,
+                          y.ptr,
+                          A.ptr,
+                          dims,
+                          x.span.off = NULL,
+                          y.span.off = NULL,
+                          A.span.off = NULL,
+                          alpha,
+                          handle.ptr,
+                          stream.ptr = NULL ){
+
+      ret <- .Call( "cuR_cublas_sger",
+                    x.ptr,
+                    y.ptr,
+                    A.ptr,
+                    dims,
+                    x.span.off,
+                    y.span.off,
+                    A.span.off,
+                    alpha,
+                    handle.ptr,
+                    stream.ptr )
+
+      if( is.null( ret ) ) stop( "Subroutine failed" )
+
+      invisible( TRUE )
+    },
+
+    .L0.call = function( x.ptr,
+                         y.ptr,
+                         A.ptr,
+                         dims,
+                         x.span.off = NULL,
+                         y.span.off = NULL,
+                         A.span.off = NULL,
+                         alpha,
+                         handle.ptr = NULL,
+                         stream.ptr = NULL ){
+
+      if( is.null( x.span.off ) ){
+        x.range <- 1:dims[[1]]
+      }else{
+        x.range <- x.span.off:( x.span.off + dims[[1]] - 1 )
+      }
+
+      if( is.null( y.span.off ) ){
+        y.range <- 1:dims[[2]]
+      }else{
+        y.range <- y.span.off:( y.span.off + dims[[1]] - 1 )
+      }
+
+      if( is.null( A.span.off ) ){
+        A.range <- 1:dims[[2]]
+      }else{
+        A.range <- A.span.off:( A.span.off + dims[[1]] - 1 )
+      }
+
+      private$.eps.fix$A$ptr[, A.range ] <-
+        ( alpha * x.ptr[ x.range ] ) %*%
+        t( y.ptr[ y.range ] ) +
+        A.ptr[, A.range ]
+
+      invisible( TRUE )
+    },
+
+    .update = function(){
+      x <- private$.eps.fix$x
+      y <- private$.eps.fix$y
+      A <- private$.eps.fix$A
+
+      if( !all( c( x$is.level( 0L ), y$is.level( 0L ), A$is.level( 0L ) ) ) &&
+          !all( c( x$is.level( 3L ), y$is.level( 3L ), A$is.level( 3L ) ) ) ){
+        stop( "All input tensors need to be on L0 or L3" )
+      }
+
+      under <- ( x$level == 3L )
+
+      if( under ){
+        if( is.null( private$.eps.opt$handle ) ){
+          stop( "Subroutine requires an active cublas handle" )
+        }else{
+          if( is.null( private$.eps.opt$handle$handle ) ){
+            stop( "Subroutine requires an active cublas handle" )
+          }
+        }
+
+        private$.params$handle.ptr <- private$.eps.opt$handle$handle
+      }
+
+      if( !is.null( private$.eps.opt$stream ) ){
+        if( !is.null( private$.eps.opt$stream$stream ) ){
+          if( !under ){
+            warning( "An active stream is given to a synchronous transfer" )
+          }
+
+          private$.params$stream.ptr <- private$.eps.opt$stream$stream
+        }
+      }
+
+      private$.params$x.ptr <- x$ptr
+      private$.params$y.ptr <- y$ptr
+      private$.params$A.ptr <- A$ptr
+
+      if( under ){
+        private$.fun <- private$.L3.call
+      }else{
+        private$.fun <- private$.L0.call
+      }
+
+      super$.update()
     }
-  }else{
-    y.subs <- column.empty( y, y.rows )
-  }
-
-  if( !is.null( A.cols ) ){
-    if( is.obj( A.cols ) ){
-      A.subs <- column.range( A, A.cols )
-    }else{
-      stop( "Invalid column subset for A" )
-    }
-  }else{
-    A.subs <- column.empty( A, A.cols )
-  }
-
-  if( x.subs$dims[[2]] != A.subs$dims[[1]] ||
-      y.subs$dims[[2]] != A.subs$dims[[2]] ){
-    stop( "Not all tensors have matching dimensions" )
-  }
-
-  if( x.subs$dims[[1]] != 1L || y.subs$dims[[1]] != 1L ){
-    stop( "x or y is not a vector" )
-  }
-
-  if( A$is.under ){
-    ret <- .Call( "cuR_cublas_sger",
-                  x$ptr,
-                  y$ptr,
-                  A$ptr,
-                  A.subs$dims,
-                  x.subs$off,
-                  y.subs$off,
-                  A.subs$off,
-                  alpha,
-                  handle,
-                  stream )
-
-    if( is.null( ret ) ) stop( "Subroutine failed" )
-
-    # If no stream is given, make this call blocking
-    if( is.null( stream ) ){
-      cuda.stream.sync.all()
-    }
-  }else{
-    tmp.x <- obj.create( x.subs$dims )
-    tmp.y <- obj.create( y.subs$dims )
-    tmp.A <- obj.create( A.subs$dims )
-
-    transfer.core( x$ptr, tmp.x, 0L, 0L, "n", x.subs$dims, x.subs$off )
-    transfer.core( y$ptr, tmp.y, 0L, 0L, "n", y.subs$dims, y.subs$off )
-    transfer.core( A$ptr, tmp.A, 0L, 0L, "n", A.subs$dims, A.subs$off )
-
-    tmp.A <- ( alpha * tmp.x ) %*% t(tmp.y) + tmp.A
-
-    transfer.core( tmp.A, A$ptr, 0L, 0L, "n", A.subs$dims, NULL, A.subs$off )
-  }
-
-  invisible( TRUE )
-}
-
+  )
+)
 
 # sgemm ====
 # cols.C(C) = alpha*tp.a(cols.A(A)) %*% tp.b(cols.B(B)) + beta*(cols.C(C))
@@ -291,12 +374,6 @@ cublas.sgemm <- function( A,
                   stream )
 
     if( is.null( ret ) ) stop( "Subroutine failed" )
-
-    # If no stream is given, make this call blocking
-    if( is.null( stream ) ){
-      cuda.stream.sync.all()
-    }
-
   # L0 fallback call
   }else{
     tmp.A <- obj.create( A.subs$dims )
@@ -323,6 +400,219 @@ cublas.sgemm <- function( A,
 
   invisible( TRUE )
 }
+
+cublas.sgemm <- R6Class(
+  "cuR.cublas.sgemm",
+  inherit = fusion,
+  public = list(
+    initialize = function( A,
+                           B,
+                           C,
+                           A.span = NULL,
+                           B.span = NULL,
+                           C.span = NULL,
+                           A.tp   = FALSE,
+                           B.tp   = FALSE,
+                           alpha  = 1,
+                           beta   = 1,
+                           handle = NULL,
+                           stream = NULL  ){
+      # Sanity checks
+      check.tensor( A )
+      check.tensor( B )
+      check.tensor( C )
+
+      if( !all( c( A$type == "n", B$type == "n", C$type == "n" ) ) ){
+        stop( "All input tensors need to be numeric" )
+      }
+
+      # Dim checks
+      A.dims <- .tensor.dims$new( A )
+      B.dims <- .tensor.dims$new( B )
+      C.dims <- .tensor.dims$new( C )
+
+      if( !is.null( A.span ) ){
+        A.dims$check.span( A.span )
+      }
+
+      if( !is.null( B.span ) ){
+        B.dims$check.span( B.span )
+      }
+
+      if( !is.null( C.span ) ){
+        C.dims$check.span( C.span )
+      }
+
+      if( A.dims$check.span( A.tp )[[2]] != B.dims$check.span( B.tp )[[1]] ||
+          B.dims$check.span( B.tp )[[2]] != C.dims$dims[[2]] ||
+          A.dims$check.span( A.tp )[[1]] != C.dims$dims[[1]] ){
+        stop( "Not all tensors have matching dimensions" )
+      }
+
+      if( !is.logical( A.tp ) || !( length( A.tp ) == 1L ) ){
+        stop( "Invalid transpose parameter" )
+      }
+
+      if( !is.logical( B.tp ) || !( length( B.tp ) == 1L ) ){
+        stop( "Invalid transpose parameter" )
+      }
+
+      if( !is.numeric( alpha ) || !( length( alpha ) == 1L ) ){
+        stop( "Invalid alpha parameter" )
+      }
+
+      if( !is.numeric( beta ) || !( length( beta ) == 1L ) ){
+        stop( "Invalid beta parameter" )
+      }
+
+      # Assignments
+      private$.eps.fix$A <- A
+      private$.eps.fix$B <- B
+      private$.eps.fix$C <- C
+
+      private$.params$A.dims <- A.dims$dims
+      private$.params$B.dims <- B.dims$dims
+
+      private$.params$A.span.off <- A.dims$span.off
+      private$.params$B.span.off <- B.dims$span.off
+      private$.params$C.span.off <- C.dims$span.off
+
+      private$.params$A.tp <- as.logical( A.tp )
+      private$.params$B.tp <- as.logical( B.tp )
+
+      private$.params$alpha <- as.numeric( alpha )
+      private$.params$beta  <- as.numeric( beta )
+
+      if( !is.null( handle ) ){
+        check.cublas.handle( handle )
+      }
+      private$.eps.opt$handle <- handle
+
+      if( !is.null( stream ) ){
+        check.cuda.stream( stream )
+      }
+      private$.eps.opt$stream <- stream
+
+      super$initialize()
+    }
+  ),
+
+  private = list(
+  # ITT
+
+  #   .L3.call = function( x.ptr,
+  #                        y.ptr,
+  #                        A.ptr,
+  #                        dims,
+  #                        x.span.off = NULL,
+  #                        y.span.off = NULL,
+  #                        A.span.off = NULL,
+  #                        alpha,
+  #                        handle.ptr,
+  #                        stream.ptr = NULL ){
+  #
+  #     ret <- .Call( "cuR_cublas_sger",
+  #                   x.ptr,
+  #                   y.ptr,
+  #                   A.ptr,
+  #                   dims,
+  #                   x.span.off,
+  #                   y.span.off,
+  #                   A.span.off,
+  #                   alpha,
+  #                   handle.ptr,
+  #                   stream.ptr )
+  #
+  #     if( is.null( ret ) ) stop( "Subroutine failed" )
+  #
+  #     invisible( TRUE )
+  #   },
+  #
+  #   .L0.call = function( x.ptr,
+  #                        y.ptr,
+  #                        A.ptr,
+  #                        dims,
+  #                        x.span.off = NULL,
+  #                        y.span.off = NULL,
+  #                        A.span.off = NULL,
+  #                        alpha,
+  #                        handle.ptr = NULL,
+  #                        stream.ptr = NULL ){
+  #
+  #     if( is.null( x.span.off ) ){
+  #       x.range <- 1:dims[[1]]
+  #     }else{
+  #       x.range <- x.span.off:( x.span.off + dims[[1]] - 1 )
+  #     }
+  #
+  #     if( is.null( y.span.off ) ){
+  #       y.range <- 1:dims[[2]]
+  #     }else{
+  #       y.range <- y.span.off:( y.span.off + dims[[1]] - 1 )
+  #     }
+  #
+  #     if( is.null( A.span.off ) ){
+  #       A.range <- 1:dims[[2]]
+  #     }else{
+  #       A.range <- A.span.off:( A.span.off + dims[[1]] - 1 )
+  #     }
+  #
+  #     private$.eps.fix$A$ptr[, A.range ] <-
+  #       ( alpha * x.ptr[ x.range ] ) %*%
+  #       t( y.ptr[ y.range ] ) +
+  #       A.ptr[, A.range ]
+  #
+  #     invisible( TRUE )
+  #   },
+  #
+  #   .update = function(){
+  #     x <- private$.eps.fix$x
+  #     y <- private$.eps.fix$y
+  #     A <- private$.eps.fix$A
+  #
+  #     if( !all( c( x$is.level( 0L ), y$is.level( 0L ), A$is.level( 0L ) ) ) &&
+  #         !all( c( x$is.level( 3L ), y$is.level( 3L ), A$is.level( 3L ) ) ) ){
+  #       stop( "All input tensors need to be on L0 or L3" )
+  #     }
+  #
+  #     under <- ( x$level == 3L )
+  #
+  #     if( under ){
+  #       if( is.null( private$.eps.opt$handle ) ){
+  #         stop( "Subroutine requires an active cublas handle" )
+  #       }else{
+  #         if( is.null( private$.eps.opt$handle$handle ) ){
+  #           stop( "Subroutine requires an active cublas handle" )
+  #         }
+  #       }
+  #
+  #       private$.params$handle.ptr <- private$.eps.opt$handle$handle
+  #     }
+  #
+  #     if( !is.null( private$.eps.opt$stream ) ){
+  #       if( !is.null( private$.eps.opt$stream$stream ) ){
+  #         if( !under ){
+  #           warning( "An active stream is given to a synchronous transfer" )
+  #         }
+  #
+  #         private$.params$stream.ptr <- private$.eps.opt$stream$stream
+  #       }
+  #     }
+  #
+  #     private$.params$x.ptr <- x$ptr
+  #     private$.params$y.ptr <- y$ptr
+  #     private$.params$A.ptr <- A$ptr
+  #
+  #     if( under ){
+  #       private$.fun <- private$.L3.call
+  #     }else{
+  #       private$.fun <- private$.L0.call
+  #     }
+  #
+  #     super$.update()
+  #   }
+  )
+)
 
 # TODO ====
 # Add cols subset to other cublas calls

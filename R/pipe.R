@@ -133,6 +133,11 @@ pipe <- R6Class(
         }
       }
 
+      # This only works because you dont have to set the device correctly
+      # if no kernels are run, and kernels are only run on L3-L3 same device
+      # transfers
+      private$.device <- private$.eps.fix$src$device
+
       # Multi or single-step transfer
       if( ( src$is.level( 0L ) && dst$is.level( 3L ) ) ||
           ( src$is.level( 3L ) && dst$is.level( 0L ) ) ||

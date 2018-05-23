@@ -2,20 +2,20 @@ library( cuRious )
 library( microbenchmark )
 
 cols <- 10^3
+mat <- matrix( 1.0, nrow = 1000, ncol = cols )
 
-tens.X.1 <- tensor$new( NULL, 1L, c( 1000, cols ), "n" )
-tens.Y.1 <- tensor$new( NULL, 1L, c( 1000, cols ), "n" )
+tens.X.1 <- tensor$new( mat, 1L )
+tens.Y.1 <- tensor$new( tens.X.1, 1L, init = "mimic" )
 
-tens.X.3 <- tensor$new( NULL, 3L, c( 1000, cols ), "n" )
-tens.Y.3 <- tensor$new( NULL, 3L, c( 1000, cols ), "n" )
-
-tens.X.perm.1 <- tensor$new( as.integer( 1:cols ), 1L )
-tens.Y.perm.1 <- tensor$new( as.integer( 1:cols ), 1L )
+tens.X.3 <- tensor$new( mat, 3L )
+tens.Y.3 <- tensor$new( tens.X.3, 3L, init = "mimic" )
 
 tens.X.perm.3 <- tensor$new( as.integer( 1:cols ), 3L )
 tens.Y.perm.3 <- tensor$new( as.integer( 1:cols ), 3L )
 
-stream <- cuda.stream$new()
+# TODO ====
+# This should kill the transfers!
+stream <- cuda.stream$new( 1L )
 
 pipe.1.nosub <- pipe$new( tens.X.1,
                           tens.Y.1 )
@@ -62,16 +62,19 @@ pipe.3.dstsub.async <- pipe$new( tens.X.3,
 
 times <- 100
 
-print( microbenchmark( pipe.1.nosub$run(), times = times ) )
+# print( microbenchmark( pipe.1.nosub$run(), times = times ) )
 
-print( microbenchmark( pipe.3.bothsub$run(), times = times ) )
-print( microbenchmark( pipe.3.nosub$run(),   times = times ) )
-print( microbenchmark( pipe.3.srcsub$run(),  times = times ) )
-print( microbenchmark( pipe.3.dstsub$run(),  times = times ) )
+# print( microbenchmark( pipe.3.bothsub$run(), times = times ) )
+# print( microbenchmark( pipe.3.nosub$run(),   times = times ) )
+# print( microbenchmark( pipe.3.srcsub$run(),  times = times ) )
+# print( microbenchmark( pipe.3.dstsub$run(),  times = times ) )
+#
+# print( microbenchmark( pipe.3.bothsub.async$run(), times = times ) )
+# print( microbenchmark( pipe.3.nosub.async$run(),   times = times ) )
+# print( microbenchmark( pipe.3.srcsub.async$run(),  times = times ) )
+# print( microbenchmark( pipe.3.dstsub.async$run(),  times = times ) )
 
-print( microbenchmark( pipe.3.bothsub.async$run(), times = times ) )
-print( microbenchmark( pipe.3.nosub.async$run(),   times = times ) )
-print( microbenchmark( pipe.3.srcsub.async$run(),  times = times ) )
-print( microbenchmark( pipe.3.dstsub.async$run(),  times = times ) )
+pipe.3.bothsub.async$run()
+tens.Y.3$pull()
 
-clean()
+# clean()

@@ -442,7 +442,7 @@ SEXP cuR_transfer_2_3_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP 
     cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(float), cudaMemcpyHostToDevice, *stream ) );
 
     // Flush for WDDM
-    cudaTry( cudaStreamQuery(0) );
+    cudaStreamQuery(0);
   }else{
     cudaTry( cudaMemcpy( dst, src, l*sizeof(float), cudaMemcpyHostToDevice ) );
   }
@@ -470,7 +470,7 @@ SEXP cuR_transfer_2_3_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP 
     cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(int), cudaMemcpyHostToDevice, *stream ) );
 
     // Flush for WDDM
-    cudaTry( cudaStreamQuery(0) );
+    cudaStreamQuery(0);
   }else{
     cudaTry( cudaMemcpy( dst, src, l*sizeof(int), cudaMemcpyHostToDevice ) );
   }
@@ -498,7 +498,7 @@ SEXP cuR_transfer_2_3_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP 
     cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(bool), cudaMemcpyHostToDevice, *stream ) );
 
     // Flush for WDDM
-    cudaTry( cudaStreamQuery(0) );
+    cudaStreamQuery(0);
   }else{
     cudaTry( cudaMemcpy( dst, src, l*sizeof(bool), cudaMemcpyHostToDevice ) );
   }
@@ -526,7 +526,7 @@ SEXP cuR_transfer_3_2_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP 
     cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(float), cudaMemcpyDeviceToHost, *stream ) );
 
     // Flush for WDDM
-    cudaTry( cudaStreamQuery(0) );
+    cudaStreamQuery(0);
   }else{
     cudaTry( cudaMemcpy( dst, src, l*sizeof(float), cudaMemcpyDeviceToHost ) );
   }
@@ -554,7 +554,7 @@ SEXP cuR_transfer_3_2_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP 
     cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(int), cudaMemcpyDeviceToHost, *stream ) );
 
     // Flush for WDDM
-    cudaTry( cudaStreamQuery(0) );
+    cudaStreamQuery(0);
   }else{
     cudaTry( cudaMemcpy( dst, src, l*sizeof(int), cudaMemcpyDeviceToHost ) );
   }
@@ -582,7 +582,7 @@ SEXP cuR_transfer_3_2_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP osrc_r, SEXP 
     cudaTry( cudaMemcpyAsync( dst, src, l*sizeof(bool), cudaMemcpyDeviceToHost, *stream ) );
 
     // Flush for WDDM
-    cudaTry( cudaStreamQuery(0) );
+    cudaStreamQuery(0);
   }else{
     cudaTry( cudaMemcpy( dst, src, l*sizeof(bool), cudaMemcpyDeviceToHost ) );
   }
@@ -610,7 +610,7 @@ SEXP cuR_transfer_3_3_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP 
 
   if( stream_r != R_NilValue ){
     // Flush for WDDM
-    cudaTry( cudaStreamQuery(0) );
+    cudaStreamQuery(0);
   }else{
     cudaTry( cudaDeviceSynchronize() );
   }
@@ -638,7 +638,7 @@ SEXP cuR_transfer_3_3_i( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP 
 
   if( stream_r != R_NilValue ){
     // Flush for WDDM
-    cudaTry( cudaStreamQuery(0) );
+    cudaStreamQuery(0);
   }else{
     cudaTry( cudaDeviceSynchronize() )
   }
@@ -666,7 +666,7 @@ SEXP cuR_transfer_3_3_l( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP 
 
   if( stream_r != R_NilValue ){
     // Flush for WDDM
-    cudaTry( cudaStreamQuery(0) );
+    cudaStreamQuery(0);
   }else{
     cudaTry( cudaDeviceSynchronize() )
   }

@@ -97,7 +97,7 @@ SEXP cuR_cublas_sger( SEXP tens_x_r,
 
   if( stream_r != R_NilValue ){
     // Flush for WDDM
-    cudaTry( cudaStreamQuery(0) );
+    cudaStreamQuery(0);
   }else{
     cudaTry( cudaDeviceSynchronize() )
   }
@@ -174,7 +174,7 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r,
 
   if( stream_r != R_NilValue ){
     // Flush for WDDM
-    cudaTry( cudaStreamQuery(0) );
+    cudaStreamQuery(0);
   }else{
     cudaTry( cudaDeviceSynchronize() )
   }
@@ -203,7 +203,7 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r,
 //   cublasTry( cublasSaxpy( *handle, l, &al, tens_x, 1, tens_y, 1 ) );
 //
 //   // Flush for WDDM
-//   cudaTry( cudaStreamQuery(0) );
+//   cudaStreamQuery(0);
 //
 //   // Return something that is not null
 //   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );

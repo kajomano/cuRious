@@ -171,7 +171,7 @@ tensor <- R6Class(
         `1` = .Call( paste0("cuR_create_tensor_1_", private$.type ), private$.dims ),
         `2` = .Call( paste0("cuR_create_tensor_2_", private$.type ), private$.dims ),
         `3` = {
-          cuda.device.set( private$.device )
+          .cuda.device.set( private$.device )
           .Call( paste0("cuR_create_tensor_3_", private$.type ), private$.dims )
         }
       )

@@ -31,6 +31,7 @@ fusion <- R6Class(
         private$.update()
       }
 
+      .cuda.device.set( private$.device )
       res <- do.call( private$.fun, private$.params )
 
       invisible( res )
@@ -65,6 +66,8 @@ fusion <- R6Class(
     # These fields need to be filled in the .update() function
     .fun     = NULL,
     .params  = list(),
+
+    .device  = NULL,
 
     .update = function(){
       private$.changed <- FALSE

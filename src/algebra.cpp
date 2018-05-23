@@ -27,7 +27,7 @@ SEXP cuR_alg_saxpy( SEXP tens_x_r, SEXP tens_y_r, SEXP l_r, SEXP al_r, SEXP stre
   cuR_alg_saxpy_cu(  tens_x, tens_y, l, al, stream );
 
   // Flush for WDDM
-  cudaTry( cudaStreamQuery(0) );
+  cudaStreamQuery(0);
 
   // Return something that is not null
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );

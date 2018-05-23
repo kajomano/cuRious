@@ -32,7 +32,6 @@ cpp_srcs  = $(wildcard *.cpp)
 cpp_objs  = $(patsubst %.cpp, %.o, $(cpp_srcs))
 
 cu_srcs   = $(wildcard *.cu)
-#cu_objs   = $(patsubst %.cu, %.dll, $(cu_srcs))
 
 all_objs  = $(cpp_objs) cudaR.dll
 

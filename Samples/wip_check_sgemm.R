@@ -20,8 +20,11 @@ tens.C.0 <- tensor$new( mat.C , 0 )
 
 handle <- cublas.handle$new()
 
-cublas.sgemm( tens.A.3, tens.B.3, tens.C.3, subs, subs, subs, handle = handle )
-cublas.sgemm( tens.A.0, tens.B.0, tens.C.0, subs, subs, subs )
+L3.sgemm <- cublas.sgemm$new( tens.A.3, tens.B.3, tens.C.3, subs, subs, subs, handle = handle )
+L0.sgemm <- cublas.sgemm$new( tens.A.0, tens.B.0, tens.C.0, subs, subs, subs )
+
+L3.sgemm$run()
+L0.sgemm$run()
 
 print( tens.C.3$pull() )
 print( tens.C.0$pull() )

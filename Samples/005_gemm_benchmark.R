@@ -28,14 +28,12 @@ R.dgemm <- function(){
   mat.C <<- ( mat.A %*% mat.B ) * alpha + mat.C * beta
 }
 
-cuda.sgemm <- function(){
-  cublas.sgemm( tens.A, tens.B, tens.C, handle = handle )
-}
+cuda.sgemm <- cublas.sgemm$new( tens.A, tens.B, tens.C, handle = handle )
 
 # Check the speeds
 # The R.dgemm() benchmark can take quite a while if you don't have MRO installed
 # that is why we only do 10 iterations of the measurement here
-print( microbenchmark( R.dgemm(),    times = 10 ) )
-print( microbenchmark( cuda.sgemm(), times = 10 ) )
+print( microbenchmark( R.dgemm(),        times = 10 ) )
+print( microbenchmark( cuda.sgemm$run(), times = 10 ) )
 
 clean()

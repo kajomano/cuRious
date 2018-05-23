@@ -14,11 +14,12 @@ tensor <- R6Class(
   "cuR.tensor",
   inherit = alert.send,
   public = list(
-    initialize = function( data  = NULL,
-                           level = NULL,
-                           dims  = c( 1L, 1L ),
-                           type  = "n",
-                           init  = c( "copy", "mimic", "wrap" )
+    initialize = function( data   = NULL,
+                           level  = NULL,
+                           dims   = c( 1L, 1L ),
+                           type   = "n",
+                           init   = c( "copy", "mimic", "wrap" ),
+                           device = NULL
     ){
       init <- match.arg( init, c( "copy", "mimic", "wrap" ) )
 
@@ -32,6 +33,12 @@ tensor <- R6Class(
         }else{
           private$.level <- check.level( level )
         }
+
+        if( is.null( device ) ){
+          private$.device <- 0L
+        }else{
+          private$.device <- check.device( device )
+        }
         # If supported
       }else{
         if( is.obj( data ) ){
@@ -43,6 +50,12 @@ tensor <- R6Class(
           }else{
             private$.level <- check.level( level )
           }
+
+          if( is.null( device ) ){
+            private$.device <- 0L
+          }else{
+            private$.device <- check.device( device )
+          }
         }else if( is.tensor( data ) ){
           private$.dims  <- data$dims
           private$.type  <- data$type
@@ -51,6 +64,12 @@ tensor <- R6Class(
             private$.level <- data$level
           }else{
             private$.level <- check.level( level )
+          }
+
+          if( is.null( device ) ){
+            private$.device <- data$device
+          }else{
+            private$.device <- check.device( device )
           }
         }else{
           stop( "Invalid data argument" )
@@ -88,35 +107,6 @@ tensor <- R6Class(
           }
         )
       }
-    },
-
-    transform = function( level = 0L ){
-      private$.check.destroyed()
-      level <- check.level( level )
-
-      if( private$.level != level ){
-        # Create a placeholder and copy
-        tmp <- tensor$new( self, level, init = "mimic" )
-        transfer( self, tmp )
-
-        # Free old memory
-        # This command also alert()s
-        self$destroy()
-
-        # Update
-        private$.ptr   <- tmp$ptr
-        private$.level <- level
-      }
-
-      invisible( self )
-    },
-
-    dive = function(){
-      self$transform( 3L )
-    },
-
-    surface = function(){
-      self$transform()
     },
 
     # These functions are only there for objs, are essentially interfaces
@@ -162,10 +152,11 @@ tensor <- R6Class(
   ),
 
   private = list(
-    .ptr   = NULL,
-    .level = NULL,
-    .dims  = NULL,
-    .type  = NULL,
+    .ptr    = NULL,
+    .level  = NULL,
+    .dims   = NULL,
+    .type   = NULL,
+    .device = NULL,
 
     .create.ptr = function( level = private$.level ){
       if( prod( private$.dims ) > 2^32-1 ){
@@ -179,7 +170,10 @@ tensor <- R6Class(
         `0` = obj.create( private$.dims, private$.type ),
         `1` = .Call( paste0("cuR_create_tensor_1_", private$.type ), private$.dims ),
         `2` = .Call( paste0("cuR_create_tensor_2_", private$.type ), private$.dims ),
-        `3` = .Call( paste0("cuR_create_tensor_3_", private$.type ), private$.dims )
+        `3` = {
+          cuda.device.set( private$.device )
+          .Call( paste0("cuR_create_tensor_3_", private$.type ), private$.dims )
+        }
       )
     },
 
@@ -231,18 +225,70 @@ tensor <- R6Class(
       if( missing( val ) ) return( private$.dims )
     },
 
+    l = function( val ){
+      if( missing( val ) ) return( as.integer( prod( self$dims ) ) )
+    },
+
     type = function( val ){
       private$.check.destroyed()
       if( missing( val ) ) return( private$.type )
     },
 
-    level = function( val ){
+    level = function( level ){
       private$.check.destroyed()
-      if( missing( val ) ) return( private$.level )
+
+      if( missing( level ) ){
+        return( private$.level )
+      }else{
+        level <- check.level( level )
+
+        if( private$.level == level ){
+          return()
+        }
+
+        # Create a placeholder and copy
+        tmp <- tensor$new( self, level, init = "mimic" )
+        transfer( self, tmp )
+
+        # Free old memory
+        # This command also alert()s
+        self$destroy()
+
+        # Update
+        private$.ptr   <- tmp$ptr
+        private$.level <- level
+      }
     },
 
-    l = function( val ){
-      if( missing( val ) ) return( as.integer( prod( self$dims ) ) )
+    device = function( device ){
+      private$.check.destroyed()
+
+      if( missing( device) ){
+        return( private$.device )
+      }else{
+        device <- check.device( device )
+
+        if( private$.device == device ){
+          return()
+        }
+
+        if( private$.level == 3L ){
+          # Create a placeholder and copy
+          tmp <- tensor$new( self, 3L, init = "mimic", device = device )
+          transfer( self, tmp )
+
+          # Free old memory
+          # This command also alert()s
+          self$destroy()
+
+          # Update
+          private$.ptr <- tmp$ptr
+        }else{
+          private$.alert()
+        }
+
+        private$.device <- device
+      }
     },
 
     is.destroyed = function( val ){

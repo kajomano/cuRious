@@ -106,3 +106,20 @@ check.alerting <- function( alerting ){
   if( !is.alerting( alerting ) ) stop( "Invalid alerting" )
   invisible( alerting )
 }
+
+is.device <- function( device ){
+  if( !is.numeric( device ) || length( device ) != 1 ){
+    return( FALSE )
+  }
+
+  if( device < 0 || device >= cuda.device.count() || as.logical( device %% 1 ) ){
+    return( FALSE )
+  }
+
+  TRUE
+}
+
+check.device <- function( device ){
+  if( !is.device( device ) ) stop( "Invalid device" )
+  invisible( as.integer( device ) )
+}

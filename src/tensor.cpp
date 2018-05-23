@@ -1,6 +1,5 @@
 #include "common.h"
 #include <cstring>
-
 // Level 0 clearing
 extern "C"
 SEXP cuR_clear_tensor_0_n( SEXP tens_r, SEXP dims_r ){
@@ -176,7 +175,7 @@ SEXP cuR_create_tensor_2( SEXP dims_r ){
   int* dims = INTEGER(dims_r);
   int l = dims[0]*dims[1];
 
-  cudaTry( cudaHostAlloc( (void**)&tens, l*sizeof(t), cudaHostAllocDefault) );
+  cudaTry( cudaHostAlloc( (void**)&tens, l*sizeof(t), cudaHostAllocPortable) );
 
   debugPrint( Rprintf( "<%p> Creating L2 tensor\n", (void*)tens ) );
 

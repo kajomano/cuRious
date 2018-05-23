@@ -39,7 +39,7 @@ lapply( dir( "./src_cuda", "\\.cpp$" ), function( file ){
   file.src.cuda.path <- paste0( "./src_cuda/", file, ".cpp" )
 
   if( file.exists( file.src.path ) ){
-    if( md5sum( file.src.cuda.path ) == md5sum( file.src.cuda.path ) ){
+    if( md5sum( file.src.cuda.path ) == md5sum( file.src.path ) ){
       return( FALSE )
     }
   }

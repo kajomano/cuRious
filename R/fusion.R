@@ -7,11 +7,13 @@ fusion <- R6Class(
   public = list(
     initialize = function(){
       lapply( private$.eps.fix, function( ep ){
+        check.alerting( ep )
         ep$listener.add( self )
       })
 
       lapply( private$.eps.fix, function( ep ){
         if( !is.null( ep ) ){
+          check.alerting( ep )
           ep$listener.add( self )
         }
       })

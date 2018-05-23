@@ -86,6 +86,10 @@ pipe <- R6Class(
 
       deep.transf <- ( src$is.level( 3L ) && dst$is.level( 3L ) )
 
+      if( deep.transf && ( src$device != dst$device ) ){
+        cross.transf <- TRUE
+      }
+
       src.perm <- private$.eps.opt$src.perm
       dst.perm <- private$.eps.opt$dst.perm
 
@@ -121,13 +125,18 @@ pipe <- R6Class(
             warning( "An active stream is given to a synchronous transfer" )
           }
 
+          if( deep.transf && ( src$device != dst$device ) ){
+            warning( "An active stream is given to a synchronous transfer" )
+          }
+
           private$.params$stream.ptr <- private$.eps.opt$stream$stream
         }
       }
 
       # Multi or single-step transfer
       if( ( src$is.level( 0L ) && dst$is.level( 3L ) ) ||
-          ( src$is.level( 3L ) && dst$is.level( 0L ) ) ){
+          ( src$is.level( 3L ) && dst$is.level( 0L ) ) ||
+          ( deep.transf && ( src$device != dst$device ) ) ){
         private$.fun <- .transfer.ptr.multi
       }else{
         private$.fun <- .transfer.ptr

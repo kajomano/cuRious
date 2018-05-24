@@ -51,41 +51,8 @@ cuda.device.sync <- function( device ){
 # CUDA streams ====
 cuda.stream <- R6Class(
   "cuR.cuda.stream",
-  inherit = alert.send,
+  inherit = context,
   public = list(
-    initialize = function( device = 0L ){
-      if( !is.null( device ) ){
-        private$.device <- check.device( device )
-        self$activate()
-      }else{
-        private$.device <- 0L
-      }
-    },
-
-    activate = function(){
-      if( is.null( private$.stream ) ){
-        .cuda.device.set( private$.device )
-        private$.stream <- .Call( "cuR_create_cuda_stream" )
-        private$.alert()
-      }else{
-        warning( "CUDA stream is already activated" )
-      }
-
-      invisible( self )
-    },
-
-    deactivate = function(){
-      if( !is.null( private$.stream ) ){
-        .Call( "cuR_destroy_cuda_stream", private$.stream )
-        private$.stream <- NULL
-        private$.alert()
-      }else{
-        warning( "CUDA stream is not yet activated" )
-      }
-
-      invisible( self )
-    },
-
     sync = function(){
       if( self$is.active ){
         if( is.null( .Call( "cuR_sync_cuda_stream", private$.stream ) ) ){
@@ -100,35 +67,12 @@ cuda.stream <- R6Class(
   ),
 
   private = list(
-    .stream = NULL,
-    .device = NULL
-  ),
-
-  active = list(
-    stream = function( val ){
-      if( missing( val ) ) return( private$.stream )
+    .activate = function(){
+      .Call( "cuR_create_cuda_stream" )
     },
 
-    device = function( device ){
-      if( missing( device ) ){
-        return( private$.device )
-      }else{
-        device <- check.device( device )
-
-        if( private$.device == device ){
-          return()
-        }
-
-        if( self$is.active ){
-          stop( "Cannot change device: active stream" )
-        }
-
-        private$.device <- device
-      }
-    },
-
-    is.active = function( val ){
-      if( missing( val ) ) return( is.null( private$.stream ) )
+    .deactivate = function(){
+      .Call( "cuR_destroy_cuda_stream", private$.ptr )
     }
   )
 )

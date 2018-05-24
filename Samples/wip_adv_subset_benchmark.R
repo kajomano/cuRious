@@ -72,4 +72,4 @@ print( microbenchmark( pipe.3.nosub.async$run(),   times = times ) )
 print( microbenchmark( pipe.3.srcsub.async$run(),  times = times ) )
 print( microbenchmark( pipe.3.dstsub.async$run(),  times = times ) )
 
-# clean()
+clean()

@@ -119,8 +119,10 @@ pipe <- R6Class(
         private$.params$dst.perm.ptr <- dst.perm$ptr
       }
 
+
+
       if( !is.null( private$.eps.opt$stream ) ){
-        if( !is.null( private$.eps.opt$stream$stream ) ){
+        if( private$.eps.opt$stream$is.active ){
           if( src$is.level( c( 0L, 1L ) ) || dst$is.level( c( 0L, 1L ) ) ){
             stop( "An active stream is given to a synchronous transfer" )
           }
@@ -135,7 +137,7 @@ pipe <- R6Class(
             }
           }
 
-          private$.params$stream.ptr <- private$.eps.opt$stream$stream
+          private$.params$stream.ptr <- private$.eps.opt$stream$ptr
         }
       }
 

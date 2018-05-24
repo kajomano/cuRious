@@ -57,7 +57,7 @@ cuda.stream <- R6Class(
   public = list(
     sync = function(){
       if( self$is.active ){
-        if( is.null( .Call( "cuR_sync_cuda_stream", private$.stream ) ) ){
+        if( is.null( .Call( "cuR_sync_cuda_stream", private$.ptr ) ) ){
           stop( "Stream could not be synced" )
         }
 

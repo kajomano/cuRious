@@ -10,7 +10,7 @@ tens <- tensor$new(
   # be initialized. Data can be either a simple R matrix or vector (object from
   # now on), or another tensor. If unset, the tensor will be initialized with
   # 0-s or FALSE-es.
-  data   = 0, # Object or tensor
+  data   = NULL, # Object or tensor
 
   # The level argument can be set to define the initial level the tensor will
   # inhibit. This argument can be defined even when the data argument is set.
@@ -119,6 +119,6 @@ print( tens.never.data ) # The stored data also changes
 
 # Tensor creation overhead on a very small tensor. Larger tensors require
 # even more time:
-microbenchmark( tensor$new( 1:100 ), times = 100 )
+print( microbenchmark( tensor$new( 1:100 ), times = 100 ) )
 
 clean()

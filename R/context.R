@@ -2,12 +2,12 @@ context <- R6Class(
   "cuR.context",
   inherit = alert.send,
   public = list(
-    initialize = function( device = 0L ){
+    initialize = function( device = cuda.device.default.get() ){
       if( !is.null( device ) ){
         private$.device <- check.device( device )
         private$.ptr    <- private$.activate()
       }else{
-        private$.device <- 0L
+        private$.device <- cuda.device.default.get()
       }
     },
 

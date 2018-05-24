@@ -9,7 +9,7 @@ cuda.device.count <- function(){
   ret
 }
 
-.cuda.device.get <- function( ){
+.cuda.device.get <- function(){
   device <- .Call( "cuR_get_device" )
   if( is.null( device ) ){
     stop( "Failed to get current device" )
@@ -34,8 +34,14 @@ cuda.device.get <- function(){
   assign( "cuda.device.current", device, envir = .cuRious.env )
 }
 
-cuda.device.set <- function( device ){
+cuda.device.default.get <- function(){
+  .cuRious.env$cuda.device.default
+}
+
+cuda.device.default.set <- function( device ){
+  device <- check.device( device )
   .cuda.device.set( device )
+  assign( "cuda.device.default", device, envir = .cuRious.env )
 }
 
 cuda.device.sync <- function( device ){

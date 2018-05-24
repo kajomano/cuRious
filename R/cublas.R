@@ -8,54 +8,95 @@
 # cuBLAS handle class ====
 cublas.handle <- R6Class(
   "cuR.cublas.handle",
-  inherit = alert.send,
-  public = list(
-    initialize = function( active = T ){
-      if( active ){
-        self$activate()
-      }
-    },
-
-    activate = function(){
-      if( is.null( private$.handle ) ){
-        private$.handle <- .Call( "cuR_create_cublas_handle" )
-        private$.alert()
-      }else{
-        warning( "cuBLAS handle is already activated" )
-      }
-
-      invisible( self )
-    },
-
-    deactivate = function(){
-      if( !is.null( private$.handle ) ){
-        .Call( "cuR_destroy_cublas_handle", private$.handle )
-        private$.handle <- NULL
-        private$.alert()
-      }else{
-        warning( "cuBLAS handle is not yet activated" )
-      }
-
-      invisible( self )
-    }
-  ),
-
+  inherit = context,
   private = list(
-    .handle = NULL
-  ),
-
-  active = list(
-    handle = function( val ){
-      if( missing( val ) ) return( private$.handle )
+    .activate = function(){
+      .Call( "cuR_create_cublas_handle" )
     },
 
-    is.active = function( val ){
-      if( missing( val ) ) return( is.null( private$.handle ) )
+    .deactivate = function(){
+      .Call( "cuR_destroy_cublas_handle", private$.handle )
     }
   )
 )
 
 # cuBLAS linear algebra operations ====
+# Parent fusion ====
+.cublas.fusion <- R6Class(
+  "cuR.cublas.fusion",
+  inherit = fusion,
+  public = list(
+    initialize = function( handle, stream ){
+      if( !is.null( handle ) ){
+        check.cublas.handle( handle )
+      }
+      private$.eps.opt$handle <- handle
+
+      if( !is.null( stream ) ){
+        check.cuda.stream( stream )
+      }
+      private$.eps.opt$stream <- stream
+
+      super$initialize()
+    }
+  ),
+
+  private = list(
+    .update = function(){
+      tensors <- c( private$.eps.out, private$.eps.in )
+
+      if( !all( sapply( tensors, `[[`, "level" ) == 0L ) &&
+          !all( sapply( tensors, `[[`, "level" ) == 3L ) ){
+        stop( "All tensors need to be on L0 or L3" )
+      }
+
+      under  <- ( tensors[[1]]$level == 3L )
+      device <- tensors[[1]]$device
+
+      if( under ){
+        if( !all( sapply( tensors, `[[`, "device" ) == device ) ){
+          stop( "Not all tensors are on the same device" )
+        }
+      }
+
+      if( under ){
+        if( is.null( private$.eps.opt$handle ) ){
+          stop( "Subroutine requires an active cublas handle" )
+        }else{
+          if( !private$.eps.opt$handle$is.active ){
+            stop( "Subroutine requires an active cublas handle" )
+          }
+
+          if( private$.eps.opt$handle$device != device ){
+            stop( "Cublas handle is not on the correct device" )
+          }
+        }
+      }
+
+      if( !is.null( private$.eps.opt$stream ) ){
+        if( private$.eps.opt$stream$is.active ){
+          if( !under ){
+            stop( "An active stream is given to a synchronous cublas call" )
+          }else{
+            if( private$.eps.opt$stream$device != device ){
+              stop( "Stream is not on the correct device" )
+            }
+          }
+        }
+      }
+
+      private$.device <- device
+
+      if( under ){
+        private$.fun <- private$.L3.call
+      }else{
+        private$.fun <- private$.L0.call
+      }
+
+      super$.update()
+    }
+  )
+)
 
 # TODO ====
 # Add sswap from cuBLAS!
@@ -76,7 +117,7 @@ cublas.handle <- R6Class(
 # stored behind x or tp(x) is the same, hence the rows.x argument name
 cublas.sger <- R6Class(
   "cuR.cublas.sger",
-  inherit = fusion,
+  inherit = .cublas.fusion,
   public = list(
     initialize = function( x,
                            y,
@@ -126,9 +167,9 @@ cublas.sger <- R6Class(
       }
 
       # Assignments
-      private$.eps.fix$x <- x
-      private$.eps.fix$y <- y
-      private$.eps.fix$A <- A
+      private$.eps.in$x  <- x
+      private$.eps.in$y  <- y
+      private$.eps.out$A <- A
 
       private$.params$dims <- A.dims$dims
 
@@ -138,31 +179,21 @@ cublas.sger <- R6Class(
 
       private$.params$alpha <- as.numeric( alpha )
 
-      if( !is.null( handle ) ){
-        check.cublas.handle( handle )
-      }
-      private$.eps.opt$handle <- handle
-
-      if( !is.null( stream ) ){
-        check.cuda.stream( stream )
-      }
-      private$.eps.opt$stream <- stream
-
-      super$initialize()
+      super$initialize( handle, stream )
     }
   ),
 
   private = list(
     .L3.call = function( x.ptr,
-                          y.ptr,
-                          A.ptr,
-                          dims,
-                          x.span.off = NULL,
-                          y.span.off = NULL,
-                          A.span.off = NULL,
-                          alpha,
-                          handle.ptr,
-                          stream.ptr = NULL ){
+                         y.ptr,
+                         A.ptr,
+                         dims,
+                         x.span.off = NULL,
+                         y.span.off = NULL,
+                         A.span.off = NULL,
+                         alpha,
+                         handle.ptr,
+                         stream.ptr = NULL ){
 
       ret <- .Call( "cuR_cublas_sger",
                     x.ptr,
@@ -207,57 +238,10 @@ cublas.sger <- R6Class(
         A.ptr <- A.ptr[, A.range ]
       }
 
-      private$.eps.fix$A$ptr[, A.range ] <-
+      private$.eps.out$A$ptr[, A.range ] <-
         ( alpha * x.ptr ) %*% t( y.ptr ) + A.ptr
 
       invisible( TRUE )
-    },
-
-    .update = function(){
-      x <- private$.eps.fix$x
-      y <- private$.eps.fix$y
-      A <- private$.eps.fix$A
-
-      if( !all( c( x$is.level( 0L ), y$is.level( 0L ), A$is.level( 0L ) ) ) &&
-          !all( c( x$is.level( 3L ), y$is.level( 3L ), A$is.level( 3L ) ) ) ){
-        stop( "All input tensors need to be on L0 or L3" )
-      }
-
-      under <- ( x$level == 3L )
-
-      if( under ){
-        if( is.null( private$.eps.opt$handle ) ){
-          stop( "Subroutine requires an active cublas handle" )
-        }else{
-          if( is.null( private$.eps.opt$handle$handle ) ){
-            stop( "Subroutine requires an active cublas handle" )
-          }
-        }
-
-        private$.params$handle.ptr <- private$.eps.opt$handle$handle
-      }
-
-      if( !is.null( private$.eps.opt$stream ) ){
-        if( !is.null( private$.eps.opt$stream$stream ) ){
-          if( !under ){
-            warning( "An active stream is given to a synchronous transfer" )
-          }
-
-          private$.params$stream.ptr <- private$.eps.opt$stream$stream
-        }
-      }
-
-      private$.params$x.ptr <- x$ptr
-      private$.params$y.ptr <- y$ptr
-      private$.params$A.ptr <- A$ptr
-
-      if( under ){
-        private$.fun <- private$.L3.call
-      }else{
-        private$.fun <- private$.L0.call
-      }
-
-      super$.update()
     }
   )
 )
@@ -267,7 +251,7 @@ cublas.sger <- R6Class(
 # tp = transpose
 cublas.sgemm <- R6Class(
   "cuR.cublas.sgemm",
-  inherit = fusion,
+  inherit = .cublas.fusion,
   public = list(
     initialize = function( A,
                            B,
@@ -330,9 +314,9 @@ cublas.sgemm <- R6Class(
       }
 
       # Assignments
-      private$.eps.fix$A <- A
-      private$.eps.fix$B <- B
-      private$.eps.fix$C <- C
+      private$.eps.in$A  <- A
+      private$.eps.in$B  <- B
+      private$.eps.out$C <- C
 
       private$.params$A.dims <- A.dims$dims
       private$.params$B.dims <- B.dims$dims
@@ -347,17 +331,7 @@ cublas.sgemm <- R6Class(
       private$.params$alpha <- as.numeric( alpha )
       private$.params$beta  <- as.numeric( beta )
 
-      if( !is.null( handle ) ){
-        check.cublas.handle( handle )
-      }
-      private$.eps.opt$handle <- handle
-
-      if( !is.null( stream ) ){
-        check.cuda.stream( stream )
-      }
-      private$.eps.opt$stream <- stream
-
-      super$initialize()
+      super$initialize( handle, stream )
     }
   ),
 
@@ -436,57 +410,10 @@ cublas.sgemm <- R6Class(
         B.ptr <- t( B.ptr )
       }
 
-      private$.eps.fix$C$ptr[, C.range ] <-
+      private$.eps.out$C$ptr[, C.range ] <-
         ( alpha * A.ptr ) %*% B.ptr + ( beta * C.ptr )
 
       invisible( TRUE )
-    },
-
-    .update = function(){
-      A <- private$.eps.fix$A
-      B <- private$.eps.fix$B
-      C <- private$.eps.fix$C
-
-      if( !all( c( A$is.level( 0L ), B$is.level( 0L ), C$is.level( 0L ) ) ) &&
-          !all( c( A$is.level( 3L ), B$is.level( 3L ), C$is.level( 3L ) ) ) ){
-        stop( "All input tensors need to be on L0 or L3" )
-      }
-
-      under <- ( A$level == 3L )
-
-      if( under ){
-        if( is.null( private$.eps.opt$handle ) ){
-          stop( "Subroutine requires an active cublas handle" )
-        }else{
-          if( is.null( private$.eps.opt$handle$handle ) ){
-            stop( "Subroutine requires an active cublas handle" )
-          }
-        }
-
-        private$.params$handle.ptr <- private$.eps.opt$handle$handle
-      }
-
-      if( !is.null( private$.eps.opt$stream ) ){
-        if( !is.null( private$.eps.opt$stream$stream ) ){
-          if( !under ){
-            warning( "An active stream is given to a synchronous transfer" )
-          }
-
-          private$.params$stream.ptr <- private$.eps.opt$stream$stream
-        }
-      }
-
-      private$.params$A.ptr <- A$ptr
-      private$.params$B.ptr <- B$ptr
-      private$.params$C.ptr <- C$ptr
-
-      if( under ){
-        private$.fun <- private$.L3.call
-      }else{
-        private$.fun <- private$.L0.call
-      }
-
-      super$.update()
     }
   )
 )

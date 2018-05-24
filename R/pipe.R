@@ -78,14 +78,11 @@ pipe <- R6Class(
       private$.params$src.level <- src$level
       private$.params$dst.level <- dst$level
 
+      deep.transf  <- ( ( src$level == 3L ) && ( dst$level == 3L ) )
+
       cross.transf <- ( ( ( src$level != 3L ) && ( dst$level == 3L ) ) ||
-                        ( ( dst$level != 3L ) && ( src$level == 3L ) ) )
-
-      deep.transf <- ( ( src$level == 3L ) && ( dst$level == 3L ) )
-
-      if( deep.transf && ( src$device != dst$device ) ){
-        cross.transf <- TRUE
-      }
+                        ( ( dst$level != 3L ) && ( src$level == 3L ) ) ||
+                        ( deep.transf && ( src$device != dst$device ) ) )
 
       src.perm <- private$.eps.opt$src.perm
       dst.perm <- private$.eps.opt$dst.perm
@@ -99,6 +96,10 @@ pipe <- R6Class(
             ( !deep.transf && ( src.perm$level == 3L ) ) ){
           stop( "Source permutation tensor is not on the correct level" )
         }
+
+        if( deep.transf && ( src$device != src.perm$device ) ){
+          stop( "Source permutation is not on the correct device" )
+        }
       }
 
       if( !is.null( dst.perm ) ){
@@ -109,6 +110,10 @@ pipe <- R6Class(
         if( ( deep.transf  && ( dst.perm$level != 3L ) ) ||
             ( !deep.transf && ( dst.perm$level == 3L ) ) ){
           stop( "Destination permutation tensor is not on the correct level" )
+        }
+
+        if( deep.transf && ( src$device != dst.perm$device ) ){
+          stop( "Destination permutation is not on the correct device" )
         }
       }
 

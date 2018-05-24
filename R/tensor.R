@@ -35,7 +35,7 @@ tensor <- R6Class(
         }
 
         if( is.null( device ) ){
-          private$.device <- 0L
+          private$.device <- cuda.device.default.get()
         }else{
           private$.device <- check.device( device )
         }
@@ -52,7 +52,7 @@ tensor <- R6Class(
           }
 
           if( is.null( device ) ){
-            private$.device <- 0L
+            private$.device <- cuda.device.default.get()
           }else{
             private$.device <- check.device( device )
           }
@@ -133,7 +133,7 @@ tensor <- R6Class(
     },
 
     clear = function(){
-      self$check.destroyed()
+      self$check.read.only()
       .Call( paste0("cuR_clear_tensor_", private$.level, "_", private$.type ),
              private$.ptr,
              private$.dims )
@@ -215,9 +215,6 @@ tensor <- R6Class(
       self$check.destroyed()
 
       if( missing( val ) ){
-        if( private$.level == 0L ){
-          private$.read.o <- TRUE
-        }
         return( private$.ptr )
       }else{
         if( private$.level != 0L ){

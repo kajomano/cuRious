@@ -89,24 +89,6 @@ check.cublas.handle <- function( handle ){
   invisible( handle )
 }
 
-is.alertable <- function( alertable ){
-  "cuR.alert.receiver" %in% class( alertable )
-}
-
-check.alertable <- function( alertable ){
-  if( !is.alertable( alertable ) ) stop( "Invalid alertable" )
-  invisible( alertable )
-}
-
-is.alerting <- function( alerting ){
-  "cuR.alert.sender" %in% class( alerting )
-}
-
-check.alerting <- function( alerting ){
-  if( !is.alerting( alerting ) ) stop( "Invalid alerting" )
-  invisible( alerting )
-}
-
 is.device <- function( device ){
   if( !is.numeric( device ) || length( device ) != 1 ){
     return( FALSE )
@@ -122,4 +104,13 @@ is.device <- function( device ){
 check.device <- function( device ){
   if( !is.device( device ) ) stop( "Invalid device" )
   invisible( as.integer( device ) )
+}
+
+is.context <- function( context ){
+  "cuR.context" %in% class( context )
+}
+
+check.context <- function( context ){
+  if( !is.context( context ) ) stop( "Invalid context" )
+  invisible( as.integer( context ) )
 }

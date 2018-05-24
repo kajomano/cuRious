@@ -20,8 +20,10 @@ alert.recv <- R6Class(
 alert.send <- R6Class(
   "cuR.alert.sender",
   public = list(
-    listener.add = function( obj ){
-      listener <- check.alertable( obj )
+    listener.add = function( listener ){
+      if( !( "cuR.alert.receiver" %in% class( listener ) ) ){
+        stop( "Invalid listener" )
+      }
       private$.listeners <- c( private$.listeners, list( listener ) )
 
       invisible( self )

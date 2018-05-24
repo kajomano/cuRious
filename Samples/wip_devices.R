@@ -18,5 +18,5 @@ cuda.device.set( 1 )
 pip$run()
 tens1$pull()
 
-# tens1$destroy()
-# tens0$destroy()
+tens1$destroy()
+tens0$destroy()

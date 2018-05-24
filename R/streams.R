@@ -34,8 +34,8 @@ cuda.device.get <- function(){
   assign( "cuda.device.current", device, envir = .cuRious.env )
 }
 
-cuda.device.set <- function(){
-  .cuda.device.set()
+cuda.device.set <- function( device ){
+  .cuda.device.set( device )
 }
 
 cuda.device.sync <- function( device ){

@@ -6,14 +6,25 @@ fusion <- R6Class(
   inherit = alert.recv,
   public = list(
     initialize = function(){
-      lapply( private$.eps.fix, function( ep ){
-        check.alerting( ep )
+      lapply( private$.eps.in, function( ep ){
+        if( !is.tensor( ep ) ){
+          stop( "Invalid input fusion endpoint" )
+        }
         ep$listener.add( self )
       })
 
-      lapply( private$.eps.fix, function( ep ){
+      lapply( private$.eps.out, function( ep ){
+        if( !is.tensor( ep ) ){
+          stop( "Invalid output fusion endpoint" )
+        }
+        ep$listener.add( self )
+      })
+
+      lapply( private$.eps.opt, function( ep ){
         if( !is.null( ep ) ){
-          check.alerting( ep )
+          if( !is.tensor( ep ) && !is.context( ep ) ){
+            stop( "Invalid optional fusion endpoint" )
+          }
           ep$listener.add( self )
         }
       })
@@ -41,12 +52,17 @@ fusion <- R6Class(
       private$.check.destroyed()
       private$.listener.remove <- TRUE
 
-      private$.eps.fix <- lapply( private$.eps.fix, function( ep ){
+      private$.eps.in <- lapply( private$.eps.in, function( ep ){
         ep$listener.remove()
         NULL
       })
 
-      private$.eps.fix <- lapply( private$.eps.fix, function( ep ){
+      private$.eps.out <- lapply( private$.eps.out, function( ep ){
+        ep$listener.remove()
+        NULL
+      })
+
+      private$.eps.opt <- lapply( private$.eps.opt, function( ep ){
         if( !is.null( ep ) ){
           ep$listener.remove()
         }
@@ -58,18 +74,46 @@ fusion <- R6Class(
   ),
 
   private = list(
-    .eps.fix = list(), # Must-have endpoints
+    ############################################################
+    # If a must-have endpoint is both an input and an output,  #
+    # it should be listed in the outputs.                      #
+    # Optional endpoints should only be read!                  #
+    ############################################################
+    .eps.in  = list(), # Must-have input endpoints
+    .eps.out = list(), # Must-have output endpoints
     .eps.opt = list(), # Optional endpoints
 
     .changed = TRUE,
 
     # These fields need to be filled in the .update() function
+    .device  = NULL,
     .fun     = NULL,
     .params  = list(),
-
-    .device  = NULL,
+    # Params should be mostly filled out by the super$.update() below:
 
     .update = function(){
+      lapply( names( private$.eps.in ), function( ep.name ){
+        param.name <- paste0( ep.name, ".ptr" )
+        private$.params[[param.name]] <- private$.eps.in[[ep.name]]$ptr
+      })
+
+      lapply( names( private$.eps.out ), function( ep.name ){
+        ep <- private$.eps.out[[ep.name]]
+        ep$check.read.only()
+        param.name <- paste0( ep.name, ".ptr" )
+        private$.params[[param.name]] <- private$.eps.out[[ep.name]]$ptr
+      })
+
+      lapply( names( private$.eps.opt ), function( ep.name ){
+        ep <- private$.eps.opt[[ep.name]]
+        param.name <- paste0( ep.name, ".ptr" )
+        if( !is.null( ep ) ){
+          private$.params[[param.name]] <- ep$ptr
+        }else{
+          private$.params[[param.name]] <- NULL
+        }
+      })
+
       private$.changed <- FALSE
     },
 
@@ -82,7 +126,9 @@ fusion <- R6Class(
 
   active = list(
     is.destroyed = function( val ){
-      if( missing( val ) ) return( any( is.null( private$.eps.fix ) ) )
+      if( missing( val ) ) return( any( c(
+        is.null( private$.eps.in ),
+        is.null( private$.eps.out ) ) ) )
     }
   )
 )

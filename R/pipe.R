@@ -46,8 +46,8 @@ pipe <- R6Class(
       }
 
       # Assignments
-      private$.eps.fix$src <- src
-      private$.eps.fix$dst <- dst
+      private$.eps.in$src  <- src
+      private$.eps.out$dst <- dst
 
       private$.params$type <- src$type
       private$.params$dims <- src.dims$dims
@@ -72,19 +72,16 @@ pipe <- R6Class(
     .update = function(){
       # Since levels are the primary dynamically changing attribute of tensors,
       # these checks mostly concern them
-      src <- private$.eps.fix$src
-      dst <- private$.eps.fix$dst
-
-      private$.params$src.ptr <- src$ptr
-      private$.params$dst.ptr <- dst$ptr
+      src <- private$.eps.in$src
+      dst <- private$.eps.out$dst
 
       private$.params$src.level <- src$level
       private$.params$dst.level <- dst$level
 
-      cross.transf <- ( ( !src$is.level( 3L ) && dst$is.level( 3L ) ) ||
-                        ( !dst$is.level( 3L ) && src$is.level( 3L ) ) )
+      cross.transf <- ( ( ( src$level != 3L ) && ( dst$level == 3L ) ) ||
+                        ( ( dst$level != 3L ) && ( src$level == 3L ) ) )
 
-      deep.transf <- ( src$is.level( 3L ) && dst$is.level( 3L ) )
+      deep.transf <- ( ( src$level == 3L ) && ( dst$level == 3L ) )
 
       if( deep.transf && ( src$device != dst$device ) ){
         cross.transf <- TRUE
@@ -98,12 +95,10 @@ pipe <- R6Class(
           stop( "Source permutation is not available between these levels" )
         }
 
-        if( ( deep.transf && !src.perm$is.level( 3L ) ) ||
-            ( !deep.transf && src.perm$is.level( 3L ) ) ){
+        if( ( deep.transf  && ( src.perm$level != 3L ) ) ||
+            ( !deep.transf && ( src.perm$level == 3L ) ) ){
           stop( "Source permutation tensor is not on the correct level" )
         }
-
-        private$.params$src.perm.ptr <- src.perm$ptr
       }
 
       if( !is.null( dst.perm ) ){
@@ -111,19 +106,15 @@ pipe <- R6Class(
           stop( "Destination permutation is not available between these levels" )
         }
 
-        if( ( deep.transf && !dst.perm$is.level( 3L ) ) ||
-            ( !deep.transf && dst.perm$is.level( 3L ) ) ){
+        if( ( deep.transf  && ( dst.perm$level != 3L ) ) ||
+            ( !deep.transf && ( dst.perm$level == 3L ) ) ){
           stop( "Destination permutation tensor is not on the correct level" )
         }
-
-        private$.params$dst.perm.ptr <- dst.perm$ptr
       }
-
-
 
       if( !is.null( private$.eps.opt$stream ) ){
         if( private$.eps.opt$stream$is.active ){
-          if( src$is.level( c( 0L, 1L ) ) || dst$is.level( c( 0L, 1L ) ) ){
+          if( ( src$level %in% c( 0L, 1L ) ) || ( dst$level %in% c( 0L, 1L ) ) ){
             stop( "An active stream is given to a synchronous transfer" )
           }
 
@@ -136,19 +127,17 @@ pipe <- R6Class(
               stop( "Stream is not on the correct device" )
             }
           }
-
-          private$.params$stream.ptr <- private$.eps.opt$stream$ptr
         }
       }
 
       # This only works because you dont have to set the device correctly
       # if no kernels are run, and kernels are only run on L3-L3 same device
       # transfers
-      private$.device <- private$.eps.fix$src$device
+      private$.device <- src$device
 
       # Multi or single-step transfer
-      if( ( src$is.level( 0L ) && dst$is.level( 3L ) ) ||
-          ( src$is.level( 3L ) && dst$is.level( 0L ) ) ||
+      if( ( ( src$level == 0L ) && ( dst$level == 3L ) ) ||
+          ( ( src$level == 3L ) && ( dst$level == 0L ) ) ||
           ( deep.transf && ( src$device != dst$device ) ) ){
         private$.fun <- .transfer.ptr.multi
       }else{

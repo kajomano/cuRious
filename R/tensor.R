@@ -100,7 +100,8 @@ tensor <- R6Class(
           },
           wrap = {
             if( is.obj( data ) ){
-              private$.ptr <- data
+              private$.ptr    <- data
+              private$.read.o <- TRUE
             }else{
               stop( "Tensors are not wrappable" )
             }
@@ -112,7 +113,7 @@ tensor <- R6Class(
     # These functions are only there for objs, are essentially interfaces
     # to R
     push = function( obj ){
-      private$.check.destroyed()
+      self$check.destroyed()
 
       obj <- check.obj( obj )
       private$.match.dims( obj )
@@ -123,7 +124,7 @@ tensor <- R6Class(
     },
 
     pull = function(){
-      private$.check.destroyed()
+      self$check.destroyed()
 
       tmp <- tensor$new( self, 0L, init = "mimic" )
       transfer( self, tmp )
@@ -132,7 +133,7 @@ tensor <- R6Class(
     },
 
     clear = function(){
-      private$.check.destroyed()
+      self$check.destroyed()
       .Call( paste0("cuR_clear_tensor_", private$.level, "_", private$.type ),
              private$.ptr,
              private$.dims )
@@ -141,13 +142,21 @@ tensor <- R6Class(
     },
 
     destroy = function(){
-      private$.check.destroyed()
+      self$check.destroyed()
       private$.destroy.ptr()
       private$.alert()
     },
 
-    is.level = function( levels = 0L ){
-      self$level %in% levels
+    check.destroyed = function(){
+      if( self$is.destroyed ){
+        stop( "The tensor is destroyed" )
+      }
+    },
+
+    check.read.only = function(){
+      if( self$is.read.only ){
+        stop( "The tensor is read-only" )
+      }
     }
   ),
 
@@ -157,6 +166,10 @@ tensor <- R6Class(
     .dims   = NULL,
     .type   = NULL,
     .device = NULL,
+
+    # Flag signifying that the tensor might potentially contain an R object that
+    # could have a reference somewhere else, and should not be modified
+    .read.o = FALSE,
 
     .create.ptr = function( level = private$.level ){
       if( prod( private$.dims ) > 2^32-1 ){
@@ -194,34 +207,34 @@ tensor <- R6Class(
 
     .match.type = function( obj ){
       if( obj.type( obj ) != private$.type ) stop( "Types do not match" )
-    },
-
-    .check.destroyed = function(){
-      if( self$is.destroyed ){
-        stop( "The tensor is destroyed" )
-      }
     }
   ),
 
   active = list(
     ptr = function( val ){
-      private$.check.destroyed()
+      self$check.destroyed()
 
       if( missing( val ) ){
+        if( private$.level == 0L ){
+          private$.read.o <- TRUE
+        }
         return( private$.ptr )
       }else{
-        if( !self$is.level() ) stop( "Not surfaced, direct tensor access denied" )
+        if( private$.level != 0L ){
+          stop( "Not surfaced, direct tensor access denied" )
+        }
 
         val <- check.obj( val )
         private$.match.dims( val )
         private$.match.type( val )
 
-        private$.ptr <- val
+        private$.ptr    <- val
+        private$.read.o <- TRUE
       }
     },
 
     dims = function( val ){
-      private$.check.destroyed()
+      self$check.destroyed()
       if( missing( val ) ) return( private$.dims )
     },
 
@@ -230,12 +243,12 @@ tensor <- R6Class(
     },
 
     type = function( val ){
-      private$.check.destroyed()
+      self$check.destroyed()
       if( missing( val ) ) return( private$.type )
     },
 
     level = function( level ){
-      private$.check.destroyed()
+      self$check.destroyed()
 
       if( missing( level ) ){
         return( private$.level )
@@ -255,13 +268,14 @@ tensor <- R6Class(
         self$destroy()
 
         # Update
-        private$.ptr   <- tmp$ptr
-        private$.level <- level
+        private$.ptr    <- tmp$ptr
+        private$.level  <- level
+        private$.read.o <- FALSE
       }
     },
 
     device = function( device ){
-      private$.check.destroyed()
+      self$check.destroyed()
 
       if( missing( device) ){
         return( private$.device )
@@ -293,6 +307,11 @@ tensor <- R6Class(
 
     is.destroyed = function( val ){
       if( missing( val ) ) return( is.null( private$.ptr ) )
+    },
+
+    is.read.only = function( val ){
+      self$check.destroyed()
+      if( missing( val ) ) return( private$.read.o )
     }
   )
 )

@@ -28,12 +28,12 @@ check.tensor <- function( tensor ){
 types <- c( n = "numeric", i = "integer", l = "logical" )
 
 is.type <- function( type ){
-  !is.na( pmatch( type, types ) )
+  !is.na( pmatch( type, types )[[1]] )
 }
 
 check.type <- function( type ){
   if( !is.type( type ) ) stop( "Invalid type" )
-  type <- names( types )[[ pmatch( type, types ) ]]
+  type <- names( match.arg( type, types, T ) )[[1]]
   invisible( type )
 }
 

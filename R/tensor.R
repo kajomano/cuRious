@@ -16,17 +16,26 @@ tensor <- R6Class(
   public = list(
     initialize = function( data   = NULL,
                            level  = NULL,
-                           dims   = c( 1L, 1L ),
-                           type   = "n",
+                           dims   = NULL,
+                           type   = NULL,
                            init   = c( "copy", "mimic", "wrap" ),
                            device = NULL
     ){
-      init <- match.arg( init, c( "copy", "mimic", "wrap" ) )
+      init <- match.arg( init, c( "copy", "mimic", "wrap" ), T )[[1]]
 
-      # If init is not given
+      # If data is not given
       if( is.null( data ) ){
-        private$.dims <- check.dims( dims )
-        private$.type <- check.type( type )
+        if( is.null( dims ) ){
+          private$.dims <- c( 1L, 1L )
+        }else{
+          private$.dims <- check.dims( dims )
+        }
+
+        if( is.null( type ) ){
+          private$.type <- "n"
+        }else{
+          private$.type <- check.type( type )
+        }
 
         if( is.null( level ) ){
           private$.level <- 0L
@@ -39,8 +48,17 @@ tensor <- R6Class(
         }else{
           private$.device <- check.device( device )
         }
-        # If supported
+
+      # If data is supported
       }else{
+        if( !is.null( dims ) ){
+          stop( "Dims can not be defined when data is supplied" )
+        }
+
+        if( !is.null( type ) ){
+          stop( "Type can not be defined when data is supplied" )
+        }
+
         if( is.obj( data ) ){
           private$.dims <- obj.dims( data )
           private$.type <- obj.type( data )
@@ -227,6 +245,8 @@ tensor <- R6Class(
 
         private$.ptr    <- val
         private$.read.o <- TRUE
+
+        private$.alert()
       }
     },
 

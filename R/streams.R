@@ -18,10 +18,6 @@ cuda.device.count <- function(){
   device
 }
 
-cuda.device.get <- function(){
-  .cuda.device.get()
-}
-
 .cuda.device.set <- function( device ){
   if( .cuRious.env$cuda.device.current == device ){
     return()

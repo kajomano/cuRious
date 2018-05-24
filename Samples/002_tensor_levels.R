@@ -1,5 +1,4 @@
 library( cuRious )
-library( microbenchmark )
 
 # Tensors can inhibit 4 levels: 0, 1, 2 and 3. These levels define whether the
 # tensor data is stored on the host, or the device, and in what format. The 4
@@ -28,7 +27,7 @@ library( microbenchmark )
 #
 # L2: The tensor$ptr is a pointer pointing to a memory
 #     address in host memory. The memory is pinned, and
-#     directly accesible by any device.
+#     directly accessible by any device.
 #
 #        type: | numeric | integer | logical |
 #              |-----------------------------|

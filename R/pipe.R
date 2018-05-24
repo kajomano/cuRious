@@ -122,11 +122,17 @@ pipe <- R6Class(
       if( !is.null( private$.eps.opt$stream ) ){
         if( !is.null( private$.eps.opt$stream$stream ) ){
           if( src$is.level( c( 0L, 1L ) ) || dst$is.level( c( 0L, 1L ) ) ){
-            warning( "An active stream is given to a synchronous transfer" )
+            stop( "An active stream is given to a synchronous transfer" )
           }
 
-          if( deep.transf && ( src$device != dst$device ) ){
-            warning( "An active stream is given to a synchronous transfer" )
+          if( deep.transf ){
+            if( src$device != dst$device ){
+              stop( "An active stream is given to a synchronous transfer" )
+            }
+
+            if( private$.eps.opt$stream$device != src$device ){
+              stop( "Stream is not on the correct device" )
+            }
           }
 
           private$.params$stream.ptr <- private$.eps.opt$stream$stream

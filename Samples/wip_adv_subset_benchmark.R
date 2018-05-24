@@ -13,9 +13,7 @@ tens.Y.3 <- tensor$new( tens.X.3, 3L, init = "mimic" )
 tens.X.perm.3 <- tensor$new( as.integer( 1:cols ), 3L )
 tens.Y.perm.3 <- tensor$new( as.integer( 1:cols ), 3L )
 
-# TODO ====
-# This should kill the transfers!
-stream <- cuda.stream$new( 1L )
+stream <- cuda.stream$new()
 
 pipe.1.nosub <- pipe$new( tens.X.1,
                           tens.Y.1 )
@@ -62,19 +60,16 @@ pipe.3.dstsub.async <- pipe$new( tens.X.3,
 
 times <- 100
 
-# print( microbenchmark( pipe.1.nosub$run(), times = times ) )
+print( microbenchmark( pipe.1.nosub$run(), times = times ) )
 
-# print( microbenchmark( pipe.3.bothsub$run(), times = times ) )
-# print( microbenchmark( pipe.3.nosub$run(),   times = times ) )
-# print( microbenchmark( pipe.3.srcsub$run(),  times = times ) )
-# print( microbenchmark( pipe.3.dstsub$run(),  times = times ) )
-#
-# print( microbenchmark( pipe.3.bothsub.async$run(), times = times ) )
-# print( microbenchmark( pipe.3.nosub.async$run(),   times = times ) )
-# print( microbenchmark( pipe.3.srcsub.async$run(),  times = times ) )
-# print( microbenchmark( pipe.3.dstsub.async$run(),  times = times ) )
+print( microbenchmark( pipe.3.bothsub$run(), times = times ) )
+print( microbenchmark( pipe.3.nosub$run(),   times = times ) )
+print( microbenchmark( pipe.3.srcsub$run(),  times = times ) )
+print( microbenchmark( pipe.3.dstsub$run(),  times = times ) )
 
-pipe.3.bothsub.async$run()
-tens.Y.3$pull()
+print( microbenchmark( pipe.3.bothsub.async$run(), times = times ) )
+print( microbenchmark( pipe.3.nosub.async$run(),   times = times ) )
+print( microbenchmark( pipe.3.srcsub.async$run(),  times = times ) )
+print( microbenchmark( pipe.3.dstsub.async$run(),  times = times ) )
 
 # clean()

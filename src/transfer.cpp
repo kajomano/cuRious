@@ -1,5 +1,15 @@
 #include "transfer.h"
 
+// R magic for copy-on-modify
+extern "C"
+SEXP cuR_is_only_reference( SEXP var ){
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( !NAMED( var ) ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
+
+// -----------------------------------------------------------------------------
+
 template <typename s, typename d>
 void cuR_transfer_host_host( s* src, d* dst, int* dims, int osrc, int odst, int* csrc, int* cdst ){
   // Offsets now work with column subsetting

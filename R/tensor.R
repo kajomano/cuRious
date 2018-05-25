@@ -150,6 +150,7 @@ tensor <- R6Class(
     },
 
     clear = function(){
+      self$sever.refs()
       .Call( paste0("cuR_clear_tensor_", private$.level, "_", private$.type ),
              private$.ptr,
              private$.dims )
@@ -167,6 +168,16 @@ tensor <- R6Class(
       if( self$is.destroyed ){
         stop( "The tensor is destroyed" )
       }
+
+      invisible( TRUE )
+    },
+
+    sever.refs = function(){
+      if( private$.level == 0L ){
+        private$.ptr[[1]] <- private$.ptr[[1]]
+      }
+
+      invisible( TRUE )
     }
   ),
 

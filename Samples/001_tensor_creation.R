@@ -84,32 +84,8 @@ print( tens.dupl$pull() )
 
 # Tensor contents can also be accessed directly by calling the $ptr active
 # binding, if the tensor is on L0:
+tens$ptr <- 0
 print( tens$ptr )
-
-# Assignement is also possible this way, however, there is one caveat. Since
-# this assignement does not duplicate data, the objects used for assignement
-# could be modified silently as a byproduct of later operations. The $push() and
-# $pull() operations are safe from these side-effects, and properly duplicate
-# data.
-
-# Example of unintended modification:
-obj.assignee <- 0
-tens$ptr     <- obj.assignee
-obj.assigned <- tens$ptr
-
-# Let's change the content of the tensor:
-tens$push( 2 )
-
-# Both variables change together with the tensor:
-print( obj.assignee )
-print( obj.assigned )
-
-# Initializing a tensor by wrapping an object also produces the same side-
-# effect:
-obj.wrapped <- 1
-tens.wrap <- tensor$new( obj.wrapped, init = "wrap" )
-tens.wrap$push( 2 )
-print( obj.wrapped )
 
 # Tensors should be considered as placeholders, which functions can read from
 # and write to. A good program utilizing tensors should minimize the creation
@@ -117,8 +93,8 @@ print( obj.wrapped )
 # deallocation can incur significant overhead. Instead, try to preallocate
 # most of what will be needed, and try to reuse as much as possible.
 
-# Tensor creation overhead on a very small tensor. Larger tensors require
-# even more time:
+# Tensor creation overhead is considerable even on a very small tensor. Larger
+# tensors require even more time:
 print( microbenchmark( tensor$new( 1:100 ), times = 100 ) )
 
 clean()

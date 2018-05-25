@@ -38,6 +38,10 @@ fusion <- R6Class(
     run = function(){
       private$.check.destroyed()
 
+      for( ep in private$.eps.out ){
+        ep$sever.refs()
+      }
+
       if( private$.changed ){
         private$.update()
       }
@@ -74,11 +78,11 @@ fusion <- R6Class(
   ),
 
   private = list(
-    ############################################################
-    # If a must-have endpoint is both an input and an output,  #
-    # it should be listed in the outputs.                      #
-    # Optional endpoints should only be read!                  #
-    ############################################################
+    ##############################################################
+    #   If a must-have endpoint is both an input and an output,  #
+    #   it should be listed in the outputs.                      #
+    #   Optional endpoints should only be read!                  #
+    ##############################################################
     .eps.in  = list(), # Must-have input endpoints
     .eps.out = list(), # Must-have output endpoints
     .eps.opt = list(), # Optional endpoints
@@ -98,13 +102,6 @@ fusion <- R6Class(
       })
 
       lapply( names( private$.eps.out ), function( ep.name ){
-        ep <- private$.eps.out[[ep.name]]
-
-        # TODO ====
-        # Do read only checks somehow:
-        # I gave up on this as long as R is not doing reference counting
-        # ep$check.read.only()
-
         param.name <- paste0( ep.name, ".ptr" )
         private$.params[[param.name]] <- private$.eps.out[[ep.name]]$ptr
       })

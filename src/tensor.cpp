@@ -1,16 +1,6 @@
 #include "common.h"
 #include <cstring>
 
-// R wizardry
-extern "C"
-SEXP cuR_count_references( SEXP var ){
-  SEXP ret_r = Rf_protect( Rf_ScalarInteger( NAMED( var ) ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-// -----------------------------------------------------------------------------
-
 // Level 0 clearing
 extern "C"
 SEXP cuR_clear_tensor_0_n( SEXP tens_r, SEXP dims_r ){

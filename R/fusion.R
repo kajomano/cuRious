@@ -99,7 +99,12 @@ fusion <- R6Class(
 
       lapply( names( private$.eps.out ), function( ep.name ){
         ep <- private$.eps.out[[ep.name]]
-        ep$check.read.only()
+
+        # TODO ====
+        # Do read only checks somehow:
+        # I gave up on this as long as R is not doing reference counting
+        # ep$check.read.only()
+
         param.name <- paste0( ep.name, ".ptr" )
         private$.params[[param.name]] <- private$.eps.out[[ep.name]]$ptr
       })

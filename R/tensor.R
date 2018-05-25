@@ -118,8 +118,7 @@ tensor <- R6Class(
           },
           wrap = {
             if( is.obj( data ) ){
-              private$.ptr    <- data
-              private$.read.o <- TRUE
+              private$.ptr <- data
             }else{
               stop( "Tensors are not wrappable" )
             }
@@ -151,7 +150,6 @@ tensor <- R6Class(
     },
 
     clear = function(){
-      self$check.read.only()
       .Call( paste0("cuR_clear_tensor_", private$.level, "_", private$.type ),
              private$.ptr,
              private$.dims )
@@ -169,12 +167,6 @@ tensor <- R6Class(
       if( self$is.destroyed ){
         stop( "The tensor is destroyed" )
       }
-    },
-
-    check.read.only = function(){
-      if( self$is.read.only ){
-        stop( "The tensor is read-only" )
-      }
     }
   ),
 
@@ -184,10 +176,6 @@ tensor <- R6Class(
     .dims   = NULL,
     .type   = NULL,
     .device = NULL,
-
-    # Flag signifying that the tensor might potentially contain an R object that
-    # could have a reference somewhere else, and should not be modified
-    .read.o = FALSE,
 
     .create.ptr = function( level = private$.level ){
       if( prod( private$.dims ) > 2^32-1 ){
@@ -243,10 +231,7 @@ tensor <- R6Class(
         private$.match.dims( val )
         private$.match.type( val )
 
-        private$.ptr    <- val
-        private$.read.o <- TRUE
-
-        private$.alert()
+        private$.ptr <- val
       }
     },
 
@@ -285,9 +270,8 @@ tensor <- R6Class(
         self$destroy()
 
         # Update
-        private$.ptr    <- tmp$ptr
-        private$.level  <- level
-        private$.read.o <- FALSE
+        private$.ptr   <- tmp$ptr
+        private$.level <- level
       }
     },
 

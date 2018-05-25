@@ -86,30 +86,30 @@ print( tens.dupl$pull() )
 # binding, if the tensor is on L0:
 print( tens$ptr )
 
-# Assignement is also possible this way, however, the tensor will gain the
-# read.only flag, preventing any modifications to it. Since this assignement
-# does not duplicate data, the read-only lock is to ensure that no objects are
-# modified silently as a byproduct of a direct access. The $push() and $pull()
-# operations are safe from these side-effects, and properly duplicate data.
+# Assignement is also possible this way, however, there is one caveat. Since
+# this assignement does not duplicate data, the objects used for assignement
+# could be modified silently as a byproduct of later operations. The $push() and
+# $pull() operations are safe from these side-effects, and properly duplicate
+# data.
 
-# These assignements will produce an error:
-tens$push( 2 ) # Safe duplicated assignement
-tens$ptr <- 3  # Direct assignement locks the tensor to read-only
-try( tens$push( 4 ) ) # Error
+# Example of unintended modification:
+obj.assignee <- 0
+tens$ptr     <- obj.assignee
+obj.assigned <- tens$ptr
 
-# Direct assignements however work even after read-only locks:
-tens$ptr <- 4  # No error
+# Let's change the content of the tensor:
+tens$push( 2 )
 
-# Initializing a tensor by wrapping an object also produces read-only tensors:
-tens.wrap <- tensor$new( 1, init = "wrap" )
-try( tens.wrap$push( 2 ) ) # Error
+# Both variables change together with the tensor:
+print( obj.assignee )
+print( obj.assigned )
 
-# To prevent unintended modification, NEVER store tensor contents from direct
-# access:
-tens.never       <- tensor$new( 0 )
-tens.never.data  <- tens.never$ptr
-tens.never$push( 1 )
-print( tens.never.data ) # The stored data also changes
+# Initializing a tensor by wrapping an object also produces the same side-
+# effect:
+obj.wrapped <- 1
+tens.wrap <- tensor$new( obj.wrapped, init = "wrap" )
+tens.wrap$push( 2 )
+print( obj.wrapped )
 
 # Tensors should be considered as placeholders, which functions can read from
 # and write to. A good program utilizing tensors should minimize the creation

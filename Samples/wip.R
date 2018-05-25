@@ -1,39 +1,27 @@
+library( microbenchmark )
 library( cuRious )
 library( R6 )
-library( microbenchmark )
-
-fun <- function( var ){
-  var + 1
-}
 
 test.class <- R6Class(
   "test",
   public = list(
-    ptr = NULL,
-    ref = function(){
-      .Call( "cuR_count_references", self$ptr )
-    }
-  ),
+    data = NULL,
+    fun  = function(){
+      self$data[[1]] <- 1
 
-  active = list(
-    set = function( var ){
-      print( .Call( "cuR_count_references", var ) )
-      self$ptr <- var
+      invisible( TRUE )
     }
   )
 )
 
+mat <- matrix( 0, 1000, 1000 )
 test <- test.class$new()
+test$data <- mat
+tracemem( mat )
 
-var <- 1:3
-test$set <- fun( var )
+test$fun()
 
-.Call( "cuR_count_references", var )
+res <- microbenchmark( test$fun(), times = 10 )
+res$time
 
-test$ref()
-test$ptr <- fun( 1 )
-test$ptr <- 1:3
-
-.Call( "cuR_count_references", 1 )
-.Call( "cuR_count_references", 1:3 )
-.Call( "cuR_count_references", fun(1) )
+clean()

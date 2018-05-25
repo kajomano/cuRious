@@ -151,6 +151,7 @@ tensor <- R6Class(
 
     clear = function(){
       self$sever.refs()
+
       .Call( paste0("cuR_clear_tensor_", private$.level, "_", private$.type ),
              private$.ptr,
              private$.dims )
@@ -165,7 +166,7 @@ tensor <- R6Class(
     },
 
     check.destroyed = function(){
-      if( self$is.destroyed ){
+      if( is.null( private$.ptr ) ){
         stop( "The tensor is destroyed" )
       }
 
@@ -174,7 +175,24 @@ tensor <- R6Class(
 
     sever.refs = function(){
       if( private$.level == 0L ){
+        # TODO ====
+        # Do this, but fast:
+        # Store pointer along the actual SEXP
+        # Write C function to extract pointer from SEXP
+        # Compare new pointer to old, and only .alert.content() if changed
+
+        # addr.prev <- tracemem( private$.ptr )
+        # untracemem( private$.ptr )
+        #
+        # # Actual severing
         private$.ptr[[1]] <- private$.ptr[[1]]
+        #
+        # addr.post <- tracemem( private$.ptr )
+        # untracemem( private$.ptr )
+        #
+        # if( !identical( addr.prev, addr.post ) ){
+        #   private$.alert.content()
+        # }
       }
 
       invisible( TRUE )
@@ -243,6 +261,7 @@ tensor <- R6Class(
         private$.match.type( val )
 
         private$.ptr <- val
+        private$.alert.content()
       }
     },
 
@@ -277,12 +296,13 @@ tensor <- R6Class(
         transfer( self, tmp )
 
         # Free old memory
-        # This command also alert()s
-        self$destroy()
+        private$.destroy.ptr()
 
         # Update
         private$.ptr   <- tmp$ptr
         private$.level <- level
+
+        private$.alert()
       }
     },
 
@@ -304,13 +324,14 @@ tensor <- R6Class(
           transfer( self, tmp )
 
           # Free old memory
-          # This command also alert()s
-          self$destroy()
+          private$.destroy.ptr()
 
           # Update
           private$.ptr <- tmp$ptr
-        }else{
+
           private$.alert()
+        }else{
+          private$.alert.context()
         }
 
         private$.device <- device
@@ -319,11 +340,6 @@ tensor <- R6Class(
 
     is.destroyed = function( val ){
       if( missing( val ) ) return( is.null( private$.ptr ) )
-    },
-
-    is.read.only = function( val ){
-      self$check.destroyed()
-      if( missing( val ) ) return( private$.read.o )
     }
   )
 )

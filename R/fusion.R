@@ -1,49 +1,39 @@
-# This is the paretn class for every object that combines tensors and does
+# This is the parent class for every object that combines tensors and does
 # something with them. An example use can be seen in pipe.R or many in cublas.R.
 
 fusion <- R6Class(
   "cuR.fusion",
   inherit = alert.recv,
   public = list(
-    initialize = function(){
-      lapply( private$.eps.in, function( ep ){
-        if( !is.tensor( ep ) ){
-          stop( "Invalid input fusion endpoint" )
-        }
-        ep$listener.add( self )
-      })
-
-      lapply( private$.eps.out, function( ep ){
-        if( !is.tensor( ep ) ){
-          stop( "Invalid output fusion endpoint" )
-        }
-        ep$listener.add( self )
-      })
-
-      lapply( private$.eps.opt, function( ep ){
-        if( !is.null( ep ) ){
-          if( !is.tensor( ep ) && !is.context( ep ) ){
-            stop( "Invalid optional fusion endpoint" )
-          }
-          ep$listener.add( self )
-        }
-      })
+    alert = function( ... ){
+      self$check.destroyed()
+      private$.context.changed <- TRUE
+      private$.content.changed <- TRUE
     },
 
-    alert = function(){
-      private$.check.destroyed()
-      private$.changed <- TRUE
+    alert.context = function( ... ){
+      self$check.destroyed()
+      private$.context.changed <- TRUE
+    },
+
+    alert.content = function( ... ){
+      self$check.destroyed()
+      private$.content.changed <- TRUE
     },
 
     run = function(){
-      private$.check.destroyed()
+      self$check.destroyed()
 
       for( ep in private$.eps.out ){
         ep$sever.refs()
       }
 
-      if( private$.changed ){
-        private$.update()
+      if( private$.context.changed ){
+        private$.update.context()
+      }
+
+      if( private$.content.changed ){
+        private$.update.content()
       }
 
       .cuda.device.set( private$.device )
@@ -53,84 +43,81 @@ fusion <- R6Class(
     },
 
     destroy = function(){
-      private$.check.destroyed()
+      self$check.destroyed()
       private$.listener.remove <- TRUE
 
-      private$.eps.in <- lapply( private$.eps.in, function( ep ){
+      for( ep in private$.eps ){
         ep$listener.remove()
-        NULL
-      })
+      }
 
-      private$.eps.out <- lapply( private$.eps.out, function( ep ){
-        ep$listener.remove()
-        NULL
-      })
+      private$.eps     <- NULL
+      private$.eps.out <- NULL
 
-      private$.eps.opt <- lapply( private$.eps.opt, function( ep ){
-        if( !is.null( ep ) ){
-          ep$listener.remove()
-        }
-        NULL
-      })
+      invisible( TRUE )
+    },
+
+    check.destroyed = function(){
+      if( is.null( private$.eps ) ){
+        stop( "The fusion is destroyed" )
+      }
 
       invisible( TRUE )
     }
   ),
 
   private = list(
-    ##############################################################
-    #   If a must-have endpoint is both an input and an output,  #
-    #   it should be listed in the outputs.                      #
-    #   Optional endpoints should only be read!                  #
-    ##############################################################
-    .eps.in  = list(), # Must-have input endpoints
-    .eps.out = list(), # Must-have output endpoints
-    .eps.opt = list(), # Optional endpoints
+    .eps     = NULL,
+    .eps.out = NULL,
 
-    .changed = TRUE,
+    .context.changed = TRUE,
+    .content.changed = TRUE,
 
     # These fields need to be filled in the .update() function
     .device  = NULL,
     .fun     = NULL,
     .params  = list(),
-    # Params should be mostly filled out by the super$.update() below:
 
-    .update = function(){
-      lapply( names( private$.eps.in ), function( ep.name ){
-        param.name <- paste0( ep.name, ".ptr" )
-        private$.params[[param.name]] <- private$.eps.in[[ep.name]]$ptr
-      })
-
-      lapply( names( private$.eps.out ), function( ep.name ){
-        param.name <- paste0( ep.name, ".ptr" )
-        private$.params[[param.name]] <- private$.eps.out[[ep.name]]$ptr
-      })
-
-      lapply( names( private$.eps.opt ), function( ep.name ){
-        ep <- private$.eps.opt[[ep.name]]
-        param.name <- paste0( ep.name, ".ptr" )
-        if( !is.null( ep ) ){
-          private$.params[[param.name]] <- ep$ptr
-        }else{
-          private$.params[[param.name]] <- NULL
+    .add.ep  = function( ep, ep.name, output = FALSE ){
+      if( !is.null( ep ) ){
+        if( !is.tensor( ep ) && !is.context( ep ) ){
+          stop( "Invalid fusion endpoint" )
         }
-      })
 
-      private$.changed <- FALSE
+        ep$listener.add( self, ep.name )
+
+        if( is.null( private$.eps ) ){
+          private$.eps <- list()
+        }
+
+        private$.eps[[ep.name]] <- ep
+
+        if( output ){
+          if( is.null( private$.eps.out ) ){
+            private$.eps.out <- list()
+          }
+
+          private$.eps.out[[ep.name]] <- ep
+        }
+
+        invisible( TRUE )
+      }
     },
 
-    .check.destroyed = function(){
-      if( self$is.destroyed ){
-        stop( "The fusion is destroyed" )
-      }
+    .update.context = function(){
+      private$.context.changed <- FALSE
+    },
+
+    .update.content = function(){
+      private$.params[ paste0( names( private$.eps ), ".ptr" ) ] <-
+        lapply( private$.eps, `[[`, "ptr" )
+
+      private$.content.changed <- FALSE
     }
   ),
 
   active = list(
     is.destroyed = function( val ){
-      if( missing( val ) ) return( any( c(
-        is.null( private$.eps.in ),
-        is.null( private$.eps.out ) ) ) )
+      if( missing( val ) ) return( is.null( private$.eps ) )
     }
   )
 )

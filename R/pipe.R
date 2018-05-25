@@ -46,8 +46,8 @@ pipe <- R6Class(
       }
 
       # Assignments
-      private$.eps.in$src  <- src
-      private$.eps.out$dst <- dst
+      private$.add.ep( src, "src" )
+      private$.add.ep( dst, "dst", TRUE )
 
       private$.params$type <- src$type
       private$.params$dims <- src.dims$dims
@@ -55,25 +55,23 @@ pipe <- R6Class(
       private$.params$src.span.off <- src.dims$span.off
       private$.params$dst.span.off <- dst.dims$span.off
 
-      private$.eps.opt$src.perm <- src.perm
-      private$.eps.opt$dst.perm <- dst.perm
+      private$.add.ep( src.perm, "src.perm" )
+      private$.add.ep( dst.perm, "dst.perm" )
 
       if( !is.null( stream ) ){
         check.cuda.stream( stream )
       }
 
-      private$.eps.opt$stream <- stream
-
-      super$initialize()
+      private$.add.ep( stream, "stream" )
     }
   ),
 
   private = list(
-    .update = function(){
+    .update.context = function(){
       # Since levels are the primary dynamically changing attribute of tensors,
       # these checks mostly concern them
-      src <- private$.eps.in$src
-      dst <- private$.eps.out$dst
+      src <- private$.eps$src
+      dst <- private$.eps$dst
 
       private$.params$src.level <- src$level
       private$.params$dst.level <- dst$level
@@ -84,8 +82,8 @@ pipe <- R6Class(
                         ( ( dst$level != 3L ) && ( src$level == 3L ) ) ||
                         ( deep.transf && ( src$device != dst$device ) ) )
 
-      src.perm <- private$.eps.opt$src.perm
-      dst.perm <- private$.eps.opt$dst.perm
+      src.perm <- private$.eps$src.perm
+      dst.perm <- private$.eps$dst.perm
 
       if( !is.null( src.perm ) ){
         if( cross.transf ){
@@ -117,8 +115,8 @@ pipe <- R6Class(
         }
       }
 
-      if( !is.null( private$.eps.opt$stream ) ){
-        if( private$.eps.opt$stream$is.active ){
+      if( !is.null( private$.eps$stream ) ){
+        if( private$.eps$stream$is.active ){
           if( ( src$level %in% c( 0L, 1L ) ) || ( dst$level %in% c( 0L, 1L ) ) ){
             stop( "An active stream is given to a synchronous transfer" )
           }
@@ -128,7 +126,7 @@ pipe <- R6Class(
               stop( "An active stream is given to a synchronous transfer" )
             }
 
-            if( private$.eps.opt$stream$device != src$device ){
+            if( private$.eps$stream$device != src$device ){
               stop( "Stream is not on the correct device" )
             }
           }
@@ -149,7 +147,7 @@ pipe <- R6Class(
         private$.fun <- .transfer.ptr
       }
 
-      super$.update()
+      super$.update.context()
     }
   )
 )

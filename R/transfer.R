@@ -12,6 +12,7 @@ transfer <- function( src,
                       stream   = NULL ){
 
   pip <- pipe$new( src, dst, src.perm, dst.perm, src.span, dst.span, stream )
+
   res <- pip$run()
 
   pip$destroy()

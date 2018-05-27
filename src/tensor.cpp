@@ -1,6 +1,82 @@
 #include "common.h"
 #include <cstring>
 
+extern "C"
+SEXP cuR_tensor_clear( SEXP ptr_r, SEXP dims_r, SEXP level_r, SEXP type_r ){
+  int* dims       = INTEGER( dims_r );
+  int level       = Rf_asInteger( level_r );
+  const char type = CHAR( STRING_ELT( type_r, 0 ) )[0];
+
+  switch( level ){
+  case 0:
+    switch( type ){
+    case "n":
+      memset( REAL( ptr_r ), 0, sizeof(double) * dims[0] * dims[1] );
+
+    case "i":
+      memset( INTEGER( ptr_r ), 0, sizeof(int) * dims[0] * dims[1] );
+
+    case "l":
+      memset( LOGICAL( ptr_r ), 0, sizeof(int) * dims[0] * dims[1] );
+
+    default:
+      Rf_error( "Invalid type in tensor clear call" );
+    }
+
+  case 1:
+    switch( type ){
+    case "n":
+      memset( (float*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(float) * dims[0] * dims[1] );
+
+    case "i":
+      memset( (int*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(int) * dims[0] * dims[1] );
+
+    case "l":
+      memset( (bool*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(bool) * dims[0] * dims[1] );
+
+    default:
+      Rf_error( "Invalid type in tensor clear call" );
+    }
+
+  case 2:
+    switch( type ){
+    case "n":
+      memset( (float*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(float) * dims[0] * dims[1] );
+
+    case "i":
+      memset( (int*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(int) * dims[0] * dims[1] );
+
+    case "l":
+      memset( (bool*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(bool) * dims[0] * dims[1] );
+
+    default:
+      Rf_error( "Invalid type in tensor clear call" );
+    }
+
+  case 3:
+    switch( type ){
+    case "n":
+      memset( (float*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(float) * dims[0] * dims[1] );
+
+    case "i":
+      memset( (int*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(int) * dims[0] * dims[1] );
+
+    case "l":
+      memset( (bool*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(bool) * dims[0] * dims[1] );
+
+    default:
+      Rf_error( "Invalid type in tensor clear call" );
+    }
+
+  default:
+    Rf_error( "Invalid level in tensor clear call" );
+  }
+
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( TRUE ) );
+  Rf_unprotect(1);
+  return ret_r;
+}
+
 // Level 0 clearing
 extern "C"
 SEXP cuR_clear_tensor_0_n( SEXP tens_r, SEXP dims_r ){

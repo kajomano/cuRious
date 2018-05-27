@@ -1,66 +1,5 @@
 #include "transfer.h"
 
-// template <typename s, typename d>
-// void cuR_transfer_host_host( s* src, d* dst, int* dims, int osrc, int odst, int* csrc, int* cdst ){
-//   // Offsets now work with column subsetting
-//   if( osrc ){
-//     if( csrc ){
-//       csrc = csrc + osrc;
-//     }else{
-//       src  = src + (osrc * dims[0]);
-//     }
-//   }
-//
-//   if( odst ){
-//     if( cdst ){
-//       cdst = cdst + odst;
-//     }else{
-//       dst  = dst + (odst * dims[0]);
-//     }
-//   }
-//
-//   // Copy
-//   if( !csrc && !cdst ){
-//     // No subsetting
-//     int l = dims[0]*dims[1];
-//     for( int j = 0; j < l; j++ ){
-//       dst[j] = (d)src[j];
-//     }
-//   }else if( csrc && cdst ){
-//     // Both subsetted
-//     int dst_off, src_off;
-//     for( int i = 0; i < dims[1]; i ++ ){
-//       dst_off = (cdst[i]-1)*dims[0];
-//       src_off = (csrc[i]-1)*dims[0];
-//       for( int j = 0; j < dims[0]; j++ ){
-//         dst[dst_off+j] = (d)src[src_off+j];
-//       }
-//     }
-//   }else if( !csrc ){
-//     // Destination subsetted
-//     int dst_off;
-//     int src_off = 0;
-//     for( int i = 0; i < dims[1]; i ++ ){
-//       dst_off = (cdst[i]-1)*dims[0];
-//       for( int j = 0; j < dims[0]; j++ ){
-//         dst[dst_off+j] = (d)src[src_off+j];
-//       }
-//       src_off += dims[0];
-//     }
-//   }else{
-//     // Source subsetted
-//     int dst_off = 0;
-//     int src_off;
-//     for( int i = 0; i < dims[1]; i ++ ){
-//       src_off = (csrc[i]-1)*dims[0];
-//       for( int j = 0; j < dims[0]; j++ ){
-//         dst[dst_off+j] = (d)src[src_off+j];
-//       }
-//       dst_off += dims[0];
-//     }
-//   }
-// }
-
 template <typename s, typename d>
 void cuR_transfer_host_host( s* src_ptr,
                              d* dst_ptr,
@@ -73,7 +12,7 @@ void cuR_transfer_host_host( s* src_ptr,
                              int dst_span_off,
                              cudaStream_t* stream_ptr ){
 
-  // Offsets now work with column subsetting
+  // Offsets with permutation offset the permutation vector itself
   if( src_span_off ){
     if( src_perm_ptr ){
       src_perm_ptr = src_perm_ptr + src_span_off;
@@ -90,73 +29,73 @@ void cuR_transfer_host_host( s* src_ptr,
     }
   }
 
-  // TODO ====
-  // These checks are wrong, not enough
-
-  //Safety maxes to avoid segfaults with perms or offsets
-  int src_max = src_dims[0] * src_dims[1] - 1;
-  int dst_max = dst_dims[0] * dst_dims[1] - 1;
+  // Out-of-bounds checks only check for permutation content
+  // Span checks are done in R
 
   // Copy
   if( !src_perm_ptr && !src_perm_ptr ){
     // No subsetting
     int l = dims[0]*dims[1];
     for( int j = 0; j < l; j++ ){
-      if( j > src_max ){
-        Rf_error( "Out-of-bounds transfer on source tensor" );
-      }
-
-      if( j > dst_max ){
-        Rf_error( "Out-of-bounds transfer on destination tensor" );
-      }
-
       dst_ptr[j] = (d)src_ptr[j];
     }
-  }//else if( csrc && cdst ){
-  //   // Both subsetted
-  //   int dst_off, src_off, dst_j, src_j;
-  //   for( int i = 0; i < dims[1]; i ++ ){
-  //     dst_off = (cdst[i]-1)*dims[0];
-  //     src_off = (csrc[i]-1)*dims[0];
-  //     for( int j = 0; j < dims[0]; j++ ){
-  //       dst_j = dst_off+j;
-  //       src_j = src_off+j;
-  //
-  //       if( j > src_max ){
-  //         Rf_error( "Out-of-bounds transfer on source tensor" );
-  //       }
-  //
-  //       if( j > dst_max ){
-  //         Rf_error( "Out-of-bounds transfer on destination tensor" );
-  //       }
-  //
-  //       dst_ptr[dst_off+j] = (d)src_ptr[src_off+j];
-  //     }
-  //   }
-  // }
-  // }else if( !csrc ){
-  //   // Destination subsetted
-  //   int dst_off;
-  //   int src_off = 0;
-  //   for( int i = 0; i < dims[1]; i ++ ){
-  //     dst_off = (cdst[i]-1)*dims[0];
-  //     for( int j = 0; j < dims[0]; j++ ){
-  //       dst[dst_off+j] = (d)src[src_off+j];
-  //     }
-  //     src_off += dims[0];
-  //   }
-  // }else{
-  //   // Source subsetted
-  //   int dst_off = 0;
-  //   int src_off;
-  //   for( int i = 0; i < dims[1]; i ++ ){
-  //     src_off = (csrc[i]-1)*dims[0];
-  //     for( int j = 0; j < dims[0]; j++ ){
-  //       dst[dst_off+j] = (d)src[src_off+j];
-  //     }
-  //     dst_off += dims[0];
-  //   }
-  // }
+  }else if( src_perm_ptr && src_perm_ptr ){
+    // Both subsetted
+    int dst_off, src_off;
+
+    for( int i = 0; i < dims[1]; i ++ ){
+      if( src_perm_ptr[i] > src_dims[1] ){
+        Rf_error( "Out-of-bounds transfer call on source tensor" );
+      }
+
+      if( dst_perm_ptr[i] > dst_dims[1] ){
+        Rf_error( "Out-of-bounds transfer call on destination tensor" );
+      }
+
+      dst_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+      src_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+
+      for( int j = 0; j < dims[0]; j++ ){
+        dst_ptr[dst_off+j] = (d)src_ptr[src_off+j];
+      }
+    }
+  }else if( !src_perm_ptr ){
+    // Destination subsetted
+    int dst_off;
+    int src_off = 0;
+
+    for( int i = 0; i < dims[1]; i ++ ){
+      if( dst_perm_ptr[i] > dst_dims[1] ){
+        Rf_error( "Out-of-bounds transfer call on destination tensor" );
+      }
+
+      dst_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+
+      for( int j = 0; j < dims[0]; j++ ){
+        dst_ptr[dst_off+j] = (d)src_ptr[j];
+      }
+
+      src_off += dims[0];
+    }
+  }else{
+    // Source subsetted
+    int dst_off = 0;
+    int src_off;
+
+    for( int i = 0; i < dims[1]; i ++ ){
+      if( src_perm_ptr[i] > src_dims[1] ){
+        Rf_error( "Out-of-bounds transfer call on source tensor" );
+      }
+
+      src_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+
+      for( int j = 0; j < dims[0]; j++ ){
+        dst_ptr[dst_off+j] = (d)src_ptr[src_off+j];
+      }
+
+      dst_off += dims[0];
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -175,9 +114,7 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                    SEXP dst_span_off_r,  // Optional
                    SEXP stream_ptr_r ){  // Optional
 
-  // Arg conversions (except src, dst)
-  // void* src_ptr;  // Types change, hence void*
-  // void* dst_ptr;
+  // Arg conversions (except src_ptr, dst_ptr)
   int src_level   = Rf_asInteger( src_level_r );
   int dst_level   = Rf_asInteger( dst_level_r );
   const char type = CHAR( STRING_ELT( type_r, 0 ) )[0];
@@ -186,33 +123,32 @@ SEXP cuR_transfer( SEXP src_ptr_r,
   int* dims       = INTEGER( dims_r );
 
   int* src_perm_ptr = ( R_NilValue == src_perm_ptr_r ) ? NULL :
-    ( TYPEOF( src_perm_ptr_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( src_perm_ptr_r ) :
+    ( TYPEOF( src_perm_ptr_r ) == EXTPTRSXP ? (int*) R_ExternalPtrAddr( src_perm_ptr_r ) :
         INTEGER( src_perm_ptr_r ) );
 
   int* dst_perm_ptr = ( R_NilValue == dst_perm_ptr_r ) ? NULL :
-    ( TYPEOF( dst_perm_ptr_r ) == EXTPTRSXP ? (int*)R_ExternalPtrAddr( dst_perm_ptr_r ) :
+    ( TYPEOF( dst_perm_ptr_r ) == EXTPTRSXP ? (int*) R_ExternalPtrAddr( dst_perm_ptr_r ) :
         INTEGER( dst_perm_ptr_r ) );
 
   int src_span_off  = ( R_NilValue == src_span_off_r ) ? 0:
-    ( Rf_asInteger( src_span_off_r ) - 1);
+    ( Rf_asInteger( src_span_off_r ) - 1 );
 
   int dst_span_off  = ( R_NilValue == dst_span_off_r ) ? 0:
-    ( Rf_asInteger( dst_span_off_r ) - 1);
+    ( Rf_asInteger( dst_span_off_r ) - 1 );
 
   cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
-    (cudaStream_t*)R_ExternalPtrAddr( stream_ptr_r );
+    (cudaStream_t*) R_ExternalPtrAddr( stream_ptr_r );
 
-  // src, dst conv and calls
+  // Calls
   switch( src_level ){
   case 0:
     switch( dst_level ){
+    // 0-0 =====================================================================
     case 0:
       switch( type ){
       case 'n':
-        double* src_ptr = REAL( src_ptr_r );
-        double* dst_ptr = REAL( dst_ptr_r );
-        cuR_transfer_host_host<double, double>( src_ptr,
-                                                dst_ptr,
+        cuR_transfer_host_host<double, double>( REAL( src_ptr_r ),
+                                                REAL( dst_ptr_r ),
                                                 src_dims,
                                                 dst_dims,
                                                 dims,
@@ -222,12 +158,427 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                                 dst_span_off,
                                                 stream_ptr );
         break;
+
+      case 'i':
+        cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
+                                          INTEGER( dst_ptr_r ),
+                                          src_dims,
+                                          dst_dims,
+                                          dims,
+                                          src_perm_ptr,
+                                          dst_perm_ptr,
+                                          src_span_off,
+                                          dst_span_off,
+                                          stream_ptr );
+        break;
+
+      case 'l':
+        cuR_transfer_host_host<int, int>( LOGICAL( src_ptr_r ),
+                                          LOGICAL( dst_ptr_r ),
+                                          src_dims,
+                                          dst_dims,
+                                          dims,
+                                          src_perm_ptr,
+                                          dst_perm_ptr,
+                                          src_span_off,
+                                          dst_span_off,
+                                          stream_ptr );
+        break;
+
+      default:
+        Rf_error( "Invalid type in transfer call" );
       }
+
+      // 0-1 -------------------------------------------------------------------
+    case 1:
+      switch( type ){
+      case 'n':
+        cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
+                                               (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                               src_dims,
+                                               dst_dims,
+                                               dims,
+                                               src_perm_ptr,
+                                               dst_perm_ptr,
+                                               src_span_off,
+                                               dst_span_off,
+                                               stream_ptr );
+        break;
+
+      case 'i':
+        cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
+                                          (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                          src_dims,
+                                          dst_dims,
+                                          dims,
+                                          src_perm_ptr,
+                                          dst_perm_ptr,
+                                          src_span_off,
+                                          dst_span_off,
+                                          stream_ptr );
+        break;
+
+      case 'l':
+        cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
+                                           (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                           src_dims,
+                                           dst_dims,
+                                           dims,
+                                           src_perm_ptr,
+                                           dst_perm_ptr,
+                                           src_span_off,
+                                           dst_span_off,
+                                           stream_ptr );
+        break;
+
+      default:
+        Rf_error( "Invalid type in transfer call" );
+      }
+
+      // 0-2 -------------------------------------------------------------------
+    case 2:
+      switch( type ){
+      case 'n':
+        cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
+                                               (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                               src_dims,
+                                               dst_dims,
+                                               dims,
+                                               src_perm_ptr,
+                                               dst_perm_ptr,
+                                               src_span_off,
+                                               dst_span_off,
+                                               stream_ptr );
+        break;
+
+      case 'i':
+        cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
+                                          (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                          src_dims,
+                                          dst_dims,
+                                          dims,
+                                          src_perm_ptr,
+                                          dst_perm_ptr,
+                                          src_span_off,
+                                          dst_span_off,
+                                          stream_ptr );
+        break;
+
+      case 'l':
+        cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
+                                           (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                           src_dims,
+                                           dst_dims,
+                                           dims,
+                                           src_perm_ptr,
+                                           dst_perm_ptr,
+                                           src_span_off,
+                                           dst_span_off,
+                                           stream_ptr );
+        break;
+
+      default:
+        Rf_error( "Invalid type in transfer call" );
+      }
+
+    default:
+      Rf_error( "Invalid destination level in transfer call" );
     }
+
+  case 1:
+    switch( dst_level ){
+    // 1-0 =====================================================================
+    case 0:
+      switch( type ){
+      case 'n':
+        cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                               REAL( dst_ptr_r ),
+                                               src_dims,
+                                               dst_dims,
+                                               dims,
+                                               src_perm_ptr,
+                                               dst_perm_ptr,
+                                               src_span_off,
+                                               dst_span_off,
+                                               stream_ptr );
+        break;
+
+      case 'i':
+        cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                          INTEGER( dst_ptr_r ),
+                                          src_dims,
+                                          dst_dims,
+                                          dims,
+                                          src_perm_ptr,
+                                          dst_perm_ptr,
+                                          src_span_off,
+                                          dst_span_off,
+                                          stream_ptr );
+        break;
+
+      case 'l':
+        cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                           LOGICAL( dst_ptr_r ),
+                                           src_dims,
+                                           dst_dims,
+                                           dims,
+                                           src_perm_ptr,
+                                           dst_perm_ptr,
+                                           src_span_off,
+                                           dst_span_off,
+                                           stream_ptr );
+        break;
+
+      default:
+        Rf_error( "Invalid type in transfer call" );
+      }
+
+      // 1-1 -------------------------------------------------------------------
+    case 1:
+      switch( type ){
+      case 'n':
+        cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              src_dims,
+                                              dst_dims,
+                                              dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off,
+                                              stream_ptr );
+        break;
+
+      case 'i':
+        cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                          (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                          src_dims,
+                                          dst_dims,
+                                          dims,
+                                          src_perm_ptr,
+                                          dst_perm_ptr,
+                                          src_span_off,
+                                          dst_span_off,
+                                          stream_ptr );
+        break;
+
+      case 'l':
+        cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                            (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                            src_dims,
+                                            dst_dims,
+                                            dims,
+                                            src_perm_ptr,
+                                            dst_perm_ptr,
+                                            src_span_off,
+                                            dst_span_off,
+                                            stream_ptr );
+        break;
+
+      default:
+        Rf_error( "Invalid type in transfer call" );
+      }
+
+      // 1-2 -------------------------------------------------------------------
+    case 2:
+      switch( type ){
+      case 'n':
+        cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              src_dims,
+                                              dst_dims,
+                                              dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off,
+                                              stream_ptr );
+        break;
+
+      case 'i':
+        cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                          (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                          src_dims,
+                                          dst_dims,
+                                          dims,
+                                          src_perm_ptr,
+                                          dst_perm_ptr,
+                                          src_span_off,
+                                          dst_span_off,
+                                          stream_ptr );
+        break;
+
+      case 'l':
+        cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                            (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                            src_dims,
+                                            dst_dims,
+                                            dims,
+                                            src_perm_ptr,
+                                            dst_perm_ptr,
+                                            src_span_off,
+                                            dst_span_off,
+                                            stream_ptr );
+        break;
+
+      default:
+        Rf_error( "Invalid type in transfer call" );
+      }
+
+    default:
+      Rf_error( "Invalid destination level in transfer call" );
+    }
+
+  case 2:
+    switch( dst_level ){
+    // 2-0 =====================================================================
+    case 0:
+      switch( type ){
+      case 'n':
+        cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                               REAL( dst_ptr_r ),
+                                               src_dims,
+                                               dst_dims,
+                                               dims,
+                                               src_perm_ptr,
+                                               dst_perm_ptr,
+                                               src_span_off,
+                                               dst_span_off,
+                                               stream_ptr );
+        break;
+
+      case 'i':
+        cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                          INTEGER( dst_ptr_r ),
+                                          src_dims,
+                                          dst_dims,
+                                          dims,
+                                          src_perm_ptr,
+                                          dst_perm_ptr,
+                                          src_span_off,
+                                          dst_span_off,
+                                          stream_ptr );
+        break;
+
+      case 'l':
+        cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                           LOGICAL( dst_ptr_r ),
+                                           src_dims,
+                                           dst_dims,
+                                           dims,
+                                           src_perm_ptr,
+                                           dst_perm_ptr,
+                                           src_span_off,
+                                           dst_span_off,
+                                           stream_ptr );
+        break;
+
+      default:
+        Rf_error( "Invalid type in transfer call" );
+      }
+
+      // 2-1 -------------------------------------------------------------------
+    case 1:
+      switch( type ){
+      case 'n':
+        cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              src_dims,
+                                              dst_dims,
+                                              dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off,
+                                              stream_ptr );
+        break;
+
+      case 'i':
+        cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                          (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                          src_dims,
+                                          dst_dims,
+                                          dims,
+                                          src_perm_ptr,
+                                          dst_perm_ptr,
+                                          src_span_off,
+                                          dst_span_off,
+                                          stream_ptr );
+        break;
+
+      case 'l':
+        cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                            (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                            src_dims,
+                                            dst_dims,
+                                            dims,
+                                            src_perm_ptr,
+                                            dst_perm_ptr,
+                                            src_span_off,
+                                            dst_span_off,
+                                            stream_ptr );
+        break;
+
+      default:
+        Rf_error( "Invalid type in transfer call" );
+      }
+
+      // 2-2 -------------------------------------------------------------------
+    case 2:
+      switch( type ){
+      case 'n':
+        cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              src_dims,
+                                              dst_dims,
+                                              dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off,
+                                              stream_ptr );
+        break;
+
+      case 'i':
+        cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                          (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                          src_dims,
+                                          dst_dims,
+                                          dims,
+                                          src_perm_ptr,
+                                          dst_perm_ptr,
+                                          src_span_off,
+                                          dst_span_off,
+                                          stream_ptr );
+        break;
+
+      case 'l':
+        cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                            (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                            src_dims,
+                                            dst_dims,
+                                            dims,
+                                            src_perm_ptr,
+                                            dst_perm_ptr,
+                                            src_span_off,
+                                            dst_span_off,
+                                            stream_ptr );
+        break;
+
+      default:
+        Rf_error( "Invalid type in transfer call" );
+      }
+
+    default:
+      Rf_error( "Invalid destination level in transfer call" );
+    }
+
+  default:
+    Rf_error( "Invalid source level in transfer call" );
   }
 
   SEXP ret_r = Rf_protect( Rf_ScalarLogical( TRUE ) );
-  Rf_unprotect(1);
+  Rf_unprotect( 1 );
   return ret_r;
 }
 

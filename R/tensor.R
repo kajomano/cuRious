@@ -288,7 +288,7 @@ tensor <- R6Class(
       }
     },
 
-    .ptr = function( val ){
+    .ptr.unsafe = function( val ){
       self$check.destroyed()
 
       if( missing( val ) ){

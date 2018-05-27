@@ -14,6 +14,9 @@
 #include <cuda_runtime_api.h>
 #include <cublas_v2.h>
 
+// TODO ====
+// Redo these with Rf_error()
+
 #define cublasTry(ans){ if( cublasAssert( (ans), __FILE__, __LINE__ ) ) return R_NilValue; }
 inline bool cublasAssert( cublasStatus_t stat, const char *file, int line){
   if( stat == CUBLAS_STATUS_SUCCESS ){

@@ -1,4 +1,4 @@
-# TPipes are for transferring data between tensors. Pipes do most of the
+# Pipes are for transferring data between tensors. Pipes do most of the
 # argument sanity checks at creation, and try to do the rest only when needed at
 # runtime. Overhead reduction is key for smaller tasks.
 

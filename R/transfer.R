@@ -12,11 +12,8 @@ transfer <- function( src,
                       stream   = NULL ){
 
   pip <- pipe$new( src, dst, src.perm, dst.perm, src.span, dst.span, stream )
-
   res <- pip$run()
-
   pip$destroy()
-
   invisible( res )
 }
 
@@ -28,6 +25,8 @@ transfer <- function( src,
                           src.level,
                           dst.level,
                           type,
+                          src.dims,
+                          dst.dims,
                           dims,
                           src.perm.ptr = NULL,
                           dst.perm.ptr = NULL,

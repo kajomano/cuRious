@@ -9,6 +9,8 @@
 # Level 2: C array  ( pinned host memory, float,  int, bool )
 # Level 3: C array  (      device memory, float,  int, bool )
 
+# Tensors implement reference counting if the content is accessed by $ptr
+
 # Tensor class ====
 tensor <- R6Class(
   "cuR.tensor",
@@ -18,11 +20,9 @@ tensor <- R6Class(
                            level  = NULL,
                            dims   = NULL,
                            type   = NULL,
-                           init   = c( "copy", "mimic", "wrap" ),
+                           copy   = TRUE,
                            device = NULL
     ){
-      init <- match.arg( init, c( "copy", "mimic", "wrap" ), T )[[1]]
-
       # If data is not given
       if( is.null( data ) ){
         if( is.null( dims ) ){
@@ -94,63 +94,78 @@ tensor <- R6Class(
         }
       }
 
+      # TODO ====
+      # Redo this
+
       # Initialize the tensor according to init
       if( is.null( data ) ){
-        private$.ptr <- private$.create.ptr()
+        private$.create.ptr()
         self$clear()
       }else{
-        switch(
-          init,
-          copy = {
-            private$.ptr <- private$.create.ptr()
-
-            if( is.tensor( data ) ){
-              data.tensor <- data
+        if( copy ){
+          if( is.tensor( data ) ){
+            if( data$level == 0L && private$.level == 0L ){
+              private$.ptr <- data$ptr
+              # private$.ptr.acc <- TRUE
             }else{
-              data.tensor <- tensor$new( data, init = "wrap" )
+              private$.create.ptr()
+              transfer( data, self )
             }
-
-            transfer( data.tensor, self )
-          },
-          mimic = {
-            private$.ptr <- private$.create.ptr()
-            self$clear()
-          },
-          wrap = {
-            if( is.obj( data ) ){
+          }else{
+            if( private$.level == 0L ){
               private$.ptr <- data
+              # private$.ptr.acc <- TRUE
             }else{
-              stop( "Tensors are not wrappable" )
+              private$.create.ptr()
+              data.tensor <- tensor$new( data )
+              transfer( data.tensor, self )
             }
           }
-        )
+        }else{
+          private$.create.ptr()
+          self$clear()
+        }
       }
     },
 
     # These functions are only there for objs, are essentially interfaces
     # to R
+
+    # TODO ====
+    # Think about
+    # private$.ptr.acc <- FALSE
+    # for these 2 operations:
     push = function( obj ){
       self$check.destroyed()
 
       obj <- check.obj( obj )
-      private$.match.dims( obj )
-      private$.match.type( obj )
+      private$.match.obj( obj )
 
-      obj.tensor <- tensor$new( obj,  init = "wrap" )
-      transfer( obj.tensor, self )
+      obj.tensor   <- tensor$new( obj, private$.level )
+      private$.destroy.ptr()
+      private$.ptr <- obj.tensor$ptr
+
+      if( private$.level == 0L ){
+        private$.ptr.acc <- TRUE
+      }
+
+      invisible( TRUE )
     },
 
     pull = function(){
       self$check.destroyed()
 
-      tmp <- tensor$new( self, 0L, init = "mimic" )
-      transfer( self, tmp )
+      tmp <- tensor$new( self, 0L )
+
+      if( private$.level == 0L ){
+        private$.ptr.acc <- TRUE
+      }
 
       tmp$ptr
     },
 
     clear = function(){
-      self$sever.refs()
+      self$sever()
 
       .Call( paste0("cuR_clear_tensor_", private$.level, "_", private$.type ),
              private$.ptr,
@@ -173,26 +188,26 @@ tensor <- R6Class(
       invisible( TRUE )
     },
 
-    sever.refs = function(){
+    .sever = function(){
       if( private$.level == 0L ){
-        # TODO ====
-        # Do this, but fast:
-        # Store pointer along the actual SEXP
-        # Write C function to extract pointer from SEXP
-        # Compare new pointer to old, and only .alert.content() if changed
+        if( private$.ptr.acc ){
+          browser()
+          old.obj.ptr <- .Call( "cuR_get_obj_ptr", private$.ptr )
 
-        # addr.prev <- tracemem( private$.ptr )
-        # untracemem( private$.ptr )
-        #
-        # # Actual severing
-        private$.ptr[[1]] <- private$.ptr[[1]]
-        #
-        # addr.post <- tracemem( private$.ptr )
-        # untracemem( private$.ptr )
-        #
-        # if( !identical( addr.prev, addr.post ) ){
-        #   private$.alert.content()
-        # }
+          print( "Severed" )
+
+          # Actual severing
+          private$.ptr[[1]] <- private$.ptr[[1]]
+          .Call( "cuR_get_obj_ptr", private$.ptr )
+
+          if( !( .Call( "cuR_compare_obj_ptr",
+                        .Call( "cuR_get_obj_ptr", private$.ptr ),
+                        old.obj.ptr ) ) ){
+            print( "Content update alert" )
+            private$.alert.content()
+          }
+        }
+        private$.ptr.acc <- FALSE
       }
 
       invisible( TRUE )
@@ -200,11 +215,14 @@ tensor <- R6Class(
   ),
 
   private = list(
-    .ptr    = NULL,
-    .level  = NULL,
-    .dims   = NULL,
-    .type   = NULL,
-    .device = NULL,
+    .ptr     = NULL,
+    .level   = NULL,
+    .dims    = NULL,
+    .type    = NULL,
+    .device  = NULL,
+
+    # Outside references
+    .refs    = FALSE,
 
     .create.ptr = function( level = private$.level ){
       if( prod( private$.dims ) > 2^32-1 ){
@@ -213,9 +231,12 @@ tensor <- R6Class(
         stop( "Object is too large" )
       }
 
-      switch(
+      private$.ptr <- switch(
         as.character( level ),
-        `0` = obj.create( private$.dims, private$.type ),
+        `0` = {
+          private$.ptr.acc <- FALSE
+          obj.create( private$.dims, private$.type )
+        },
         `1` = .Call( paste0("cuR_create_tensor_1_", private$.type ), private$.dims ),
         `2` = .Call( paste0("cuR_create_tensor_2_", private$.type ), private$.dims ),
         `3` = {
@@ -236,18 +257,21 @@ tensor <- R6Class(
       private$.ptr <- NULL
     },
 
-    .match.dims = function( obj ){
-      if( !identical( obj.dims( obj ), private$.dims ) ) stop( "Dims do not match" )
-    },
-
-    .match.type = function( obj ){
-      if( obj.type( obj ) != private$.type ) stop( "Types do not match" )
+    .match.obj = function( obj ){
+      if( !identical( obj.dims( obj ), private$.dims ) ){
+        stop( "Dims do not match" )
+      }
+      if( obj.type( obj ) != private$.type ){
+        stop( "Types do not match" )
+      }
     }
   ),
 
   active = list(
     ptr = function( val ){
       self$check.destroyed()
+
+      private$.refs <- TRUE
 
       if( missing( val ) ){
         return( private$.ptr )
@@ -257,11 +281,20 @@ tensor <- R6Class(
         }
 
         val <- check.obj( val )
-        private$.match.dims( val )
-        private$.match.type( val )
+        private$.match.obj( val )
 
         private$.ptr <- val
         private$.alert.content()
+      }
+    },
+
+    .ptr = function( val ){
+      self$check.destroyed()
+
+      if( missing( val ) ){
+        return( private$.ptr )
+      }else{
+        stop( "Implement proper transfers" )
       }
     },
 
@@ -292,16 +325,17 @@ tensor <- R6Class(
         }
 
         # Create a placeholder and copy
-        tmp <- tensor$new( self, level, init = "mimic" )
-        transfer( self, tmp )
+        tmp <- tensor$new( self, level )
 
         # Free old memory
         private$.destroy.ptr()
 
         # Update
         private$.ptr   <- tmp$ptr
+        private$.refs  <- FALSE
         private$.level <- level
 
+        # Both context and content changed
         private$.alert()
       }
     },
@@ -318,10 +352,11 @@ tensor <- R6Class(
           return()
         }
 
+        private$.device <- device
+
         if( private$.level == 3L ){
           # Create a placeholder and copy
-          tmp <- tensor$new( self, 3L, init = "mimic", device = device )
-          transfer( self, tmp )
+          tmp <- tensor$new( self, 3L, device = device )
 
           # Free old memory
           private$.destroy.ptr()
@@ -333,8 +368,6 @@ tensor <- R6Class(
         }else{
           private$.alert.context()
         }
-
-        private$.device <- device
       }
     },
 

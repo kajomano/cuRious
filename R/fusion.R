@@ -25,7 +25,7 @@ fusion <- R6Class(
       self$check.destroyed()
 
       for( ep in private$.eps.out ){
-        ep$sever.refs()
+        ep$sever()
       }
 
       if( private$.context.changed ){
@@ -104,6 +104,7 @@ fusion <- R6Class(
     },
 
     .update.context = function(){
+      print( "context updated" )
       private$.context.changed <- FALSE
     },
 
@@ -111,6 +112,7 @@ fusion <- R6Class(
       private$.params[ paste0( names( private$.eps ), ".ptr" ) ] <-
         lapply( private$.eps, `[[`, "ptr" )
 
+      print( "content updated" )
       private$.content.changed <- FALSE
     }
   ),

@@ -264,3 +264,11 @@ SEXP cuR_tensor_clear( SEXP ptr_r, SEXP level_r, SEXP dims_r, SEXP type_r ){
 
   return R_NilValue;
 }
+
+extern "C"
+SEXP cuR_object_duplicate( SEXP obj_r ){
+  SEXP duplicate_r = Rf_protect( Rf_duplicate( obj_r ) );
+
+  Rf_unprotect(1);
+  return duplicate_r;
+}

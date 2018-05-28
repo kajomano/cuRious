@@ -35,11 +35,11 @@ SEXP cuR_cublas_handle_create(){
   cublasTry( cublasCreate( handle ) );
 
   // Return to R with an external pointer SEXP
-  SEXP ptr = Rf_protect( R_MakeExternalPtr( handle, R_NilValue, R_NilValue ) );
-  R_RegisterCFinalizerEx( ptr, cuR_cublas_handle_fin, TRUE );
+  SEXP handle_r = Rf_protect( R_MakeExternalPtr( handle, R_NilValue, R_NilValue ) );
+  R_RegisterCFinalizerEx( handle_r, cuR_cublas_handle_fin, TRUE );
 
   Rf_unprotect(1);
-  return ptr;
+  return handle_r;
 }
 
 // This returns a cublasStatus

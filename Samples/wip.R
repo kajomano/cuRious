@@ -2,17 +2,20 @@ library( cuRious )
 library( microbenchmark )
 library( R6 )
 
-tens1 <- tensor$new( 1, 0L )
+obj1 <- 1.0
+tracemem( obj1 )
+obj2 <- 2.0
+
+tens1 <- tensor$new( obj1, 0L )
 tens1$ptr
 
-tens2 <- tensor$new( tens1, 0L )
-tens2$ptr
+tens1$sever()
+.Call( "cuR_transfer", obj2, tens1$ptr, 0L, 0L, "n", tens1$dims, tens1$dims, tens1$dims, NULL, NULL, NULL, NULL, NULL )
 
-tens1$destroy()
-tens2$destroy()
+obj1
 
-# clean()
-#
+clean()
+
 # dims <- c( 3000L, 2000L )
 # type <- "n"
 #

@@ -60,11 +60,11 @@ SEXP cuR_cuda_stream_create(){
   cudaTry( cudaStreamCreate( stream ) );
 
   // Return to R with an external pointer SEXP
-  SEXP ptr = Rf_protect( R_MakeExternalPtr( stream, R_NilValue, R_NilValue ) );
-  R_RegisterCFinalizerEx( ptr, cuR_cuda_stream_fin, TRUE );
+  SEXP stream_r = Rf_protect( R_MakeExternalPtr( stream, R_NilValue, R_NilValue ) );
+  R_RegisterCFinalizerEx( stream_r, cuR_cuda_stream_fin, TRUE );
 
   Rf_unprotect(1);
-  return ptr;
+  return stream_r;
 }
 
 extern "C"

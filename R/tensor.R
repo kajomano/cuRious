@@ -149,34 +149,34 @@ tensor <- R6Class(
     # Think about
     # private$.ptr.acc <- FALSE
     # for these 2 operations:
-    push = function( obj ){
-      self$check.destroyed()
-
-      obj <- check.obj( obj )
-      private$.match.obj( obj )
-
-      obj.tensor   <- tensor$new( obj, private$.level )
-      private$.destroy.ptr()
-      private$.ptr <- obj.tensor$ptr
-
-      if( private$.level == 0L ){
-        private$.ptr.acc <- TRUE
-      }
-
-      invisible( TRUE )
-    },
-
-    pull = function(){
-      self$check.destroyed()
-
-      tmp <- tensor$new( self, 0L )
-
-      if( private$.level == 0L ){
-        private$.ptr.acc <- TRUE
-      }
-
-      tmp$ptr
-    },
+    # push = function( obj ){
+    #   self$check.destroyed()
+    #
+    #   obj <- check.obj( obj )
+    #   private$.match.obj( obj )
+    #
+    #   obj.tensor <- tensor$new( obj, private$.level )
+    #   private$.destroy.ptr()
+    #   private$.ptr <- obj.tensor$ptr
+    #
+    #   if( private$.level == 0L ){
+    #     private$.ptr.acc <- TRUE
+    #   }
+    #
+    #   invisible( TRUE )
+    # },
+    #
+    # pull = function(){
+    #   self$check.destroyed()
+    #
+    #   tmp <- tensor$new( self, 0L )
+    #
+    #   if( private$.level == 0L ){
+    #     private$.ptr.acc <- TRUE
+    #   }
+    #
+    #   tmp$ptr
+    # },
 
     clear = function(){
       self$sever()
@@ -205,28 +205,12 @@ tensor <- R6Class(
     },
 
     sever = function(){
-      # if( private$.level == 0L ){
-      #   if( private$.ptr.acc ){
-      #     browser()
-      #     old.obj.ptr <- .Call( "cuR_get_obj_ptr", private$.ptr )
-      #
-      #     print( "Severed" )
-      #
-      #     # Actual severing
-      #     private$.ptr[[1]] <- private$.ptr[[1]]
-      #     .Call( "cuR_get_obj_ptr", private$.ptr )
-      #
-      #     if( !( .Call( "cuR_compare_obj_ptr",
-      #                   .Call( "cuR_get_obj_ptr", private$.ptr ),
-      #                   old.obj.ptr ) ) ){
-      #       print( "Content update alert" )
-      #       private$.alert.content()
-      #     }
-      #   }
-      #   private$.ptr.acc <- FALSE
-      # }
-
-      private$.refs <- FALSE
+      if( private$.level == 0L ){
+        if( private$.refs ){
+          private$.ptr  <- .Call( "cuR_object_duplicate", private$.ptr )
+          private$.refs <- FALSE
+        }
+      }
 
       invisible( TRUE )
     }
@@ -344,59 +328,64 @@ tensor <- R6Class(
 
       if( missing( level ) ){
         return( private$.level )
-      }else{
-        level <- check.level( level )
-
-        if( private$.level == level ){
-          return()
-        }
-
-        # Create a placeholder and copy
-        tmp <- tensor$new( self, level )
-
-        # Free old memory
-        private$.destroy.ptr()
-
-        # Update
-        private$.ptr   <- tmp$ptr
-        private$.refs  <- FALSE
-        private$.level <- level
-
-        # Both context and content changed
-        private$.alert()
       }
+
+      # TODO ====
+      # These guys
+
+      # else{
+      #   level <- check.level( level )
+      #
+      #   if( private$.level == level ){
+      #     return()
+      #   }
+      #
+      #   # Create a placeholder and copy
+      #   tmp <- tensor$new( self, level )
+      #
+      #   # Free old memory
+      #   private$.destroy.ptr()
+      #
+      #   # Update
+      #   private$.ptr   <- tmp$ptr
+      #   private$.refs  <- FALSE
+      #   private$.level <- level
+      #
+      #   # Both context and content changed
+      #   private$.alert()
+      # }
     },
 
-    device = function( device ){
-      self$check.destroyed()
-
-      if( missing( device) ){
-        return( private$.device )
-      }else{
-        device <- check.device( device )
-
-        if( private$.device == device ){
-          return()
-        }
-
-        private$.device <- device
-
-        if( private$.level == 3L ){
-          # Create a placeholder and copy
-          tmp <- tensor$new( self, 3L, device = device )
-
-          # Free old memory
-          private$.destroy.ptr()
-
-          # Update
-          private$.ptr <- tmp$ptr
-
-          private$.alert()
-        }else{
-          private$.alert.context()
-        }
-      }
-    },
+    # device = function( device ){
+    #   self$check.destroyed()
+    #
+    #   if( missing( device) ){
+    #     return( private$.device )
+    #   }else{
+    #     device <- check.device( device )
+    #
+    #     if( private$.device == device ){
+    #       return()
+    #     }
+    #
+    #     private$.device <- device
+    #
+    #     if( private$.level == 3L ){
+    #       # Create a placeholder and copy
+    #       tmp <- tensor$new( self, 3L, device = device )
+    #
+    #       # Free old memory
+    #       private$.destroy.ptr()
+    #
+    #       # Update
+    #       private$.ptr <- tmp$ptr
+    #
+    #       private$.alert()
+    #     }else{
+    #       private$.alert.context()
+    #     }
+    #   }
+    # },
 
     is.destroyed = function( val ){
       if( missing( val ) ) return( is.null( private$.ptr ) )

@@ -1,72 +1,182 @@
 #include "common.h"
 #include <cstring>
 
+template <typename t>
+void cuR_tensor_fin_1( SEXP ptr_r ){
+  t* ptr = (t*)R_ExternalPtrAddr( ptr_r );
+
+  if( ptr ){
+    debugPrint( Rprintf( "<%p> Finalizing L1 tensor\n", (void*)ptr ) );
+
+    delete[] ptr;
+    R_ClearExternalPtr( ptr_r );
+  }
+}
+
+template <typename t>
+void cuR_tensor_fin_2( SEXP ptr_r ){
+  t* ptr = (t*)R_ExternalPtrAddr( ptr_r );
+
+  if( ptr ){
+    debugPrint( Rprintf( "<%p> Finalizing L2 tensor\n", (void*)ptr ) );
+
+    cudaFreeHost( ptr );
+    R_ClearExternalPtr( ptr_r );
+  }
+}
+
+template <typename t>
+void cuR_tensor_fin_3( SEXP ptr_r ){
+  t* ptr = (t*)R_ExternalPtrAddr( ptr_r );
+
+  if( ptr ){
+    debugPrint( Rprintf( "<%p> Finalizing L3 tensor\n", (void*)ptr ) );
+
+    cudaFree( ptr );
+    R_ClearExternalPtr( ptr_r );
+  }
+}
+
 extern "C"
-SEXP cuR_tensor_clear( SEXP ptr_r, SEXP dims_r, SEXP level_r, SEXP type_r ){
+SEXP cuR_tensor_create( SEXP level_r, SEXP dims_r, SEXP type_r ){
+  int level       = Rf_asInteger( level_r );
+  const char type = CHAR( STRING_ELT( type_r, 0 ) )[0];
   int* dims       = INTEGER( dims_r );
+  int l           = dims[0] * dims[1];
+
+  void* ptr;
+  SEXP ptr_r;
+
+  switch( level ){
+  case 1:
+    switch( type ){
+    case 'n':
+      ptr = new float[l];
+      ptr_r = Rf_protect( R_MakeExternalPtr( ptr, R_NilValue, R_NilValue ) );
+      R_RegisterCFinalizerEx( ptr_r, cuR_tensor_fin_1<float>, TRUE );
+      break;
+    case 'i':
+      ptr = new int[l];
+      ptr_r = Rf_protect( R_MakeExternalPtr( ptr, R_NilValue, R_NilValue ) );
+      R_RegisterCFinalizerEx( ptr_r, cuR_tensor_fin_1<int>, TRUE );
+      break;
+    case 'l':
+      ptr = new bool[l];
+      ptr_r = Rf_protect( R_MakeExternalPtr( ptr, R_NilValue, R_NilValue ) );
+      R_RegisterCFinalizerEx( ptr_r, cuR_tensor_fin_1<bool>, TRUE );
+      break;
+    default:
+      Rf_error( "Invalid type in tensor clear call" );
+    }
+    break;
+
+  case 2:
+    switch( type ){
+    case 'n':
+      cudaTry( cudaHostAlloc( (void**)&ptr, l*sizeof(float), cudaHostAllocPortable) );
+      ptr_r = Rf_protect( R_MakeExternalPtr( ptr, R_NilValue, R_NilValue ) );
+      R_RegisterCFinalizerEx( ptr_r, cuR_tensor_fin_2<float>, TRUE );
+      break;
+    case 'i':
+      cudaTry( cudaHostAlloc( (void**)&ptr, l*sizeof(int), cudaHostAllocPortable) );
+      ptr_r = Rf_protect( R_MakeExternalPtr( ptr, R_NilValue, R_NilValue ) );
+      R_RegisterCFinalizerEx( ptr_r, cuR_tensor_fin_2<int>, TRUE );
+      break;
+    case 'l':
+      cudaTry( cudaHostAlloc( (void**)&ptr, l*sizeof(bool), cudaHostAllocPortable) );
+      ptr_r = Rf_protect( R_MakeExternalPtr( ptr, R_NilValue, R_NilValue ) );
+      R_RegisterCFinalizerEx( ptr_r, cuR_tensor_fin_2<bool>, TRUE );
+      break;
+    default:
+      Rf_error( "Invalid type in tensor clear call" );
+    }
+    break;
+
+  case 3:
+    switch( type ){
+    case 'n':
+      cudaTry( cudaMalloc( (void**)&ptr, l*sizeof(float) ) );
+      ptr_r = Rf_protect( R_MakeExternalPtr( ptr, R_NilValue, R_NilValue ) );
+      R_RegisterCFinalizerEx( ptr_r, cuR_tensor_fin_3<float>, TRUE );
+      break;
+    case 'i':
+      cudaTry( cudaMalloc( (void**)&ptr, l*sizeof(int) ) );
+      ptr_r = Rf_protect( R_MakeExternalPtr( ptr, R_NilValue, R_NilValue ) );
+      R_RegisterCFinalizerEx( ptr_r, cuR_tensor_fin_3<int>, TRUE );
+      break;
+    case 'l':
+      cudaTry( cudaMalloc( (void**)&ptr, l*sizeof(bool) ) );
+      ptr_r = Rf_protect( R_MakeExternalPtr( ptr, R_NilValue, R_NilValue ) );
+      R_RegisterCFinalizerEx( ptr_r, cuR_tensor_fin_3<bool>, TRUE );
+      break;
+    default:
+      Rf_error( "Invalid type in tensor clear call" );
+    }
+    break;
+
+  default:
+    Rf_error( "Invalid level in tensor clear call" );
+  }
+
+  debugPrint( Rprintf( "<%p> Creating L%d tensor\n", ptr, level ) );
+
+  Rf_unprotect(1);
+  return ptr_r;
+}
+
+extern "C"
+SEXP cuR_tensor_destroy( SEXP ptr_r, SEXP level_r, SEXP type_r ){
   int level       = Rf_asInteger( level_r );
   const char type = CHAR( STRING_ELT( type_r, 0 ) )[0];
 
   switch( level ){
-  case 0:
-    switch( type ){
-    case "n":
-      memset( REAL( ptr_r ), 0, sizeof(double) * dims[0] * dims[1] );
-
-    case "i":
-      memset( INTEGER( ptr_r ), 0, sizeof(int) * dims[0] * dims[1] );
-
-    case "l":
-      memset( LOGICAL( ptr_r ), 0, sizeof(int) * dims[0] * dims[1] );
-
-    default:
-      Rf_error( "Invalid type in tensor clear call" );
-    }
-
   case 1:
     switch( type ){
-    case "n":
-      memset( (float*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(float) * dims[0] * dims[1] );
-
-    case "i":
-      memset( (int*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(int) * dims[0] * dims[1] );
-
-    case "l":
-      memset( (bool*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(bool) * dims[0] * dims[1] );
-
+    case 'n':
+      cuR_tensor_fin_1<float>( ptr_r );
+      break;
+    case 'i':
+      cuR_tensor_fin_1<int>( ptr_r );
+      break;
+    case 'l':
+      cuR_tensor_fin_1<bool>( ptr_r );
+      break;
     default:
       Rf_error( "Invalid type in tensor clear call" );
     }
+    break;
 
   case 2:
     switch( type ){
-    case "n":
-      memset( (float*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(float) * dims[0] * dims[1] );
-
-    case "i":
-      memset( (int*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(int) * dims[0] * dims[1] );
-
-    case "l":
-      memset( (bool*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(bool) * dims[0] * dims[1] );
-
+    case 'n':
+      cuR_tensor_fin_2<float>( ptr_r );
+      break;
+    case 'i':
+      cuR_tensor_fin_2<int>( ptr_r );
+      break;
+    case 'l':
+      cuR_tensor_fin_2<bool>( ptr_r );
+      break;
     default:
       Rf_error( "Invalid type in tensor clear call" );
     }
+    break;
 
   case 3:
     switch( type ){
-    case "n":
-      memset( (float*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(float) * dims[0] * dims[1] );
-
-    case "i":
-      memset( (int*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(int) * dims[0] * dims[1] );
-
-    case "l":
-      memset( (bool*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(bool) * dims[0] * dims[1] );
-
+    case 'n':
+      cuR_tensor_fin_3<float>( ptr_r );
+      break;
+    case 'i':
+      cuR_tensor_fin_3<int>( ptr_r );
+      break;
+    case 'l':
+      cuR_tensor_fin_3<bool>( ptr_r );
+      break;
     default:
       Rf_error( "Invalid type in tensor clear call" );
     }
+    break;
 
   default:
     Rf_error( "Invalid level in tensor clear call" );
@@ -77,390 +187,84 @@ SEXP cuR_tensor_clear( SEXP ptr_r, SEXP dims_r, SEXP level_r, SEXP type_r ){
   return ret_r;
 }
 
-// Level 0 clearing
-extern "C"
-SEXP cuR_clear_tensor_0_n( SEXP tens_r, SEXP dims_r ){
-  int* dims    = INTEGER( dims_r );
-  double* tens = REAL( tens_r );
-
-  memset( tens, 0, sizeof(double) * dims[0]*dims[1] );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
 
 extern "C"
-SEXP cuR_clear_tensor_0_i( SEXP tens_r, SEXP dims_r ){
-  int* dims = INTEGER( dims_r );
-  int* tens = INTEGER( tens_r );
+SEXP cuR_tensor_clear( SEXP ptr_r, SEXP level_r, SEXP dims_r, SEXP type_r ){
+  int level       = Rf_asInteger( level_r );
+  const char type = CHAR( STRING_ELT( type_r, 0 ) )[0];
+  int* dims       = INTEGER( dims_r );
+  int l           = dims[0] * dims[1];
 
-  memset( tens, 0, sizeof(int) * dims[0]*dims[1] );
+  switch( level ){
+  case 0:
+    switch( type ){
+    case 'n':
+      memset( REAL( ptr_r ), 0, sizeof(double) * l );
+      break;
+    case 'i':
+      memset( INTEGER( ptr_r ), 0, sizeof(int) * l );
+      break;
+    case 'l':
+      memset( LOGICAL( ptr_r ), 0, sizeof(int) * l );
+      break;
+    default:
+      Rf_error( "Invalid type in tensor clear call" );
+    }
+    break;
 
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
+  case 1:
+    switch( type ){
+    case 'n':
+      memset( (float*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(float) * l );
+      break;
+    case 'i':
+      memset( (int*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(int) * l );
+      break;
+    case 'l':
+      memset( (bool*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(bool) * l );
+      break;
+    default:
+      Rf_error( "Invalid type in tensor clear call" );
+    }
+    break;
 
-extern "C"
-SEXP cuR_clear_tensor_0_l( SEXP tens_r, SEXP dims_r ){
-  int* dims = INTEGER( dims_r );
-  int* tens = LOGICAL( tens_r );
+  case 2:
+    switch( type ){
+    case 'n':
+      memset( (float*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(float) * l );
+      break;
+    case 'i':
+      memset( (int*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(int) * l );
+      break;
+    case 'l':
+      memset( (bool*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(bool) * l );
+      break;
+    default:
+      Rf_error( "Invalid type in tensor clear call" );
+    }
+    break;
 
-  memset( tens, 0, sizeof(int) * dims[0]*dims[1] );
+  case 3:
+    switch( type ){
+    case 'n':
+      cudaTry( cudaMemset( (float*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(float) * l ) );
+      break;
+    case 'i':
+      cudaTry( cudaMemset( (int*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(int) * l ) );
+      break;
+    case 'l':
+      cudaTry( cudaMemset( (bool*) R_ExternalPtrAddr( ptr_r ), 0, sizeof(bool) * l ) );
+      break;
+    default:
+      Rf_error( "Invalid type in tensor clear call" );
+    }
+    break;
 
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-// Various memory allocations/deallocations and clearing
-// Level 1 ---------------------------------------------------------------------
-
-template <typename t>
-void cuR_fin_tensor_1( SEXP tens_r ){
-  t* tens = (t*)R_ExternalPtrAddr( tens_r );
-
-  if( tens ){
-    debugPrint( Rprintf( "<%p> Finalizing L1 tensor\n", (void*)tens ) );
-
-    delete[] tens;
-    R_ClearExternalPtr( tens_r );
+  default:
+    Rf_error( "Invalid level in tensor clear call" );
   }
-}
 
-template <typename t>
-SEXP cuR_create_tensor_1( SEXP dims_r ){
-  int* dims = INTEGER(dims_r);
-  int l = dims[0]*dims[1];
-
-  t* tens = new t[l];
-
-  debugPrint( Rprintf( "<%p> Creating L1 tensor\n", (void*)tens ) );
-
-  SEXP tens_r = Rf_protect( R_MakeExternalPtr( tens, R_NilValue, R_NilValue ) );
-  R_RegisterCFinalizerEx( tens_r, cuR_fin_tensor_1<t>, TRUE );
-
-  Rf_unprotect(1);
-  return tens_r;
-}
-
-extern "C"
-SEXP cuR_create_tensor_1_n( SEXP dims_r ){
-  SEXP tens_r = Rf_protect( cuR_create_tensor_1<float>( dims_r ) );
-  Rf_unprotect(1);
-  return tens_r;
-}
-
-extern "C"
-SEXP cuR_create_tensor_1_i( SEXP dims_r ){
-  SEXP tens_r = Rf_protect( cuR_create_tensor_1<int>( dims_r ) );
-  Rf_unprotect(1);
-  return tens_r;
-}
-
-extern "C"
-SEXP cuR_create_tensor_1_l( SEXP dims_r ){
-  SEXP tens_r = Rf_protect( cuR_create_tensor_1<bool>( dims_r ) );
-  Rf_unprotect(1);
-  return tens_r;
-}
-
-extern "C"
-SEXP cuR_clear_tensor_1_n( SEXP tens_r, SEXP dims_r ){
-  int* dims   = INTEGER( dims_r );
-  float* tens = (float*)R_ExternalPtrAddr( tens_r );
-
-  memset( tens, 0, sizeof(float) * dims[0]*dims[1] );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
+  SEXP ret_r = Rf_protect( Rf_ScalarLogical( TRUE ) );
   Rf_unprotect(1);
   return ret_r;
 }
-
-extern "C"
-SEXP cuR_clear_tensor_1_i( SEXP tens_r, SEXP dims_r ){
-  int* dims = INTEGER( dims_r );
-  int* tens = (int*)R_ExternalPtrAddr( tens_r );
-
-  memset( tens, 0, sizeof(int) * dims[0]*dims[1] );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_clear_tensor_1_l( SEXP tens_r, SEXP dims_r ){
-  int* dims   = INTEGER( dims_r );
-  bool* tens = (bool*)R_ExternalPtrAddr( tens_r );
-
-  memset( tens, 0, sizeof(bool) * dims[0]*dims[1] );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_destroy_tensor_1_n( SEXP tens_r ){
-  cuR_fin_tensor_1<float>( tens_r );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_destroy_tensor_1_i( SEXP tens_r ){
-  cuR_fin_tensor_1<int>( tens_r );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_destroy_tensor_1_l( SEXP tens_r ){
-  cuR_fin_tensor_1<bool>( tens_r );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-// Level 2 ---------------------------------------------------------------------
-#ifndef CUDA_EXCLUDE
-
-template <typename t>
-void cuR_fin_tensor_2( SEXP tens_r ){
-  t* tens = (t*)R_ExternalPtrAddr( tens_r );
-
-  // Destroy context and free memory!
-  // Clear R object too
-  if( tens ){
-    debugPrint( Rprintf( "<%p> Finalizing L2 tensor\n", (void*)tens ) );
-
-    cudaFreeHost( tens );
-    R_ClearExternalPtr( tens_r );
-  }
-}
-
-template <typename t>
-SEXP cuR_create_tensor_2( SEXP dims_r ){
-  t* tens;
-  int* dims = INTEGER(dims_r);
-  int l = dims[0]*dims[1];
-
-  cudaTry( cudaHostAlloc( (void**)&tens, l*sizeof(t), cudaHostAllocPortable) );
-
-  debugPrint( Rprintf( "<%p> Creating L2 tensor\n", (void*)tens ) );
-
-  SEXP tens_r = Rf_protect( R_MakeExternalPtr( tens, R_NilValue, R_NilValue ) );
-  R_RegisterCFinalizerEx( tens_r, cuR_fin_tensor_2<t>, TRUE );
-
-  Rf_unprotect(1);
-  return tens_r;
-}
-
-extern "C"
-SEXP cuR_create_tensor_2_n( SEXP dims_r ){
-  SEXP tens_r = Rf_protect( cuR_create_tensor_2<float>( dims_r ) );
-  Rf_unprotect(1);
-  return tens_r;
-}
-
-extern "C"
-SEXP cuR_create_tensor_2_i( SEXP dims_r ){
-  SEXP tens_r = Rf_protect( cuR_create_tensor_2<int>( dims_r ) );
-  Rf_unprotect(1);
-  return tens_r;
-}
-
-extern "C"
-SEXP cuR_create_tensor_2_l( SEXP dims_r ){
-  SEXP tens_r = Rf_protect( cuR_create_tensor_2<bool>( dims_r ) );
-  Rf_unprotect(1);
-  return tens_r;
-}
-
-extern "C"
-SEXP cuR_clear_tensor_2_n( SEXP tens_r, SEXP dims_r ){
-  int* dims   = INTEGER( dims_r );
-  float* tens = (float*)R_ExternalPtrAddr( tens_r );
-
-  memset( tens, 0, sizeof(float) * dims[0]*dims[1] );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_clear_tensor_2_i( SEXP tens_r, SEXP dims_r ){
-  int* dims = INTEGER( dims_r );
-  int* tens = (int*)R_ExternalPtrAddr( tens_r );
-
-  memset( tens, 0, sizeof(int) * dims[0]*dims[1] );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_clear_tensor_2_l( SEXP tens_r, SEXP dims_r ){
-  int* dims   = INTEGER( dims_r );
-  bool* tens = (bool*)R_ExternalPtrAddr( tens_r );
-
-  memset( tens, 0, sizeof(bool) * dims[0]*dims[1] );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_destroy_tensor_2_n( SEXP tens_r ){
-  cuR_fin_tensor_2<float>( tens_r );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_destroy_tensor_2_i( SEXP tens_r ){
-  cuR_fin_tensor_2<int>( tens_r );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_destroy_tensor_2_l( SEXP tens_r ){
-  cuR_fin_tensor_2<bool>( tens_r );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-// Level 3 ---------------------------------------------------------------------
-
-template <typename t>
-void cuR_fin_tensor_3( SEXP tens_r ){
-  t* tens = (t*)R_ExternalPtrAddr( tens_r );
-
-  if( tens ){
-    debugPrint( Rprintf( "<%p> Finalizing L3 tensor\n", (void*)tens ) );
-
-    // Free memory
-    cudaFree( tens );
-    R_ClearExternalPtr( tens_r );
-  }
-}
-
-template <typename t>
-SEXP cuR_create_tensor_3( SEXP dims_r ){
-  t* tens;
-  int* dims = INTEGER(dims_r);
-  int l = dims[0]*dims[1];
-
-  cudaTry( cudaMalloc( (void**)&tens, l*sizeof(t) ) );
-
-  debugPrint( Rprintf( "<%p> Creating L3 tensor\n", (void*)tens ) );
-
-  // Wrap pointer in a SEXP and register a finalizer
-  SEXP tens_r = Rf_protect( R_MakeExternalPtr( tens, R_NilValue, R_NilValue ) );
-  R_RegisterCFinalizerEx( tens_r, cuR_fin_tensor_3<t>, TRUE );
-  Rf_unprotect(1);
-  return tens_r;
-}
-
-extern "C"
-SEXP cuR_create_tensor_3_n( SEXP dims_r ){
-  SEXP tens_r = Rf_protect( cuR_create_tensor_3<float>( dims_r ) );
-  Rf_unprotect(1);
-  return tens_r;
-}
-
-extern "C"
-SEXP cuR_create_tensor_3_i( SEXP dims_r ){
-  SEXP tens_r = Rf_protect( cuR_create_tensor_3<int>( dims_r ) );
-  Rf_unprotect(1);
-  return tens_r;
-}
-
-extern "C"
-SEXP cuR_create_tensor_3_l( SEXP dims_r ){
-  SEXP tens_r = Rf_protect( cuR_create_tensor_3<bool>( dims_r ) );
-  Rf_unprotect(1);
-  return tens_r;
-}
-
-extern "C"
-SEXP cuR_clear_tensor_3_n( SEXP tens_r, SEXP dims_r ){
-  int* dims   = INTEGER( dims_r );
-  float* tens = (float*)R_ExternalPtrAddr( tens_r );
-
-  cudaTry( cudaMemset( tens, 0, sizeof(float) * dims[0]*dims[1] ) );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_clear_tensor_3_i( SEXP tens_r, SEXP dims_r ){
-  int* dims = INTEGER( dims_r );
-  int* tens = (int*)R_ExternalPtrAddr( tens_r );
-
-  cudaTry( cudaMemset( tens, 0, sizeof(int) * dims[0]*dims[1] ) );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_clear_tensor_3_l( SEXP tens_r, SEXP dims_r ){
-  int* dims   = INTEGER( dims_r );
-  bool* tens = (bool*)R_ExternalPtrAddr( tens_r );
-
-  cudaTry( cudaMemset( tens, 0, sizeof(bool) * dims[0]*dims[1] ) );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_destroy_tensor_3_n( SEXP tens_r ){
-  cuR_fin_tensor_3<float>( tens_r );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_destroy_tensor_3_i( SEXP tens_r ){
-  cuR_fin_tensor_3<int>( tens_r );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-extern "C"
-SEXP cuR_destroy_tensor_3_l( SEXP tens_r ){
-  cuR_fin_tensor_3<bool>( tens_r );
-
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
-}
-
-#endif

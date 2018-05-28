@@ -2,18 +2,68 @@ library( cuRious )
 library( microbenchmark )
 library( R6 )
 
-test.class <- R6Class(
-  "test",
-  private = list(
-    ptr = 1
-  )
-)
+clean()
 
-test <- test.class$new()
+dims <- c( 3000L, 2000L )
+type <- "n"
 
-microbenchmark( test[['.__enclos_env__']]$private$ptr )
+obj1 <- matrix( rnorm( prod( dims ) ), dims[[1]], dims[[2]] )
+obj2 <- obj.create( dims, type )
 
-test$.__enclos_env__
+tens.L2   <- .Call( "cuR_tensor_create", 2L, dims, type )
+tens.L3.1 <- .Call( "cuR_tensor_create", 3L, dims, type )
+tens.L3.2 <- .Call( "cuR_tensor_create", 3L, dims, type )
+
+# .Call( "cuR_tensor_clear", obj1, 0L, dims, type )
+
+.Call( "cuR_transfer", obj1, tens.L2, 0L, 2L, type, dims, dims, dims, NULL, NULL, NULL, NULL, NULL )
+.Call( "cuR_transfer", tens.L2, tens.L3.1, 2L, 3L, type, dims, dims, dims, NULL, NULL, NULL, NULL, NULL )
+
+stream <- cuda.stream$new()
+
+L2.transfer <- function(){
+  .Call( "cuR_transfer", tens.L2, tens.L3.1, 2L, 3L, type, dims, dims, dims, NULL, NULL, NULL, NULL, NULL )
+}
+L2.transfer.async <- function(){
+  .Call( "cuR_transfer", tens.L2, tens.L3.1, 2L, 3L, type, dims, dims, dims, NULL, NULL, NULL, NULL, stream$ptr )
+}
+
+print( microbenchmark( L2.transfer() ) )
+print( microbenchmark( L2.transfer.async() ) )
+
+L3.transfer <- function(){
+  .Call( "cuR_transfer", tens.L3.1, tens.L3.2, 3L, 3L, type, dims, dims, dims, NULL, NULL, NULL, NULL, NULL )
+}
+L3.transfer.async <- function(){
+  .Call( "cuR_transfer", tens.L3.1, tens.L3.2, 3L, 3L, type, dims, dims, dims, NULL, NULL, NULL, NULL, stream$ptr )
+}
+
+print( microbenchmark( L3.transfer() ) )
+print( microbenchmark( L3.transfer.async() ) )
+
+.Call( "cuR_transfer", tens.L3.2, tens.L2, 3L, 2L, type, dims, dims, dims, NULL, NULL, NULL, NULL, NULL )
+.Call( "cuR_transfer", tens.L2, obj2, 2L, 0L, type, dims, dims, dims, NULL, NULL, NULL, NULL, NULL )
+
+print( obj2 )
+
+.Call( "cuR_tensor_destroy", tens.L2, 2L, type )
+.Call( "cuR_tensor_destroy", tens.L3.1, 3L, type )
+.Call( "cuR_tensor_destroy", tens.L3.2, 3L, type )
+
+clean()
+
+# test.class <- R6Class(
+#   "test",
+#   private = list(
+#     ptr = 1
+#   )
+# )
+#
+# test <- test.class$new()
+#
+# microbenchmark( test[['.__enclos_env__']]$private$ptr )
+#
+# test$.__enclos_env__
 
 # TODO ====
 # Own reference counting
@@ -23,20 +73,20 @@ test$.__enclos_env__
 
 
 
-testenv <- new.env()
-
-testenv$obj1 <- 1:100
-.Internal( inspect( testenv$obj1 ) )
-tracemem( testenv$obj1 )
-
-obj2 <- obj1
-
-.Call( "cuR_reset_named", testenv$obj1 )
-
-# Operation
-.Call( "cuR_access_ptr", testenv )
-.Internal( inspect(testenv$obj1) )
-
+# testenv <- new.env()
+#
+# testenv$obj1 <- 1:100
+# .Internal( inspect( testenv$obj1 ) )
+# tracemem( testenv$obj1 )
+#
+# obj2 <- obj1
+#
+# .Call( "cuR_reset_named", testenv$obj1 )
+#
+# # Operation
+# .Call( "cuR_access_ptr", testenv )
+# .Internal( inspect(testenv$obj1) )
+#
 
 
 

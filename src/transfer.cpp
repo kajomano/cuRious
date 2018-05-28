@@ -12,7 +12,7 @@ void cuR_transfer_host_host( s* src_ptr,
                              int dst_span_off,
                              cudaStream_t* stream_ptr ){
 
-  // Offsets with permutation offset the permutation vector itself
+  // Offsets with permutations offset the permutation vector itself
   if( src_span_off ){
     if( src_perm_ptr ){
       src_perm_ptr = src_perm_ptr + src_span_off;
@@ -96,8 +96,292 @@ void cuR_transfer_host_host( s* src_ptr,
       dst_off += dims[0];
     }
   }
+
+  if( stream_ptr ){
+    Rf_warning( "Active stream given to a synchronous transfer call" );
+  }
 }
 
+template <typename t>
+void cuR_transfer_host_device( t* src_ptr,
+                               t* dst_ptr,
+                               int* src_dims,
+                               int* dst_dims,
+                               int* dims,
+                               int* src_perm_ptr,
+                               int* dst_perm_ptr,
+                               int src_span_off,
+                               int dst_span_off,
+                               cudaStream_t* stream_ptr ){
+
+  // Offsets with permutations offset the permutation vector itself
+  if( src_span_off ){
+    if( src_perm_ptr ){
+      src_perm_ptr = src_perm_ptr + src_span_off;
+    }else{
+      src_ptr = src_ptr + ( src_span_off * dims[0] );
+    }
+  }
+
+  if( dst_span_off ){
+    if( dst_perm_ptr ){
+      dst_perm_ptr = dst_perm_ptr + dst_span_off;
+    }else{
+      dst_ptr = dst_ptr + ( dst_span_off * dims[0] );
+    }
+  }
+
+  // Out-of-bounds checks only check for permutation content
+  // Span checks are done in R
+
+  // Copy
+  if( !src_perm_ptr && !src_perm_ptr ){
+    // No subsetting
+    int l = dims[0]*dims[1];
+    if( stream_ptr ){
+      cudaTry( cudaMemcpyAsync( dst_ptr,
+                                src_ptr,
+                                l * sizeof(t),
+                                cudaMemcpyHostToDevice,
+                                *stream_ptr ) );
+    }else{
+      cudaTry( cudaMemcpy( dst_ptr,
+                           src_ptr,
+                           l * sizeof(t),
+                           cudaMemcpyHostToDevice ) );
+    }
+  }else if( src_perm_ptr && src_perm_ptr ){
+    // Both subsetted
+    int dst_off, src_off;
+
+    for( int i = 0; i < dims[1]; i ++ ){
+      if( src_perm_ptr[i] > src_dims[1] ){
+        Rf_error( "Out-of-bounds transfer call on source tensor" );
+      }
+
+      if( dst_perm_ptr[i] > dst_dims[1] ){
+        Rf_error( "Out-of-bounds transfer call on destination tensor" );
+      }
+
+      dst_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+      src_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+
+      if( stream_ptr ){
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
+                                  src_ptr + src_off,
+                                  dims[0] * sizeof(t),
+                                  cudaMemcpyHostToDevice,
+                                  *stream_ptr ) );
+      }else{
+        cudaTry( cudaMemcpy( dst_ptr + dst_off,
+                             src_ptr + src_off,
+                             dims[0] * sizeof(t),
+                             cudaMemcpyHostToDevice ) );
+      }
+    }
+  }else if( !src_perm_ptr ){
+    // Destination subsetted
+    int dst_off;
+    int src_off = 0;
+
+    for( int i = 0; i < dims[1]; i ++ ){
+      if( dst_perm_ptr[i] > dst_dims[1] ){
+        Rf_error( "Out-of-bounds transfer call on destination tensor" );
+      }
+
+      dst_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+
+      if( stream_ptr ){
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
+                                  src_ptr + src_off,
+                                  dims[0] * sizeof(t),
+                                  cudaMemcpyHostToDevice,
+                                  *stream_ptr ) );
+      }else{
+        cudaTry( cudaMemcpy( dst_ptr + dst_off,
+                             src_ptr + src_off,
+                             dims[0] * sizeof(t),
+                             cudaMemcpyHostToDevice ) );
+      }
+
+      src_off += dims[0];
+    }
+  }else{
+    // Source subsetted
+    int dst_off = 0;
+    int src_off;
+
+    for( int i = 0; i < dims[1]; i ++ ){
+      if( src_perm_ptr[i] > src_dims[1] ){
+        Rf_error( "Out-of-bounds transfer call on source tensor" );
+      }
+
+      src_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+
+      if( stream_ptr ){
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
+                                  src_ptr + src_off,
+                                  dims[0] * sizeof(t),
+                                  cudaMemcpyHostToDevice,
+                                  *stream_ptr ) );
+      }else{
+        cudaTry( cudaMemcpy( dst_ptr + dst_off,
+                             src_ptr + src_off,
+                             dims[0] * sizeof(t),
+                             cudaMemcpyHostToDevice ) );
+      }
+
+      dst_off += dims[0];
+    }
+  }
+
+  if( stream_ptr ){
+    // Flush for WDDM
+    cudaStreamQuery(0);
+  }
+}
+
+template <typename t>
+void cuR_transfer_device_host( t* src_ptr,
+                               t* dst_ptr,
+                               int* src_dims,
+                               int* dst_dims,
+                               int* dims,
+                               int* src_perm_ptr,
+                               int* dst_perm_ptr,
+                               int src_span_off,
+                               int dst_span_off,
+                               cudaStream_t* stream_ptr ){
+
+  // Offsets with permutations offset the permutation vector itself
+  if( src_span_off ){
+    if( src_perm_ptr ){
+      src_perm_ptr = src_perm_ptr + src_span_off;
+    }else{
+      src_ptr = src_ptr + ( src_span_off * dims[0] );
+    }
+  }
+
+  if( dst_span_off ){
+    if( dst_perm_ptr ){
+      dst_perm_ptr = dst_perm_ptr + dst_span_off;
+    }else{
+      dst_ptr = dst_ptr + ( dst_span_off * dims[0] );
+    }
+  }
+
+  // Out-of-bounds checks only check for permutation content
+  // Span checks are done in R
+
+  // Copy
+  if( !src_perm_ptr && !src_perm_ptr ){
+    // No subsetting
+    int l = dims[0]*dims[1];
+    if( stream_ptr ){
+      cudaTry( cudaMemcpyAsync( dst_ptr,
+                                src_ptr,
+                                l * sizeof(t),
+                                cudaMemcpyDeviceToHost,
+                                *stream_ptr ) );
+    }else{
+      cudaTry( cudaMemcpy( dst_ptr,
+                           src_ptr,
+                           l * sizeof(t),
+                           cudaMemcpyDeviceToHost ) );
+    }
+  }else if( src_perm_ptr && src_perm_ptr ){
+    // Both subsetted
+    int dst_off, src_off;
+
+    for( int i = 0; i < dims[1]; i ++ ){
+      if( src_perm_ptr[i] > src_dims[1] ){
+        Rf_error( "Out-of-bounds transfer call on source tensor" );
+      }
+
+      if( dst_perm_ptr[i] > dst_dims[1] ){
+        Rf_error( "Out-of-bounds transfer call on destination tensor" );
+      }
+
+      dst_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+      src_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+
+      if( stream_ptr ){
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
+                                  src_ptr + src_off,
+                                  dims[0] * sizeof(t),
+                                  cudaMemcpyHostToDevice,
+                                  *stream_ptr ) );
+      }else{
+        cudaTry( cudaMemcpy( dst_ptr + dst_off,
+                             src_ptr + src_off,
+                             dims[0] * sizeof(t),
+                             cudaMemcpyHostToDevice ) );
+      }
+    }
+  }else if( !src_perm_ptr ){
+    // Destination subsetted
+    int dst_off;
+    int src_off = 0;
+
+    for( int i = 0; i < dims[1]; i ++ ){
+      if( dst_perm_ptr[i] > dst_dims[1] ){
+        Rf_error( "Out-of-bounds transfer call on destination tensor" );
+      }
+
+      dst_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+
+      if( stream_ptr ){
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
+                                  src_ptr + src_off,
+                                  dims[0] * sizeof(t),
+                                  cudaMemcpyHostToDevice,
+                                  *stream_ptr ) );
+      }else{
+        cudaTry( cudaMemcpy( dst_ptr + dst_off,
+                             src_ptr + src_off,
+                             dims[0] * sizeof(t),
+                             cudaMemcpyHostToDevice ) );
+      }
+
+      src_off += dims[0];
+    }
+  }else{
+    // Source subsetted
+    int dst_off = 0;
+    int src_off;
+
+    for( int i = 0; i < dims[1]; i ++ ){
+      if( src_perm_ptr[i] > src_dims[1] ){
+        Rf_error( "Out-of-bounds transfer call on source tensor" );
+      }
+
+      src_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+
+      if( stream_ptr ){
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
+                                  src_ptr + src_off,
+                                  dims[0] * sizeof(t),
+                                  cudaMemcpyHostToDevice,
+                                  *stream_ptr ) );
+      }else{
+        cudaTry( cudaMemcpy( dst_ptr + dst_off,
+                             src_ptr + src_off,
+                             dims[0] * sizeof(t),
+                             cudaMemcpyHostToDevice ) );
+      }
+
+      dst_off += dims[0];
+    }
+  }
+
+  if( stream_ptr ){
+    // Flush for WDDM
+    cudaStreamQuery(0);
+  }
+}
+
+// Main transfer call
+// Steel yourself!
 // -----------------------------------------------------------------------------
 extern "C"
 SEXP cuR_transfer( SEXP src_ptr_r,
@@ -188,6 +472,7 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       default:
         Rf_error( "Invalid type in transfer call" );
       }
+      break;
 
       // 0-1 -------------------------------------------------------------------
     case 1:
@@ -234,6 +519,7 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       default:
         Rf_error( "Invalid type in transfer call" );
       }
+      break;
 
       // 0-2 -------------------------------------------------------------------
     case 2:
@@ -280,10 +566,12 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       default:
         Rf_error( "Invalid type in transfer call" );
       }
+      break;
 
     default:
       Rf_error( "Invalid destination level in transfer call" );
     }
+    break;
 
   case 1:
     switch( dst_level ){
@@ -332,6 +620,7 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       default:
         Rf_error( "Invalid type in transfer call" );
       }
+      break;
 
       // 1-1 -------------------------------------------------------------------
     case 1:
@@ -378,6 +667,7 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       default:
         Rf_error( "Invalid type in transfer call" );
       }
+      break;
 
       // 1-2 -------------------------------------------------------------------
     case 2:
@@ -424,10 +714,59 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       default:
         Rf_error( "Invalid type in transfer call" );
       }
+      break;
+
+      // 1-3 -------------------------------------------------------------------
+    case 3:
+      switch( type ){
+      case 'n':
+        cuR_transfer_host_device<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                         (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                         src_dims,
+                                         dst_dims,
+                                         dims,
+                                         src_perm_ptr,
+                                         dst_perm_ptr,
+                                         src_span_off,
+                                         dst_span_off,
+                                         NULL );
+        break;
+
+      case 'i':
+        cuR_transfer_host_device<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                       (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                       src_dims,
+                                       dst_dims,
+                                       dims,
+                                       src_perm_ptr,
+                                       dst_perm_ptr,
+                                       src_span_off,
+                                       dst_span_off,
+                                       NULL );
+        break;
+
+      case 'l':
+        cuR_transfer_host_device<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                        (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                        src_dims,
+                                        dst_dims,
+                                        dims,
+                                        src_perm_ptr,
+                                        dst_perm_ptr,
+                                        src_span_off,
+                                        dst_span_off,
+                                        NULL );
+        break;
+
+      default:
+        Rf_error( "Invalid type in transfer call" );
+      }
+      break;
 
     default:
       Rf_error( "Invalid destination level in transfer call" );
     }
+    break;
 
   case 2:
     switch( dst_level ){
@@ -476,6 +815,7 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       default:
         Rf_error( "Invalid type in transfer call" );
       }
+      break;
 
       // 2-1 -------------------------------------------------------------------
     case 1:
@@ -522,6 +862,7 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       default:
         Rf_error( "Invalid type in transfer call" );
       }
+      break;
 
       // 2-2 -------------------------------------------------------------------
     case 2:
@@ -568,10 +909,175 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       default:
         Rf_error( "Invalid type in transfer call" );
       }
+      break;
+
+      // 2-3 -------------------------------------------------------------------
+    case 3:
+      switch( type ){
+      case 'n':
+        cuR_transfer_host_device<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                         (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                         src_dims,
+                                         dst_dims,
+                                         dims,
+                                         src_perm_ptr,
+                                         dst_perm_ptr,
+                                         src_span_off,
+                                         dst_span_off,
+                                         stream_ptr );
+        break;
+
+      case 'i':
+        cuR_transfer_host_device<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                       (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                       src_dims,
+                                       dst_dims,
+                                       dims,
+                                       src_perm_ptr,
+                                       dst_perm_ptr,
+                                       src_span_off,
+                                       dst_span_off,
+                                       stream_ptr );
+        break;
+
+      case 'l':
+        cuR_transfer_host_device<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                        (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                        src_dims,
+                                        dst_dims,
+                                        dims,
+                                        src_perm_ptr,
+                                        dst_perm_ptr,
+                                        src_span_off,
+                                        dst_span_off,
+                                        stream_ptr );
+        break;
+
+      default:
+        Rf_error( "Invalid type in transfer call" );
+      }
+      break;
 
     default:
       Rf_error( "Invalid destination level in transfer call" );
     }
+    break;
+
+  case 3:
+    switch( dst_level ){
+    // 3-1 =====================================================================
+    case 1:
+      switch( type ){
+      case 'n':
+        cuR_transfer_device_host<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                         (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                         src_dims,
+                                         dst_dims,
+                                         dims,
+                                         src_perm_ptr,
+                                         dst_perm_ptr,
+                                         src_span_off,
+                                         dst_span_off,
+                                         NULL );
+        break;
+
+      case 'i':
+        cuR_transfer_device_host<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                       (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                       src_dims,
+                                       dst_dims,
+                                       dims,
+                                       src_perm_ptr,
+                                       dst_perm_ptr,
+                                       src_span_off,
+                                       dst_span_off,
+                                       NULL );
+        break;
+
+      case 'l':
+        cuR_transfer_device_host<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                        (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                        src_dims,
+                                        dst_dims,
+                                        dims,
+                                        src_perm_ptr,
+                                        dst_perm_ptr,
+                                        src_span_off,
+                                        dst_span_off,
+                                        NULL );
+        break;
+
+      default:
+        Rf_error( "Invalid type in transfer call" );
+      }
+      break;
+
+      // 3-2 -------------------------------------------------------------------
+    case 2:
+      switch( type ){
+      case 'n':
+        cuR_transfer_device_host<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                         (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                         src_dims,
+                                         dst_dims,
+                                         dims,
+                                         src_perm_ptr,
+                                         dst_perm_ptr,
+                                         src_span_off,
+                                         dst_span_off,
+                                         stream_ptr );
+        break;
+
+      case 'i':
+        cuR_transfer_device_host<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                       (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                       src_dims,
+                                       dst_dims,
+                                       dims,
+                                       src_perm_ptr,
+                                       dst_perm_ptr,
+                                       src_span_off,
+                                       dst_span_off,
+                                       stream_ptr );
+        break;
+
+      case 'l':
+        cuR_transfer_device_host<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                        (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                        src_dims,
+                                        dst_dims,
+                                        dims,
+                                        src_perm_ptr,
+                                        dst_perm_ptr,
+                                        src_span_off,
+                                        dst_span_off,
+                                        stream_ptr );
+        break;
+
+      default:
+        Rf_error( "Invalid type in transfer call" );
+      }
+      break;
+
+      // 3-3 -------------------------------------------------------------------
+    case 3:
+      cuR_transfer_device_device_cu( (void*) R_ExternalPtrAddr( src_ptr_r ),
+                                     (void*) R_ExternalPtrAddr( dst_ptr_r ),
+                                     type,
+                                     src_dims,
+                                     dst_dims,
+                                     dims,
+                                     src_perm_ptr,
+                                     dst_perm_ptr,
+                                     src_span_off,
+                                     dst_span_off,
+                                     stream_ptr );
+      break;
+
+    default:
+      Rf_error( "Invalid destination level in transfer call" );
+    }
+    break;
 
   default:
     Rf_error( "Invalid source level in transfer call" );
@@ -582,7 +1088,7 @@ SEXP cuR_transfer( SEXP src_ptr_r,
   return ret_r;
 }
 
-
+//
 // extern "C"
 // SEXP cuR_transfer_0_0_n( SEXP src_r, SEXP dst_r, SEXP dims_r, SEXP csrc_r, SEXP cdst_r, SEXP osrc_r, SEXP odst_r ){
 //

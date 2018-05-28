@@ -10,7 +10,7 @@ cuda.device.count <- function(){
 }
 
 .cuda.device.get <- function(){
-  device <- .Call( "cuR_get_device" )
+  device <- .Call( "cuR_device_get" )
   if( is.null( device ) ){
     stop( "Failed to get current device" )
   }
@@ -23,7 +23,7 @@ cuda.device.count <- function(){
     return()
   }
 
-  if( is.null( .Call( "cuR_set_device", device ) ) ){
+  if( is.null( .Call( "cuR_device_set", device ) ) ){
     stop( "Failed to set current device" )
   }
 
@@ -44,7 +44,7 @@ cuda.device.sync <- function( device ){
   device <- check.device( device )
   .cuda.device.set( device )
 
-  if( is.null( .Call( "cuR_sync_device" ) ) ){
+  if( is.null( .Call( "cuR_device_sync" ) ) ){
     stop( "Device could not be synced" )
   }
   invisible( TRUE )
@@ -57,7 +57,7 @@ cuda.stream <- R6Class(
   public = list(
     sync = function(){
       if( self$is.active ){
-        if( is.null( .Call( "cuR_sync_cuda_stream", private$.ptr ) ) ){
+        if( is.null( .Call( "cuR_cuda_stream_sync", private$.ptr ) ) ){
           stop( "Stream could not be synced" )
         }
 
@@ -70,11 +70,11 @@ cuda.stream <- R6Class(
 
   private = list(
     .activate = function(){
-      .Call( "cuR_create_cuda_stream" )
+      .Call( "cuR_cuda_stream_create" )
     },
 
     .deactivate = function(){
-      .Call( "cuR_destroy_cuda_stream", private$.ptr )
+      .Call( "cuR_cuda_stream_destroy", private$.ptr )
     }
   )
 )

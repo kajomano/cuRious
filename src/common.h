@@ -1,4 +1,6 @@
 // Options
+// TODO ====
+// Reinstate CUDA_EXCLUDES!
 //#define CUDA_EXCLUDE 1
 #define DEBUG_PRINTS 1
 

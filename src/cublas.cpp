@@ -4,8 +4,8 @@
 // This is a good example how to access the handle in other functions
 // Also a good example how to finalize things, this function can be called
 // from other functions without the fear of double-finalization
-void cuR_finalize_cublas_handle( SEXP ptr ){
-  cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( ptr );
+void cuR_cublas_handle_fin( SEXP handle_r ){
+  cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
 
   // Destroy context and free memory!
   // Clear R object too
@@ -14,18 +14,19 @@ void cuR_finalize_cublas_handle( SEXP ptr ){
 
     cublasDestroy( *handle );
     delete[] handle;
-    R_ClearExternalPtr( ptr );
+    R_ClearExternalPtr( handle_r );
   }
 }
 
 extern "C"
-SEXP cuR_destroy_cublas_handle( SEXP ptr ){
-  cuR_finalize_cublas_handle( ptr );
+SEXP cuR_cublas_handle_destroy( SEXP handle_r ){
+  cuR_cublas_handle_fin( handle_r );
+
   return R_NilValue;
 }
 
 extern "C"
-SEXP cuR_create_cublas_handle(){
+SEXP cuR_cublas_handle_create(){
   cublasHandle_t* handle = new cublasHandle_t;
 
   debugPrint( Rprintf( "<%p> Creating handle\n", (void*)handle ) );
@@ -35,7 +36,7 @@ SEXP cuR_create_cublas_handle(){
 
   // Return to R with an external pointer SEXP
   SEXP ptr = Rf_protect( R_MakeExternalPtr( handle, R_NilValue, R_NilValue ) );
-  R_RegisterCFinalizerEx( ptr, cuR_finalize_cublas_handle, TRUE );
+  R_RegisterCFinalizerEx( ptr, cuR_cublas_handle_fin, TRUE );
 
   Rf_unprotect(1);
   return ptr;

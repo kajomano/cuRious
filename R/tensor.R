@@ -94,10 +94,9 @@ tensor <- R6Class(
         }
       }
 
-      # TODO ====
-      # Redo this
-
-      # Initialize the tensor according to init
+      # Initialize the tensor according to data and copy
+      # tensor$initialize does NOT use pipes or high-level transfer calls,
+      # so that there is no circular dependency in code structure
       if( is.null( data ) ){
         private$.create.ptr()
         self$clear()
@@ -105,20 +104,35 @@ tensor <- R6Class(
         if( copy ){
           if( is.tensor( data ) ){
             if( data$level == 0L && private$.level == 0L ){
-              private$.ptr <- data$ptr
-              # private$.ptr.acc <- TRUE
+              private$.ptr  <- data$obj
+              private$.refs <- TRUE
             }else{
               private$.create.ptr()
-              transfer( data, self )
+
+              .transfer.ptr( data$ptr,
+                             private$.ptr,
+                             data$level,
+                             private$.level,
+                             private$.type,
+                             data$dims,
+                             private$.dims,
+                             private$.dims )
             }
           }else{
             if( private$.level == 0L ){
-              private$.ptr <- data
-              # private$.ptr.acc <- TRUE
+              private$.ptr  <- data
+              private$.refs <- TRUE
             }else{
               private$.create.ptr()
-              data.tensor <- tensor$new( data )
-              transfer( data.tensor, self )
+
+              .transfer.ptr( data,
+                             private$.ptr,
+                             0L,
+                             private$.level,
+                             private$.type,
+                             private$.dims,
+                             private$.dims,
+                             private$.dims )
             }
           }
         }else{
@@ -167,9 +181,11 @@ tensor <- R6Class(
     clear = function(){
       self$sever()
 
-      .Call( paste0("cuR_clear_tensor_", private$.level, "_", private$.type ),
+      .Call( "cuR_tensor_clear",
              private$.ptr,
-             private$.dims )
+             private$.level,
+             private$.dims,
+             private$.type )
 
       invisible( TRUE )
     },
@@ -188,27 +204,29 @@ tensor <- R6Class(
       invisible( TRUE )
     },
 
-    .sever = function(){
-      if( private$.level == 0L ){
-        if( private$.ptr.acc ){
-          browser()
-          old.obj.ptr <- .Call( "cuR_get_obj_ptr", private$.ptr )
+    sever = function(){
+      # if( private$.level == 0L ){
+      #   if( private$.ptr.acc ){
+      #     browser()
+      #     old.obj.ptr <- .Call( "cuR_get_obj_ptr", private$.ptr )
+      #
+      #     print( "Severed" )
+      #
+      #     # Actual severing
+      #     private$.ptr[[1]] <- private$.ptr[[1]]
+      #     .Call( "cuR_get_obj_ptr", private$.ptr )
+      #
+      #     if( !( .Call( "cuR_compare_obj_ptr",
+      #                   .Call( "cuR_get_obj_ptr", private$.ptr ),
+      #                   old.obj.ptr ) ) ){
+      #       print( "Content update alert" )
+      #       private$.alert.content()
+      #     }
+      #   }
+      #   private$.ptr.acc <- FALSE
+      # }
 
-          print( "Severed" )
-
-          # Actual severing
-          private$.ptr[[1]] <- private$.ptr[[1]]
-          .Call( "cuR_get_obj_ptr", private$.ptr )
-
-          if( !( .Call( "cuR_compare_obj_ptr",
-                        .Call( "cuR_get_obj_ptr", private$.ptr ),
-                        old.obj.ptr ) ) ){
-            print( "Content update alert" )
-            private$.alert.content()
-          }
-        }
-        private$.ptr.acc <- FALSE
-      }
+      private$.refs <- FALSE
 
       invisible( TRUE )
     }
@@ -231,28 +249,27 @@ tensor <- R6Class(
         stop( "Object is too large" )
       }
 
-      private$.ptr <- switch(
-        as.character( level ),
-        `0` = {
-          private$.ptr.acc <- FALSE
-          obj.create( private$.dims, private$.type )
-        },
-        `1` = .Call( paste0("cuR_create_tensor_1_", private$.type ), private$.dims ),
-        `2` = .Call( paste0("cuR_create_tensor_2_", private$.type ), private$.dims ),
-        `3` = {
+      if( !level ){
+        private$.ptr <- obj.create( private$.dims, private$.type )
+      }else{
+        if( level == 3L ){
           .cuda.device.set( private$.device )
-          .Call( paste0("cuR_create_tensor_3_", private$.type ), private$.dims )
         }
-      )
+
+        private$.ptr <- .Call( "cuR_tensor_create",
+                               level,
+                               private$.dims,
+                               private$.type )
+      }
     },
 
     .destroy.ptr = function(){
-      switch(
-        as.character( private$.level ),
-        `1` = .Call( paste0("cuR_destroy_tensor_1_", private$.type ), private$.ptr ),
-        `2` = .Call( paste0("cuR_destroy_tensor_2_", private$.type ), private$.ptr ),
-        `3` = .Call( paste0("cuR_destroy_tensor_3_", private$.type ), private$.ptr )
-      )
+      if( private$.level ){
+        .Call( "cuR_tensor_destroy",
+               private$.ptr,
+               private$.level,
+               private$.type )
+      }
 
       private$.ptr <- NULL
     },
@@ -261,6 +278,7 @@ tensor <- R6Class(
       if( !identical( obj.dims( obj ), private$.dims ) ){
         stop( "Dims do not match" )
       }
+
       if( obj.type( obj ) != private$.type ){
         stop( "Types do not match" )
       }
@@ -268,18 +286,19 @@ tensor <- R6Class(
   ),
 
   active = list(
-    ptr = function( val ){
+    obj = function( val ){
       self$check.destroyed()
 
+      if( private$.level != 0L ){
+        stop( "Not surfaced, direct object access denied" )
+      }
+
+      # Protected
       private$.refs <- TRUE
 
       if( missing( val ) ){
         return( private$.ptr )
       }else{
-        if( private$.level != 0L ){
-          stop( "Not surfaced, direct tensor access denied" )
-        }
-
         val <- check.obj( val )
         private$.match.obj( val )
 
@@ -288,14 +307,22 @@ tensor <- R6Class(
       }
     },
 
-    .ptr.unsafe = function( val ){
+    ptr = function( val ){
       self$check.destroyed()
 
       if( missing( val ) ){
         return( private$.ptr )
-      }else{
-        stop( "Implement proper transfers" )
       }
+
+      # else{
+      #   # TODO ====
+      #   # A low-level transfer call (maybe?)
+      #   val <- check.obj( val )
+      #   private$.match.obj( val )
+      #
+      #   private$.ptr <- val
+      #   private$.alert.content()
+      # }
     },
 
     dims = function( val ){

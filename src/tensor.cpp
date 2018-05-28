@@ -182,9 +182,7 @@ SEXP cuR_tensor_destroy( SEXP ptr_r, SEXP level_r, SEXP type_r ){
     Rf_error( "Invalid level in tensor clear call" );
   }
 
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( TRUE ) );
-  Rf_unprotect(1);
-  return ret_r;
+  return R_NilValue;
 }
 
 
@@ -264,7 +262,5 @@ SEXP cuR_tensor_clear( SEXP ptr_r, SEXP level_r, SEXP dims_r, SEXP type_r ){
     Rf_error( "Invalid level in tensor clear call" );
   }
 
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( TRUE ) );
-  Rf_unprotect(1);
-  return ret_r;
+  return R_NilValue;
 }

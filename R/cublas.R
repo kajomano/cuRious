@@ -11,11 +11,11 @@ cublas.handle <- R6Class(
   inherit = context,
   private = list(
     .activate = function(){
-      .Call( "cuR_create_cublas_handle" )
+      .Call( "cuR_cublas_handle_create" )
     },
 
     .deactivate = function(){
-      .Call( "cuR_destroy_cublas_handle", private$.handle )
+      .Call( "cuR_cublas_handle_destroy", private$.ptr )
     }
   )
 )

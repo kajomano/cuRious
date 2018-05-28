@@ -1,21 +1,57 @@
 alert.recv <- R6Class(
-  "cuR.alert.receiver",
+  "cuR.alert.subscriber",
   public = list(
-    alert = function( ... ){
-      stop( "Alert not implemented" )
+    alert = function( name ){
+      self$check.destroyed()
+      private$.add.content.changed( name )
+      private$.add.context.changed( name )
     },
 
-    alert.context = function( ... ){
-      stop( "Context alert not implemented" )
+    alert.context = function( name ){
+      self$check.destroyed()
+      private$.add.context.changed( name )
     },
 
-    alert.content = function( ... ){
-      stop( "Content alert not implemented" )
+    alert.content = function( name ){
+      self$check.destroyed()
+      private$.add.content.changed( name )
     }
   ),
 
   private = list(
-    .listener.remove = FALSE
+    .context.changed  = NULL,
+    .content.changed  = NULL,
+    .unsubscribe.flag = FALSE,
+
+    .subscribe = function( sender, name ){
+      if( !( "cuR.alert.sender" %in% class( sender ) ) ){
+        stop( "Invalid sender" )
+      }
+
+      sender$subscriber.add( selfr, name )
+    },
+
+    .unsubscribe = function( sender ){
+      if( !( "cuR.alert.sender" %in% class( sender ) ) ){
+        stop( "Invalid sender" )
+      }
+
+      private$.unsubscribe.flag <- TRUE
+      sender$subscriber.remove()
+      private$.unsubscribe.flag <- FALSE
+    },
+
+    .add.content.changed = function( name ){
+      if( ( name %in% private$.content.changed ) ){
+        private$.content.changed <- c( private$.content.changed, name )
+      }
+    },
+
+    .add.context.changed = function( name ){
+      if( ( name %in% private$.context.changed ) ){
+        private$.context.changed <- c( private$.context.changed, name )
+      }
+    }
   ),
 
   active = list(
@@ -28,45 +64,45 @@ alert.recv <- R6Class(
 alert.send <- R6Class(
   "cuR.alert.sender",
   public = list(
-    listener.add = function( listener, name ){
-      if( !( "cuR.alert.receiver" %in% class( listener ) ) ){
-        stop( "Invalid listener" )
+    subscriber.add = function( subscriber, name ){
+      if( !( "cuR.alert.subscriber" %in% class( subscriber ) ) ){
+        stop( "Invalid subscriber" )
       }
-      attr( listener, name ) <- name
-      private$.listeners <- c( private$.listeners, list( listener ) )
+      attr( subscriber, name ) <- name
+      private$.subscribers <- c( private$.subscribers, list( subscriber ) )
 
       invisible( self )
     },
 
-    listener.remove = function(){
-      match <- sapply( private$.listeners, `[[`, "listener.remove" )
-      private$.listeners <- private$.listeners[ !match ]
+    subscriber.remove = function(){
+      match <- sapply( private$.subscribers, `[[`, "unsubscribe.flag" )
+      private$.subscribers <- private$.subscribers[ !match ]
       invisible( self )
     }
   ),
 
   private = list(
-    .listeners = list(),
+    .subscribers = list(),
 
     .alert = function(){
-      for( listener in private$.listeners ){
-        listener$alert( attr( listener, name ) )
+      for( subscriber in private$.subscribers ){
+        subscriber$alert( attr( subscriber, name ) )
       }
 
       invisible( TRUE )
     },
 
     .alert.context = function(){
-      for( listener in private$.listeners ){
-        listener$alert.context( attr( listener, name ) )
+      for( subscriber in private$.subscribers ){
+        subscriber$alert.context( attr( subscriber, name ) )
       }
 
       invisible( TRUE )
     },
 
     .alert.content = function(){
-      for( listener in private$.listeners ){
-        listener$alert.content( attr( listener, name ) )
+      for( subscriber in private$.subscribers ){
+        subscriber$alert.content( attr( subscriber, name ) )
       }
 
       invisible( TRUE )

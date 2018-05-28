@@ -50,6 +50,8 @@ clean()
 #   .Call( "cuR_transfer", tens.L3.1, tens.L3.2, 3L, 3L, type, dims, dims, dims, NULL, NULL, NULL, NULL, stream$ptr )
 # }
 #
+# L3.transfer()
+#
 # print( microbenchmark( L3.transfer() ) )
 # print( microbenchmark( L3.transfer.async() ) )
 #

@@ -5,25 +5,29 @@
 .tensor.dims <- R6Class(
   "cuR.tensor.dims",
   public = list(
-    span.off = NULL,
-    dims     = NULL,
+    span.off  = NULL,
+    dims.orig = NULL,
+    dims.perm = NULL,
+    dims      = NULL,
 
     initialize = function( tens ){
       check.tensor( tens )
-      self$dims <- tens$dims
+      self$dims.orig <- tens$dims
     },
 
     check.perm = function( perm ){
       if( is.null( perm ) ){
         return()
       }
+
       check.tensor( perm )
 
       if( perm$type != "i" ){
         stop( "Invalid tensor permutation" )
       }
 
-      self$dims <- c( self$dims[[1]], perm$l )
+      self$dims.perm <- c( self$orig[[1]], perm$l )
+      self$dims <- self$dims.perm
     },
 
     check.span = function( span ){
@@ -31,18 +35,24 @@
         return()
       }
 
+      if( is.null( self$dims.perm ) ){
+        dims <- self$dims.orig
+      }else{
+        dims <- self$dims.perm
+      }
+
       if( any( !is.obj( span ),
                !is.numeric( span ),
                !length( span ) == 2,
                as.logical( span %% 1 ),
-               span[[2]] > self$dims[[2]],
+               span[[2]] > dims[[2]],
                span[[2]] < span[[1]],
                span[[1]] < 1 ) ){
         stop( "Invalid tensor span" )
       }
 
       self$span.off <- as.integer( span[[1]] )
-      self$dims     <- c( self$dims[[1]], as.integer( span[[2]] - span[[1]] + 1L ) )
+      self$dims     <- c( dims[[1]], as.integer( span[[2]] - span[[1]] + 1L ) )
     },
 
     check.trans = function( trans ){

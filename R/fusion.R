@@ -5,22 +5,6 @@ fusion <- R6Class(
   "cuR.fusion",
   inherit = alert.recv,
   public = list(
-    alert = function( ... ){
-      self$check.destroyed()
-      private$.context.changed <- TRUE
-      private$.content.changed <- TRUE
-    },
-
-    alert.context = function( ... ){
-      self$check.destroyed()
-      private$.context.changed <- TRUE
-    },
-
-    alert.content = function( ... ){
-      self$check.destroyed()
-      private$.content.changed <- TRUE
-    },
-
     run = function(){
       self$check.destroyed()
 
@@ -28,12 +12,14 @@ fusion <- R6Class(
         ep$sever()
       }
 
-      if( private$.context.changed ){
+      if( !is.null( private$.context.changed ) ){
         private$.update.context()
+        private$.context.changed <- NULL
       }
 
-      if( private$.content.changed ){
-        private$.update.content()
+      if( !is.null( private$.content.changed ) ){
+        private$.update.content( private$.content.changed )
+        private$.content.changed <- NULL
       }
 
       .cuda.device.set( private$.device )
@@ -47,7 +33,7 @@ fusion <- R6Class(
       private$.listener.remove <- TRUE
 
       for( ep in private$.eps ){
-        ep$listener.remove()
+        private$.unsubscribe( ep )
       }
 
       private$.eps     <- NULL
@@ -83,19 +69,10 @@ fusion <- R6Class(
           stop( "Invalid fusion endpoint" )
         }
 
-        ep$listener.add( self, ep.name )
-
-        if( is.null( private$.eps ) ){
-          private$.eps <- list()
-        }
-
         private$.eps[[ep.name]] <- ep
+        private$.subscribe( ep, ep.name )
 
         if( output ){
-          if( is.null( private$.eps.out ) ){
-            private$.eps.out <- list()
-          }
-
           private$.eps.out[[ep.name]] <- ep
         }
 
@@ -104,16 +81,15 @@ fusion <- R6Class(
     },
 
     .update.context = function(){
-      print( "context updated" )
-      private$.context.changed <- FALSE
+      stop( "Context update not implemented" )
     },
 
-    .update.content = function(){
+    .update.content = function( names ){
       private$.params[ paste0( names( private$.eps ), ".ptr" ) ] <-
         lapply( private$.eps, `[[`, "ptr" )
 
       print( "content updated" )
-      private$.content.changed <- FALSE
+      private$.content.changed <- NULL
     }
   ),
 

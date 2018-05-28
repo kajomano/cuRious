@@ -297,16 +297,6 @@ tensor <- R6Class(
       if( missing( val ) ){
         return( private$.ptr )
       }
-
-      # else{
-      #   # TODO ====
-      #   # A low-level transfer call (maybe?)
-      #   val <- check.obj( val )
-      #   private$.match.obj( val )
-      #
-      #   private$.ptr <- val
-      #   private$.alert.content()
-      # }
     },
 
     dims = function( val ){

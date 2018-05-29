@@ -21,7 +21,7 @@ B <- tensor$new( mat.B, 3L )
 C <- tensor$new( mat.C, 3L )
 
 # Cublas operations require a cublas handle to be supplied. These handles are
-# context objects, and are implemented the same way as cuda streams in cuRious.
+# context objects, and are implemented the same way as cuda streams.
 handle <- cublas.handle$new()
 
 # Let's create a GEMM operation. Following the same logic as pipes, cublas lib-
@@ -49,12 +49,10 @@ A.3 <- tensor$new( A.0, 3L )
 B.3 <- tensor$new( A.3 )
 C.3 <- tensor$new( A.3 )
 
-gemm.0 <- cublas.sgemm$new( A.0, B.0, C.0, handle = handle )
+gemm.0 <- cublas.sgemm$new( A.0, B.0, C.0 )
 gemm.3 <- cublas.sgemm$new( A.3, B.3, C.3, handle = handle )
 
-# TODO ====
-# C.0 gains read-only
-
 print( microbenchmark( gemm.0$run(), times = 10 ) )
+print( microbenchmark( gemm.3$run(), times = 10 ) )
 
 clean()

@@ -52,8 +52,8 @@ void cuR_transfer_host_host( s* src_ptr,
         Rf_error( "Out-of-bounds transfer call on destination tensor" );
       }
 
-      dst_off = ( src_perm_ptr[i] - 1 ) * dims[0];
-      src_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+      src_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+      dst_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
 
       for( int j = 0; j < dims[0]; j++ ){
         dst_ptr[dst_off+j] = (d)src_ptr[src_off+j];
@@ -69,7 +69,7 @@ void cuR_transfer_host_host( s* src_ptr,
         Rf_error( "Out-of-bounds transfer call on destination tensor" );
       }
 
-      dst_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+      dst_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
 
       for( int j = 0; j < dims[0]; j++ ){
         dst_ptr[dst_off+j] = (d)src_ptr[j];
@@ -87,7 +87,7 @@ void cuR_transfer_host_host( s* src_ptr,
         Rf_error( "Out-of-bounds transfer call on source tensor" );
       }
 
-      src_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+      src_off = ( src_perm_ptr[i] - 1 ) * dims[0];
 
       for( int j = 0; j < dims[0]; j++ ){
         dst_ptr[dst_off+j] = (d)src_ptr[src_off+j];
@@ -163,8 +163,8 @@ void cuR_transfer_host_device( t* src_ptr,
         Rf_error( "Out-of-bounds transfer call on destination tensor" );
       }
 
-      dst_off = ( src_perm_ptr[i] - 1 ) * dims[0];
-      src_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+      src_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+      dst_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
 
       if( stream_ptr ){
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
@@ -189,7 +189,7 @@ void cuR_transfer_host_device( t* src_ptr,
         Rf_error( "Out-of-bounds transfer call on destination tensor" );
       }
 
-      dst_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+      dst_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
 
       if( stream_ptr ){
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
@@ -216,7 +216,7 @@ void cuR_transfer_host_device( t* src_ptr,
         Rf_error( "Out-of-bounds transfer call on source tensor" );
       }
 
-      src_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+      src_off = ( src_perm_ptr[i] - 1 ) * dims[0];
 
       if( stream_ptr ){
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
@@ -302,8 +302,8 @@ void cuR_transfer_device_host( t* src_ptr,
         Rf_error( "Out-of-bounds transfer call on destination tensor" );
       }
 
-      dst_off = ( src_perm_ptr[i] - 1 ) * dims[0];
-      src_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+      src_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+      dst_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
 
       if( stream_ptr ){
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
@@ -328,7 +328,7 @@ void cuR_transfer_device_host( t* src_ptr,
         Rf_error( "Out-of-bounds transfer call on destination tensor" );
       }
 
-      dst_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+      dst_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
 
       if( stream_ptr ){
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
@@ -355,7 +355,7 @@ void cuR_transfer_device_host( t* src_ptr,
         Rf_error( "Out-of-bounds transfer call on source tensor" );
       }
 
-      src_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+      src_off = ( src_perm_ptr[i] - 1 ) * dims[0];
 
       if( stream_ptr ){
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,

@@ -144,15 +144,10 @@ pipe <- R6Class(
       private$.params$dst.level <- dst.level
 
       # Multi or single-step transfer
-      if( ( src.level == 0L && dst.level == 3L ) ||
-          ( src.level == 3L && dst.level == 0L ) ||
-          ( transfer.deep && ( src.device != dst.device ) ) ){
-        private$.fun <- .transfer.ptr.multi
-      }else{
-        private$.fun <- .transfer.ptr.uni
-      }
-
-      print( "context updated" )
+      private$.fun <- .transfer.ptr.choose( src.level,
+                                            dst.level,
+                                            src.device ,
+                                            dst.device )
     }
   )
 )

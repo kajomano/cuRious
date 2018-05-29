@@ -30,10 +30,9 @@ fusion <- R6Class(
 
     destroy = function(){
       self$check.destroyed()
-      private$.listener.remove <- TRUE
 
-      for( ep in private$.eps ){
-        private$.unsubscribe( ep )
+      for( ep.name in names( private$.eps ) ){
+        private$.unsubscribe( private$.eps[[ep.name]], ep.name )
       }
 
       private$.eps     <- NULL
@@ -87,8 +86,6 @@ fusion <- R6Class(
     .update.content = function( names ){
       private$.params[ paste0( names, ".ptr" ) ] <-
         lapply( private$.eps[ names ], `[[`, "ptr" )
-
-      print( "content updated" )
     }
   ),
 

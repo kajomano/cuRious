@@ -14,7 +14,7 @@ print( transfer )
 
 # A simple pipe transfer:
 src <- tensor$new( matrix( 1:6, 2, 3 ) )
-dst <- tensor$new( src, init = "mimic" )
+dst <- tensor$new( src, copy = FALSE )
 pip <- pipe$new( src, dst )
 
 pip$run()

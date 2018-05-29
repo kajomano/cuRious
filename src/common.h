@@ -2,7 +2,7 @@
 // TODO ====
 // Reinstate CUDA_EXCLUDES!
 //#define CUDA_EXCLUDE 1
-#define DEBUG_PRINTS 1
+// #define DEBUG_PRINTS 1
 
 #define R_NO_REMAP 1
 
@@ -18,7 +18,9 @@
 
 #define cublasTry(ans){ cublasAssert( (ans), __FILE__, __LINE__ ); }
 inline void cublasAssert( cublasStatus_t stat, const char *file, int line ){
-  if( stat == CUBLAS_STATUS_NOT_INITIALIZED ){
+  if( stat == CUBLAS_STATUS_SUCCESS ){
+    return;
+  }else if( stat == CUBLAS_STATUS_NOT_INITIALIZED ){
     Rf_error( "cuBLAS assert: NOT_INITIALIZED %s %d\n", file, line );
   }else if( stat == CUBLAS_STATUS_ALLOC_FAILED ){
     Rf_error( "cuBLAS assert: ALLOC_FAILED %s %d\n", file, line );

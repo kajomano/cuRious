@@ -60,12 +60,12 @@ tens <- tensor$new( rnorm( 10 ), level = 3L )
 print( tens$ptr )
 
 # Direct assignement is not allowed on any level other than L0:
-try( tens$ptr <- 1 )
+try( tens$obj <- 1 )
 
 # GPU computations usually involve numeric matrices. As not many GPU-s have
 # strong double precision floating-point capabilities, numeric data is converted
 # from double-precision to single-precision between L0-L1 data transfers. This
-# conversion is lossy, and can result in loss of precision.
+# can result in a loss of precision.
 
 # Some values are not the same:
 R.vect <- rnorm( 10 ) * 10^9

@@ -1,7 +1,7 @@
 Package: cuRious
 Type: Package
 Title: Simple Neural Networks with CUDA and R
-Version: 0.2.0
+Version: 0.3.0
 Author: Marton Kajo
 Maintainer: Marton Kajo <kajomano@hotmail.com>
 Description: A neural network framework implementing a direct interface to some Nvidia CUDA functionality from R.

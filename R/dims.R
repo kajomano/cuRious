@@ -27,7 +27,7 @@
         stop( "Invalid tensor permutation" )
       }
 
-      self$dims.perm <- c( self$orig[[1]], perm$l )
+      self$dims.perm <- c( self$dims.orig[[1]], perm$l )
       self$dims <- self$dims.perm
     },
 

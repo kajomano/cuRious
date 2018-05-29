@@ -3,8 +3,12 @@ library( microbenchmark )
 library( R6 )
 
 obj <- 2
-src <- tensor$new()
-dst <- tensor$new( obj )
+src <- tensor$new( obj )
+dst <- tensor$new()
+
+dst$push( src )
+dst$ptr
+
 pip <- pipe$new( src, dst )
 
 # names( src$.__enclos_env__$private$.subscribers )

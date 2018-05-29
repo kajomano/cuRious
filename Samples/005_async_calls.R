@@ -19,7 +19,7 @@ stream <- cuda.stream$new()
 
 # A synchronous and an asynchronous transfer:
 src <- tensor$new( rnorm( 10^6 ), 2L )
-dst <- tensor$new( src, 3L, init = "mimic" )
+dst <- tensor$new( src, 3L, copy = FALSE )
 
 pip.sync  <- pipe$new( src, dst )
 pip.async <- pipe$new( src, dst, stream = stream )
@@ -29,24 +29,18 @@ print( microbenchmark( pip.async$run(), times = 100 ) )
 
 # The asynchronous transfer seems much faster, but keep in mind that since the
 # control immediately returns to the host thread, the actual transfer might only
-# be complete much later. To be able to wait for finished asynchronous calls,
+# be completed much later. To be able to wait for finished asynchronous calls,
 # streams implement the $sync() operation, which does not return until all calls
 # are done executing in the streams queue.
 
 # An example of syncing:
-pip.unsynced.run <- function(){
+pip.synced.run <- function(){
   for( i in 1:100 ){
     pip.async$run()
   }
-}
-
-pip.synced.run <- function(){
-  pip.unsynced.run()
   stream$sync()
 }
 
-print( microbenchmark( pip.unsynced.run(), times = 1 ) )
-stream$sync()
-print( microbenchmark( pip.synced.run(), times = 1 ) )
+print( microbenchmark( pip.synced.run(), times = 10 ) )
 
 clean()

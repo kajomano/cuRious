@@ -100,13 +100,10 @@ SEXP cuR_cublas_sger( SEXP tens_x_r,
     // Flush for WDDM
     cudaStreamQuery(0);
   }else{
-    cudaTry( cudaDeviceSynchronize() )
+    cudaTry( cudaDeviceSynchronize() );
   }
 
-  // Return something that is not null
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
+  return R_NilValue;
 }
 
 extern "C"
@@ -173,17 +170,14 @@ SEXP cuR_cublas_sgemm( SEXP tens_A_r,
   // Do the op
   cublasTry( cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m ) );
 
-  if( stream_r != R_NilValue ){
+  if( stream ){
     // Flush for WDDM
     cudaStreamQuery(0);
   }else{
-    cudaTry( cudaDeviceSynchronize() )
+    cudaTry( cudaDeviceSynchronize() );
   }
 
-  // Return something that is not null
-  SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-  Rf_unprotect(1);
-  return ret_r;
+  return R_NilValue;
 }
 
 // extern "C"

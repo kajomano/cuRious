@@ -32,18 +32,13 @@ tens <- tensor$new(
   # an error. If data is set, setting this argument will also produce an error.
   type   = c( "num", "int", "log" ),
 
-  # The initialization method governs how to process the data argument if it is
-  # supplied. The default is to copy the information. "mimic" copies the meta-
-  # information such as level, dimensions, type and device, but not the actual
-  # data. The tensor will be initilaized with 0-s or FALSE-es in this case.
-  # "wrap" can be only used if data is an object. Wrapping an object does not
-  # duplicate the data from the object, but wraps it into a tensor. We will
-  # see the benefits of this use later.
-  init   = c( "copy", "mimic", "wrap" ),
+  # The copy flag decides wether actual data will be used for initialization. If
+  # set to FALSE, the tensor will be initialized with 0-s or FALSE-es.
+  copy = TRUE,
 
   # Device is important in multi-gpu environments. Device can be set for any
   # level, but only becomes important on L3. If unset, the default device will
-  # be set. The use of multiple device will be shown in a later sample script.
+  # be set. The use of multiple devices will be shown in a later sample script.
   device = NULL # Integer in the range 0:( devices-1 )
 )
 
@@ -51,8 +46,8 @@ tens <- tensor$new(
 # written by the $push() function of the tensor. These functions are intended
 # only for debugging and experimentational purposes. We will see how to modify
 # the tensor contents in implementations in a later sample script. When using
-# $push(), the type and dimensions of the supplied objest must match the type
-# and dimensions of the tensor, otherwise an error will be produced.
+# $push(), the type and dimensions of the supplied object or tensor must match
+# the type and dimensions of the tensor, otherwise an error will be produced.
 
 # Let's check the contents:
 print( tens$pull() )
@@ -77,15 +72,15 @@ tens.dupl <- tensor$new( tens.wrap )
 # Let's change the content of the tensor:
 tens.copy$push( 3:4 )
 
-# As can be seen, the copy also changed, while the properly duplicated data
+# As can be seen, the copy also changed, while the properly duplicated tensor
 # did not:
 print( tens.copy$pull() )
 print( tens.dupl$pull() )
 
-# Tensor contents can also be accessed directly by calling the $ptr active
+# Tensor contents can also be accessed directly by calling the $obj active
 # binding, if the tensor is on L0:
-tens$ptr <- 0
-print( tens$ptr )
+tens$obj <- 0
+print( tens$obj )
 
 # Tensors should be considered as placeholders, which functions can read from
 # and write to. A good program utilizing tensors should minimize the creation

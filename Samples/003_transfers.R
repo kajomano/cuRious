@@ -7,13 +7,11 @@ library( cuRious )
 
 # A simple transfer invocation:
 src <- tensor$new( matrix( 1:6, 2, 3 ) )
-dst <- tensor$new( src, init = "mimic" )
+dst <- tensor$new( src, copy = FALSE )
 
 transfer( src, dst )
 
 print( dst$pull() )
-
-# Transfer() is also used when invoking the $pull() or $push() operations.
 
 # Large matrices often need to be split into smaller chunks. To this extent, all
 # transfer() calls are subsettable to some degree. There is a catch however: the
@@ -57,21 +55,10 @@ print( dst$pull() )
 
 # Individual subsetting (permutaion) ====
 # Individual columns can be subsetted and reordered by supplying an integer
-# tensor as subset. Both source and destination can be subsetted, but this form
-# of subsetting only works on the following transfers:
-#
-#      | L0 | L1 | L2 | L3 |
-#   ---|----|----|----|----|
-#   L0 | *  | *  | *  |    |
-#   ---|----|----|----|----|
-#   L1 | *  | *  | *  |    |
-#   ---|----|----|----|----|
-#   L2 | *  | *  | *  |    |
-#   ---|----|----|----|----|
-#   L3 |    |    |    | *  |
-#
-# In the case of L3-L3 permutated subsets, the permutation tensors also need to
-# be on L3. In any other case, the permutation tensors can be L0, L1 and L2:
+# tensor as subset. Both source and destination can be subsetted. In the case of
+# L3-L3 permutated subsets on the same device, the permutation tensors also need
+# to be on L3 and on the same device. In any other case, the permutation tensors
+# can be L0, L1 and L2:
 
 src.perm <- tensor$new( c(1L, 3L, 2L) )
 dst.perm <- tensor$new( c(3L, 2L, 1L) )
@@ -83,7 +70,8 @@ transfer( src, dst, src.perm = src.perm, dst.perm = dst.perm )
 print( src$pull() )
 print( dst$pull() )
 
-# Permutated subsets can also be used with spans:
+# Permutated subsets can also be used with spans. In this case, the span subsets
+# the permutation vector itself.
 dst$clear()
 
 transfer( src,

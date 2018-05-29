@@ -1,6 +1,8 @@
 alert.recv <- R6Class(
   "cuR.alert.subscriber",
   public = list(
+    unsubscribe.flag = FALSE,
+
     alert = function( name ){
       self$check.destroyed()
       private$.add.content.changed( name )
@@ -19,9 +21,8 @@ alert.recv <- R6Class(
   ),
 
   private = list(
-    .context.changed  = NULL,
-    .content.changed  = NULL,
-    .unsubscribe.flag = FALSE,
+    .context.changed = NULL,
+    .content.changed = NULL,
 
     .subscribe = function( sender, name ){
       if( !( "cuR.alert.sender" %in% class( sender ) ) ){
@@ -39,9 +40,9 @@ alert.recv <- R6Class(
         stop( "Invalid sender" )
       }
 
-      private$.unsubscribe.flag <- TRUE
+      self$unsubscribe.flag <- TRUE
       sender$subscriber.remove()
-      private$.unsubscribe.flag <- FALSE
+      self$unsubscribe.flag <- FALSE
 
       private$.remove.content.changed( name )
       private$.remove.context.changed( name )
@@ -99,8 +100,8 @@ alert.send <- R6Class(
     },
 
     subscriber.remove = function(){
-      match <- sapply( private$.subscribers, `[[`, "unsubscribe.flag" )
-      private$.subscribers <- private$.subscribers[ !match ]
+      matched <- sapply( private$.subscribers, `[[`, "unsubscribe.flag" )
+      private$.subscribers <- private$.subscribers[ !matched ]
       invisible( self )
     }
   ),

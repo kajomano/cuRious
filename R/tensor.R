@@ -90,15 +90,13 @@ tensor <- R6Class(
             private$.device <- check.device( device )
           }
         }else{
-          stop( "Invalid data argument" )
+          stop( "Invalid data format" )
         }
       }
 
-      # Initialize the tensor according to data and copy
-      # tensor$initialize does NOT use pipes or high-level transfer calls,
-      # so that there is no circular dependency in code structure
+      # Initial data
       if( is.null( data ) ){
-        private$.create.ptr()
+        private$.ptr <- private$.create.ptr()
         self$clear()
       }else{
         if( copy ){
@@ -107,80 +105,57 @@ tensor <- R6Class(
               private$.ptr  <- data$obj
               private$.refs <- TRUE
             }else{
-              private$.create.ptr()
-
-              .transfer.ptr( data$ptr,
-                             private$.ptr,
-                             data$level,
-                             private$.level,
-                             data$device,
-                             private$.device,
-                             private$.type,
-                             data$dims,
-                             private$.dims,
-                             private$.dims )
+              private$.ptr  <- private$.create.ptr()
+              private$.push( data )
             }
-          }else{
+          }else if( is.obj( data ) ){
             if( private$.level == 0L ){
               private$.ptr  <- data
               private$.refs <- TRUE
             }else{
-              private$.create.ptr()
-
-              .transfer.ptr( data,
-                             private$.ptr,
-                             0L,
-                             private$.level,
-                             NULL,  # Devices should not matter
-                             NULL,
-                             private$.type,
-                             private$.dims,
-                             private$.dims,
-                             private$.dims )
+              private$.ptr  <- private$.create.ptr()
+              private$.push( data )
             }
           }
         }else{
-          private$.create.ptr()
+          private$.ptr <- private$.create.ptr()
           self$clear()
         }
       }
     },
 
-    # These functions are only there for objs, are essentially interfaces
-    # to R
+    # Push takes objects or tensors, pull takes only objects
+    # Reason: if you want to pull into a tensor, you can push into it this
+    # tensor. If you need a new tensor while also data being pulled into it,
+    # create a new tensor with data = this tensor.
+    push = function( data ){
+      self$check.destroyed()
 
-    # TODO ====
-    # Think about
-    # private$.ptr.acc <- FALSE
-    # for these 2 operations:
-    # push = function( obj ){
-    #   self$check.destroyed()
-    #
-    #   obj <- check.obj( obj )
-    #   private$.match.obj( obj )
-    #
-    #   obj.tensor <- tensor$new( obj, private$.level )
-    #   private$.destroy.ptr()
-    #   private$.ptr <- obj.tensor$ptr
-    #
-    #   if( private$.level == 0L ){
-    #     private$.ptr.acc <- TRUE
-    #   }
-    #
-    #   invisible( TRUE )
-    # },
-    #
-    # pull = function(){
-    #   self$check.destroyed()
-    #
-    #   tmp <- tensor$new( self, 0L )
-    #
-    #   if( private$.level == 0L ){
-    #     private$.ptr.acc <- TRUE
-    #   }
-    #
-    #   tmp$ptr
-    # },
+      private$.match( data )
+
+      self$sever()
+      private$.push( data )
+
+      invisible( TRUE )
+    },
+
+    pull = function(){
+      self$check.destroyed()
+
+      tmp <- private$.create.ptr( 0L )
+      .transfer.ptr.choose( private$.level,
+                            0L,
+                            NULL,
+                            NULL )( private$.ptr,
+                                    tmp,
+                                    private$.level,
+                                    0L,
+                                    private$.type,
+                                    private$.dims,
+                                    private$.dims,
+                                    private$.dims )
+      tmp
+    },
 
     clear = function(){
       self$sever()
@@ -239,16 +214,16 @@ tensor <- R6Class(
       }
 
       if( !level ){
-        private$.ptr <- obj.create( private$.dims, private$.type )
+        obj.create( private$.dims, private$.type )
       }else{
         if( level == 3L ){
           .cuda.device.set( device )
         }
 
-        private$.ptr <- .Call( "cuR_tensor_create",
-                               level,
-                               private$.dims,
-                               private$.type )
+        .Call( "cuR_tensor_create",
+               level,
+               private$.dims,
+               private$.type )
       }
     },
 
@@ -263,14 +238,50 @@ tensor <- R6Class(
       private$.ptr <- NULL
     },
 
-    .match.obj = function( obj ){
-      if( !identical( obj.dims( obj ), private$.dims ) ){
+    .match = function( data ){
+      if( is.tensor( data ) ){
+        dims <- data$dims
+        type <- data$type
+      }else if( is.obj( data ) ){
+        dims <- obj.dims( data )
+        type <- obj.type( data )
+      }else{
+        stop( "Invalid data format" )
+      }
+
+      if( !identical( dims, private$.dims ) ){
         stop( "Dims do not match" )
       }
 
-      if( obj.type( obj ) != private$.type ){
+      if( type != private$.type ){
         stop( "Types do not match" )
       }
+    },
+
+    .push = function( data ){
+      if( is.tensor( data ) ){
+        ptr    <- data$ptr
+        level  <- data$level
+        device <- data$device
+      }else if( is.obj( data ) ){
+        ptr    <- data
+        level  <- 0L
+        device <- 0L
+      }else{
+        stop( "Invalid data format" )
+      }
+
+      .transfer.ptr.choose( level,
+                            private$.level,
+                            device,
+                            private$.device )( ptr,
+                                               private$.ptr,
+                                               level,
+                                               private$.level,
+                                               private$.type,
+                                               private$.dims,
+                                               private$.dims,
+                                               private$.dims )
     }
   ),
 
@@ -289,7 +300,7 @@ tensor <- R6Class(
         return( private$.ptr )
       }else{
         val <- check.obj( val )
-        private$.match.obj( val )
+        private$.match( val )
 
         private$.ptr <- val
         private$.alert.content()
@@ -301,6 +312,8 @@ tensor <- R6Class(
 
       if( missing( val ) ){
         return( private$.ptr )
+      }else{
+        stop( "Tensor pointer is not directly settable" )
       }
     },
 

@@ -13,6 +13,7 @@
     initialize = function( tens ){
       check.tensor( tens )
       self$dims.orig <- tens$dims
+      self$dims      <- self$dims.orig
     },
 
     check.perm = function( perm ){

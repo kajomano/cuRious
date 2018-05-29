@@ -13,7 +13,7 @@ fusion <- R6Class(
       }
 
       if( !is.null( private$.context.changed ) ){
-        private$.update.context()
+        private$.update.context( private$.context.changed )
         private$.context.changed <- NULL
       }
 
@@ -55,14 +55,16 @@ fusion <- R6Class(
     .eps     = NULL,
     .eps.out = NULL,
 
-    .context.changed = TRUE,
-    .content.changed = TRUE,
+    .context.changed = NULL,
+    .content.changed = NULL,
 
-    # These fields need to be filled in the .update() function
+    # These fields need to be filled in the .update.context() function
     .device  = NULL,
     .fun     = NULL,
     .params  = list(),
 
+    # TODO ====
+    # Get the variable name ep.name from the function call somehow
     .add.ep  = function( ep, ep.name, output = FALSE ){
       if( !is.null( ep ) ){
         if( !is.tensor( ep ) && !is.context( ep ) ){
@@ -75,21 +77,18 @@ fusion <- R6Class(
         if( output ){
           private$.eps.out[[ep.name]] <- ep
         }
-
-        invisible( TRUE )
       }
     },
 
-    .update.context = function(){
+    .update.context = function( names ){
       stop( "Context update not implemented" )
     },
 
     .update.content = function( names ){
-      private$.params[ paste0( names( private$.eps ), ".ptr" ) ] <-
-        lapply( private$.eps, `[[`, "ptr" )
+      private$.params[ paste0( names, ".ptr" ) ] <-
+        lapply( private$.eps[ names ], `[[`, "ptr" )
 
       print( "content updated" )
-      private$.content.changed <- NULL
     }
   ),
 

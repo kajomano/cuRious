@@ -2,19 +2,46 @@ library( cuRious )
 library( microbenchmark )
 library( R6 )
 
-obj1 <- 1.0
-tracemem( obj1 )
-obj2 <- 2.0
+obj <- 2
+src <- tensor$new()
+dst <- tensor$new( obj )
+pip <- pipe$new( src, dst )
 
-tens1 <- tensor$new( obj1, 0L )
-tens1$ptr
+# names( src$.__enclos_env__$private$.subscribers )
 
-tens1$sever()
-.Call( "cuR_transfer", obj2, tens1$ptr, 0L, 0L, "n", tens1$dims, tens1$dims, tens1$dims, NULL, NULL, NULL, NULL, NULL )
+pip$run()
 
-obj1
+dst$ptr
+
+pip$run()
+
+src$obj <- 3
+src$ptr
+
+pip$run()
+
+dst$ptr
 
 clean()
+
+# obj1 <- 1.0
+# # tracemem( obj1 )
+# obj2 <- 2.0
+#
+# tens1 <- tensor$new( obj1, 3L, device = 0L )
+# tens2 <- tensor$new( tens1, 3L, device = 1L )
+#
+# .Call( "cuR_transfer", tens1$ptr, obj2, 3L, 0L, "n", tens1$dims, tens1$dims, tens1$dims, NULL, NULL, NULL, NULL, NULL )
+#
+#
+# tens1$ptr
+#
+# tens1$sever()
+# .Call( "cuR_transfer", obj2, tens1$ptr, 0L, 0L, "n", tens1$dims, tens1$dims, tens1$dims, NULL, NULL, NULL, NULL, NULL )
+#
+# obj1
+#
+# clean()
 
 # dims <- c( 3000L, 2000L )
 # type <- "n"

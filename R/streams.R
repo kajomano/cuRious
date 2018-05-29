@@ -2,20 +2,11 @@
 
 # CUDA devices ====
 cuda.device.count <- function(){
-  ret <- .Call( "cuR_device_count" )
-  if( is.null( ret ) ){
-    stop( "Failed to get device count" )
-  }
-  ret
+  .Call( "cuR_device_count" )
 }
 
 .cuda.device.get <- function(){
-  device <- .Call( "cuR_device_get" )
-  if( is.null( device ) ){
-    stop( "Failed to get current device" )
-  }
-
-  device
+  .Call( "cuR_device_get" )
 }
 
 .cuda.device.set <- function( device ){
@@ -23,10 +14,7 @@ cuda.device.count <- function(){
     return()
   }
 
-  if( is.null( .Call( "cuR_device_set", device ) ) ){
-    stop( "Failed to set current device" )
-  }
-
+  .Call( "cuR_device_set", device )
   assign( "cuda.device.current", device, envir = .cuRious.env )
 }
 
@@ -43,10 +31,8 @@ cuda.device.default.set <- function( device ){
 cuda.device.sync <- function( device ){
   device <- check.device( device )
   .cuda.device.set( device )
+  .Call( "cuR_device_sync" )
 
-  if( is.null( .Call( "cuR_device_sync" ) ) ){
-    stop( "Device could not be synced" )
-  }
   invisible( TRUE )
 }
 
@@ -57,9 +43,7 @@ cuda.stream <- R6Class(
   public = list(
     sync = function(){
       if( self$is.active ){
-        if( is.null( .Call( "cuR_cuda_stream_sync", private$.ptr ) ) ){
-          stop( "Stream could not be synced" )
-        }
+        .Call( "cuR_cuda_stream_sync", private$.ptr )
 
         invisible( TRUE )
       }else{

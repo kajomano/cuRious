@@ -19,10 +19,13 @@ transfer <- function( src,
 
 # Low level transfer call that handles ptrs, for speed considerations
 # no argument checks are done, don't use interactively!
+
 .transfer.ptr = function( src.ptr,
                           dst.ptr,
                           src.level,
                           dst.level,
+                          src.device,
+                          dst.device,
                           type,
                           src.dims,
                           dst.dims,
@@ -34,7 +37,9 @@ transfer <- function( src,
                           stream.ptr   = NULL ){
 
   if( ( src.level == 3L && dst.level == 0L ) ||
-      ( src.level == 0L && dst.level == 3L ) ){
+      ( src.level == 0L && dst.level == 3L ) ||
+      ( ( src.level == 3L && dst.level == 3L ) &&
+        ( src.device != dst.device ) ) ){
     .transfer.ptr.multi( src.ptr,
                          dst.ptr,
                          src.level,

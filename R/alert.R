@@ -28,10 +28,13 @@ alert.recv <- R6Class(
         stop( "Invalid sender" )
       }
 
-      sender$subscriber.add( selfr, name )
+      sender$subscriber.add( self, name )
+
+      private$.add.content.changed( name )
+      private$.add.context.changed( name )
     },
 
-    .unsubscribe = function( sender ){
+    .unsubscribe = function( sender, name ){
       if( !( "cuR.alert.sender" %in% class( sender ) ) ){
         stop( "Invalid sender" )
       }
@@ -39,17 +42,36 @@ alert.recv <- R6Class(
       private$.unsubscribe.flag <- TRUE
       sender$subscriber.remove()
       private$.unsubscribe.flag <- FALSE
+
+      private$.remove.content.changed( name )
+      private$.remove.context.changed( name )
     },
 
     .add.content.changed = function( name ){
-      if( ( name %in% private$.content.changed ) ){
+      name.match <- ( name == private$.content.changed )
+      if( !any( name.match ) ){
         private$.content.changed <- c( private$.content.changed, name )
       }
     },
 
     .add.context.changed = function( name ){
-      if( ( name %in% private$.context.changed ) ){
+      name.match <- ( name == private$.context.changed )
+      if( !any( name.match ) ){
         private$.context.changed <- c( private$.context.changed, name )
+      }
+    },
+
+    .remove.content.changed = function( name ){
+      name.match <- ( name == private$.content.changed )
+      if( any( name.match ) ){
+        private$.content.changed <- private$.content.changed[ !name.match ]
+      }
+    },
+
+    .remove.context.changed = function( name ){
+      name.match <- ( name == private$.context.changed )
+      if( any( name.match ) ){
+        private$.context.changed <- private$.context.changed[ !name.match ]
       }
     }
   ),
@@ -68,8 +90,10 @@ alert.send <- R6Class(
       if( !( "cuR.alert.subscriber" %in% class( subscriber ) ) ){
         stop( "Invalid subscriber" )
       }
-      attr( subscriber, name ) <- name
-      private$.subscribers <- c( private$.subscribers, list( subscriber ) )
+
+      subsc <- list( subscriber )
+      names( subsc ) <- name
+      private$.subscribers <- c( private$.subscribers, subsc )
 
       invisible( self )
     },
@@ -85,24 +109,30 @@ alert.send <- R6Class(
     .subscribers = list(),
 
     .alert = function(){
-      for( subscriber in private$.subscribers ){
-        subscriber$alert( attr( subscriber, name ) )
+      if( length( private$.subscribers ) ){
+        for( i in 1:length( private$.subscribers ) ){
+          private$.subscribers[[i]]$alert( names( private$.subscribers )[[i]] )
+        }
       }
 
       invisible( TRUE )
     },
 
     .alert.context = function(){
-      for( subscriber in private$.subscribers ){
-        subscriber$alert.context( attr( subscriber, name ) )
+      if( length( private$.subscribers ) ){
+        for( i in 1:length( private$.subscribers ) ){
+          private$.subscribers[[i]]$alert.context( names( private$.subscribers )[[i]] )
+        }
       }
 
       invisible( TRUE )
     },
 
     .alert.content = function(){
-      for( subscriber in private$.subscribers ){
-        subscriber$alert.content( attr( subscriber, name ) )
+      if( length( private$.subscribers ) ){
+        for( i in 1:length( private$.subscribers ) ){
+          private$.subscribers[[i]]$alert.content( names( private$.subscribers )[[i]] )
+        }
       }
 
       invisible( TRUE )

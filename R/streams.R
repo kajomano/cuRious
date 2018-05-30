@@ -28,7 +28,7 @@ cuda.device.default.set <- function( device ){
   assign( "cuda.device.default", device, envir = .cuRious.env )
 }
 
-cuda.device.sync <- function( device ){
+cuda.device.sync <- function( device = cuda.device.default.get() ){
   device <- check.device( device )
   .cuda.device.set( device )
   .Call( "cuR_device_sync" )

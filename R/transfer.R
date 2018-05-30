@@ -22,13 +22,19 @@ transfer <- function( src,
 
 .transfer.ptr.choose = function( src.level,
                                  dst.level,
-                                 src.device,
-                                 dst.device ){
+                                 src.device = NULL,
+                                 dst.device = NULL ){
+
+  deep <- src.level == 3L && dst.level == 3L
+  if( deep ){
+    if( any( is.null( src.device ), is.null( dst.device ) ) ){
+      stop( "Missing devices for transfer" )
+    }
+  }
 
   if( ( src.level == 3L && dst.level == 0L ) ||
       ( src.level == 0L && dst.level == 3L ) ||
-      ( ( src.level == 3L && dst.level == 3L ) &&
-        ( src.device != dst.device ) ) ){
+      ( deep && ( src.device != dst.device ) ) ){
     .transfer.ptr.multi
   }else{
     .transfer.ptr.uni
@@ -40,9 +46,9 @@ transfer <- function( src,
                               src.level,
                               dst.level,
                               type,
-                              src.dims,
-                              dst.dims,
                               dims,
+                              src.dims     = NULL,
+                              dst.dims     = NULL,
                               src.perm.ptr = NULL,
                               dst.perm.ptr = NULL,
                               src.span.off = NULL,
@@ -55,9 +61,9 @@ transfer <- function( src,
          src.level,
          dst.level,
          type,
+         dims,
          src.dims,
          dst.dims,
-         dims,
          src.perm.ptr,
          dst.perm.ptr,
          src.span.off,
@@ -71,9 +77,9 @@ transfer <- function( src,
                                 src.level,
                                 dst.level,
                                 type,
-                                src.dims,
-                                dst.dims,
                                 dims,
+                                src.dims     = NULL,
+                                dst.dims     = NULL,
                                 src.perm.ptr = NULL,
                                 dst.perm.ptr = NULL,
                                 src.span.off = NULL,
@@ -89,8 +95,8 @@ transfer <- function( src,
          src.level,
          2L,
          type,
-         src.dims,
          dims,
+         src.dims,
          dims,
          src.perm.ptr,
          NULL,
@@ -105,8 +111,8 @@ transfer <- function( src,
          dst.level,
          type,
          dims,
-         dst.dims,
          dims,
+         dst.dims,
          NULL,
          dst.perm.ptr,
          NULL,

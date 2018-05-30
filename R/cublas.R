@@ -114,138 +114,126 @@ cublas.handle <- R6Class(
 # sger ====
 # A = a*x %*% tp(y) + A
 # tp = transpose
-# x and y are column vectors here, but it does not actually matter, the data
-# stored behind x or tp(x) is the same, hence the rows.x argument name
-# cublas.sger <- R6Class(
-#   "cuR.cublas.sger",
-#   inherit = .cublas.fusion,
-#   public = list(
-#     initialize = function( x,
-#                            y,
-#                            A,
-#                            x.span = NULL,
-#                            y.span = NULL,
-#                            A.span = NULL,
-#                            alpha  = 1,
-#                            handle = NULL,
-#                            stream = NULL  ){
-#       # Sanity checks
-#       check.tensor( x )
-#       check.tensor( y )
-#       check.tensor( A )
-#
-#       if( !all( c( x$type == "n", y$type == "n", A$type == "n" ) ) ){
-#         stop( "All input tensors need to be numeric" )
-#       }
-#
-#       # Dim checks
-#       x.dims <- .tensor.dims$new( x )
-#       y.dims <- .tensor.dims$new( y )
-#       A.dims <- .tensor.dims$new( A )
-#
-#       x.dims$check.vect()
-#       y.dims$check.vect()
-#
-#       if( !is.null( x.span ) ){
-#         x.dims$check.span( x.span )
-#       }
-#
-#       if( !is.null( y.span ) ){
-#         y.dims$check.span( y.span )
-#       }
-#
-#       if( !is.null( A.span ) ){
-#         A.dims$check.span( A.span )
-#       }
-#
-#       if( x.dims$dims[[2]] != A.dims$dims[[1]] ||
-#           y.dims$dims[[2]] != A.dims$dims[[2]] ){
-#         stop( "Not all tensors have matching dimensions" )
-#       }
-#
-#       if( !is.numeric( alpha ) || !( length( alpha ) == 1L ) ){
-#         stop( "Invalid alpha parameter" )
-#       }
-#
-#       # Assignments
-#       private$.eps.in$x  <- x
-#       private$.eps.in$y  <- y
-#       private$.eps.out$A <- A
-#
-#       private$.params$dims <- A.dims$dims
-#
-#       private$.params$x.span.off <- x.dims$span.off
-#       private$.params$y.span.off <- y.dims$span.off
-#       private$.params$A.span.off <- A.dims$span.off
-#
-#       private$.params$alpha <- as.numeric( alpha )
-#
-#       super$initialize( handle, stream )
-#     }
-#   ),
-#
-#   private = list(
-#     .L3.call = function( x.ptr,
-#                          y.ptr,
-#                          A.ptr,
-#                          dims,
-#                          x.span.off = NULL,
-#                          y.span.off = NULL,
-#                          A.span.off = NULL,
-#                          alpha,
-#                          handle.ptr,
-#                          stream.ptr = NULL ){
-#
-#       ret <- .Call( "cuR_cublas_sger",
-#                     x.ptr,
-#                     y.ptr,
-#                     A.ptr,
-#                     dims,
-#                     x.span.off,
-#                     y.span.off,
-#                     A.span.off,
-#                     alpha,
-#                     handle.ptr,
-#                     stream.ptr )
-#
-#       if( is.null( ret ) ) stop( "Subroutine failed" )
-#
-#       invisible( TRUE )
-#     },
-#
-#     .L0.call = function( x.ptr,
-#                          y.ptr,
-#                          A.ptr,
-#                          dims,
-#                          x.span.off = NULL,
-#                          y.span.off = NULL,
-#                          A.span.off = NULL,
-#                          alpha,
-#                          handle.ptr = NULL,
-#                          stream.ptr = NULL ){
-#
-#       if( !is.null( x.span.off ) ){
-#         x.ptr <- x.ptr[ x.span.off:( x.span.off + dims[[1]] - 1 ) ]
-#       }
-#
-#       if( !is.null( y.span.off ) ){
-#         y.ptr <- y.ptr[ y.span.off:( y.span.off + dims[[2]] - 1 ) ]
-#       }
-#
-#       if( is.null( A.span.off ) ){
-#         A.range <- 1:dims[[2]]
-#       }else{
-#         A.range <- A.span.off:( A.span.off + dims[[2]] - 1 )
-#         A.ptr <- A.ptr[, A.range ]
-#       }
-#
-#       private$.eps.out$A$ptr[, A.range ] <-
-#         ( alpha * x.ptr ) %*% t( y.ptr ) + A.ptr
-#
-#       invisible( TRUE )
-#     }
-#   )
-# )
+cublas.sger <- R6Class(
+  "cuR.cublas.sger",
+  inherit = .cublas.fusion,
+  public = list(
+    initialize = function( x,
+                           y,
+                           A,
+                           x.span = NULL,
+                           y.span = NULL,
+                           A.span = NULL,
+                           alpha  = 1,
+                           handle = NULL,
+                           stream = NULL  ){
+      # Sanity checks
+      check.tensor( x )
+      check.tensor( y )
+      check.tensor( A )
+
+      if( !all( c( x$type == "n", y$type == "n", A$type == "n" ) ) ){
+        stop( "All input tensors need to be numeric" )
+      }
+
+      # Dim checks
+      x.dims <- .tensor.dims$new( x )
+      y.dims <- .tensor.dims$new( y )
+      A.dims <- .tensor.dims$new( A )
+
+      x.dims$check.vect()
+      y.dims$check.vect()
+
+      x.dims$check.span( x.span )
+      y.dims$check.span( y.span )
+      A.dims$check.span( A.span )
+
+      if( x.dims$dims[[2]] != A.dims$dims[[1]] ||
+          y.dims$dims[[2]] != A.dims$dims[[2]] ){
+        stop( "Not all tensors have matching dimensions" )
+      }
+
+      if( !is.numeric( alpha ) || !( length( alpha ) == 1L ) ){
+        stop( "Invalid alpha parameter" )
+      }
+
+      # Assignments
+      private$.add.ep( x, "x" )
+      private$.add.ep( y, "y" )
+      private$.add.ep( A, "A", TRUE )
+
+      private$.params$dims <- A.dims$dims
+
+      private$.params$x.span.off <- x.dims$span.off
+      private$.params$y.span.off <- y.dims$span.off
+      private$.params$A.span.off <- A.dims$span.off
+
+      private$.params$alpha <- as.numeric( alpha )
+
+      super$initialize( handle, stream )
+    }
+  ),
+
+  private = list(
+    .L3.call = function( x.ptr,
+                         y.ptr,
+                         A.ptr,
+                         dims,
+                         x.span.off = NULL,
+                         y.span.off = NULL,
+                         A.span.off = NULL,
+                         alpha,
+                         handle.ptr,
+                         stream.ptr = NULL ){
+
+      .Call( "cuR_cublas_sger",
+             x.ptr,
+             y.ptr,
+             A.ptr,
+             dims,
+             x.span.off,
+             y.span.off,
+             A.span.off,
+             alpha,
+             handle.ptr,
+             stream.ptr )
+
+      invisible( TRUE )
+    },
+
+    .L0.call = function( x.ptr,
+                         y.ptr,
+                         A.ptr,
+                         dims,
+                         x.span.off = NULL,
+                         y.span.off = NULL,
+                         A.span.off = NULL,
+                         alpha,
+                         handle.ptr = NULL,
+                         stream.ptr = NULL ){
+
+      if( !is.null( x.span.off ) ){
+        x.ptr <- x.ptr[ x.span.off:( x.span.off + dims[[1]] - 1 ) ]
+      }
+
+      if( !is.null( y.span.off ) ){
+        y.ptr <- y.ptr[ y.span.off:( y.span.off + dims[[2]] - 1 ) ]
+      }
+
+      if( is.null( A.span.off ) ){
+        A.range <- 1:dims[[2]]
+      }else{
+        A.range <- A.span.off:( A.span.off + dims[[2]] - 1 )
+        A.ptr <- A.ptr[, A.range ]
+      }
+
+      res <- ( alpha * x.ptr ) %*% t( y.ptr ) + A.ptr
+      private$.eps.out$A$obj[, A.range ] <- res
+
+      invisible( TRUE )
+    }
+  )
+)
 
 # sgemm ====
 # cols.C(C) = alpha*tp.a(cols.A(A)) %*% tp.b(cols.B(B)) + beta*(cols.C(C))
@@ -313,7 +301,6 @@ cublas.sgemm <- R6Class(
 
       private$.params$A.dims <- A.dims$dims
       private$.params$B.dims <- B.dims$dims
-      private$.params$C.dims <- C.dims$dims
 
       private$.params$A.span.off <- A.dims$span.off
       private$.params$B.span.off <- B.dims$span.off
@@ -343,8 +330,7 @@ cublas.sgemm <- R6Class(
                          alpha,
                          beta,
                          handle.ptr,
-                         stream.ptr = NULL,
-                         ... ){
+                         stream.ptr = NULL ){
 
       .Call( "cuR_cublas_sgemm",
              A.ptr,
@@ -370,7 +356,6 @@ cublas.sgemm <- R6Class(
                          C.ptr,
                          A.dims,
                          B.dims,
-                         C.dims,
                          A.span.off = NULL,
                          B.span.off = NULL,
                          C.span.off = NULL,
@@ -391,33 +376,22 @@ cublas.sgemm <- R6Class(
 
       if( A.tp ){
         A.ptr  <- t( A.ptr )
-        A.dims <- rev( A.dims )
       }
 
       if( B.tp ){
         B.ptr  <- t( B.ptr )
-        B.dims <- rev( B.dims )
       }
 
       if( is.null( C.span.off ) ){
         C.range <- 1:B.dims[[2]]
       }else{
         C.range <- C.span.off:( C.span.off + B.dims[[2]] - 1 )
+        C.ptr   <- C.ptr[, C.range ]
       }
 
       # Operation
-      res <- ( alpha * A.ptr ) %*% B.ptr + ( beta * C.ptr[, C.range ] )
-
-      res.dims <- c( A.dims[[1]], B.dims[[2]] )
-      .transfer.ptr.uni( res,
-                         C.ptr,
-                         0L,
-                         0L,
-                         "n",
-                         res.dims,
-                         C.dims,
-                         res.dims,
-                         dst.span.off = C.span.off )
+      res <- ( alpha * A.ptr ) %*% B.ptr + ( beta * C.ptr )
+      private$.eps.out$C$obj[, C.range ] <- res
 
       invisible( TRUE )
     }

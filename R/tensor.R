@@ -142,19 +142,7 @@ tensor <- R6Class(
     pull = function(){
       self$check.destroyed()
 
-      tmp <- private$.create.ptr( 0L )
-      .transfer.ptr.choose( private$.level,
-                            0L,
-                            NULL,
-                            NULL )( private$.ptr,
-                                    tmp,
-                                    private$.level,
-                                    0L,
-                                    private$.type,
-                                    private$.dims,
-                                    private$.dims,
-                                    private$.dims )
-      tmp
+      private$.temp( level = 0L )
     },
 
     clear = function(){
@@ -279,9 +267,21 @@ tensor <- R6Class(
                                                level,
                                                private$.level,
                                                private$.type,
-                                               private$.dims,
-                                               private$.dims,
                                                private$.dims )
+    },
+
+    .temp = function( level = private$.level, device = private$.device ){
+      tmp <- private$.create.ptr( level = level, device = device )
+      .transfer.ptr.choose( private$.level,
+                            level,
+                            private$.device,
+                            device )( private$.ptr,
+                                      tmp,
+                                      private$.level,
+                                      level,
+                                      private$.type,
+                                      private$.dims )
+      tmp
     }
   ),
 
@@ -344,17 +344,7 @@ tensor <- R6Class(
         }
 
         # Create a placeholder and copy
-        tmp <- private$.create.ptr( level = level )
-        .transfer.ptr( private$.ptr,
-                       tmp,
-                       private$.level,
-                       level,
-                       private$.device,
-                       private$.device,
-                       private$.type,
-                       private$.dims,
-                       private$.dims,
-                       private$.dims )
+        tmp <- private$.temp( level = level )
 
         # Free old memory
         private$.destroy.ptr()
@@ -383,17 +373,7 @@ tensor <- R6Class(
 
         if( private$.level == 3L ){
           # Create a placeholder and copy
-          tmp <- private$.create.ptr( device = device )
-          .transfer.ptr( private$.ptr,
-                         tmp,
-                         3L,
-                         3L,
-                         private$.device,
-                         device,
-                         private$.type,
-                         private$.dims,
-                         private$.dims,
-                         private$.dims )
+          tmp <- private$.temp( device = device )
 
           # Free old memory
           private$.destroy.ptr()

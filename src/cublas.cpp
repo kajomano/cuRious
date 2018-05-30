@@ -96,7 +96,7 @@ SEXP cuR_cublas_sger( SEXP tens_x_r,
   // Do the op
   cublasTry( cublasSger( *handle, m, n, &al, tens_x, 1, tens_y,1, tens_A, m ) );
 
-  if( stream_r != R_NilValue ){
+  if( stream ){
     // Flush for WDDM
     cudaStreamQuery(0);
   }else{

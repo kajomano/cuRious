@@ -2,10 +2,10 @@ template<typename t>
 __global__
 void cuR_transfer_device_device_cu_kern( t* src_ptr,
                                          t* dst_ptr,
-                                         int src_dims_1,
-                                         int dst_dims_1,
                                          int dims_0,
                                          int dims_1,
+                                         int src_dims_1,
+                                         int dst_dims_1,
                                          int* src_perm_ptr,
                                          int* dst_perm_ptr ){
 
@@ -84,17 +84,28 @@ __declspec( dllexport )
   void cuR_transfer_device_device_cu( void* src_ptr,
                                       void* dst_ptr,
                                       const char type,
+                                      int* dims,
                                       int* src_dims,
                                       int* dst_dims,
-                                      int* dims,
                                       int* src_perm_ptr,
                                       int* dst_perm_ptr,
                                       int src_span_off,
                                       int dst_span_off,
                                       cudaStream_t* stream_ptr ){
+    int src_dims_1;
+    if( src_dims ){
+      src_dims_1 = src_dims[1];
+    }else{
+      src_dims_1 = 0;
+    }
 
-    int src_dims_1 = src_dims[1];
-    int dst_dims_1 = dst_dims[1];
+    int dst_dims_1;
+    if( dst_dims ){
+      dst_dims_1 = dst_dims[1];
+    }else{
+      dst_dims_1 = 0;
+    }
+
     int dims_0 = dims[0];
     int dims_1 = dims[1];
     int blockSize = 256;
@@ -143,10 +154,10 @@ __declspec( dllexport )
       cuR_transfer_device_device_cu_kern<float><<<numBlocks, blockSize, 0, *stream_ptr>>>(
           (float*) src_ptr,
           (float*) dst_ptr,
-          src_dims_1,
-          dst_dims_1,
           dims_0,
           dims_1,
+          src_dims_1,
+          dst_dims_1,
           src_perm_ptr,
           dst_perm_ptr );
 
@@ -155,10 +166,10 @@ __declspec( dllexport )
       cuR_transfer_device_device_cu_kern<float><<<numBlocks, blockSize>>>(
           (float*) src_ptr,
           (float*) dst_ptr,
-          src_dims_1,
-          dst_dims_1,
           dims_0,
           dims_1,
+          src_dims_1,
+          dst_dims_1,
           src_perm_ptr,
           dst_perm_ptr );
 
@@ -171,10 +182,10 @@ __declspec( dllexport )
       cuR_transfer_device_device_cu_kern<int><<<numBlocks, blockSize, 0, *stream_ptr>>>(
           (int*) src_ptr,
           (int*) dst_ptr,
-          src_dims_1,
-          dst_dims_1,
           dims_0,
           dims_1,
+          src_dims_1,
+          dst_dims_1,
           src_perm_ptr,
           dst_perm_ptr );
 
@@ -183,10 +194,10 @@ __declspec( dllexport )
       cuR_transfer_device_device_cu_kern<int><<<numBlocks, blockSize>>>(
           (int*) src_ptr,
           (int*) dst_ptr,
-          src_dims_1,
-          dst_dims_1,
           dims_0,
           dims_1,
+          src_dims_1,
+          dst_dims_1,
           src_perm_ptr,
           dst_perm_ptr );
 
@@ -199,10 +210,10 @@ __declspec( dllexport )
       cuR_transfer_device_device_cu_kern<bool><<<numBlocks, blockSize, 0, *stream_ptr>>>(
           (bool*) src_ptr,
           (bool*) dst_ptr,
-          src_dims_1,
-          dst_dims_1,
           dims_0,
           dims_1,
+          src_dims_1,
+          dst_dims_1,
           src_perm_ptr,
           dst_perm_ptr );
 
@@ -211,10 +222,10 @@ __declspec( dllexport )
       cuR_transfer_device_device_cu_kern<bool><<<numBlocks, blockSize>>>(
           (bool*) src_ptr,
           (bool*) dst_ptr,
-          src_dims_1,
-          dst_dims_1,
           dims_0,
           dims_1,
+          src_dims_1,
+          dst_dims_1,
           src_perm_ptr,
           dst_perm_ptr );
 

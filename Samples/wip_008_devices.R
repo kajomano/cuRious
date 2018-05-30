@@ -2,7 +2,7 @@ library( cuRious )
 library( microbenchmark )
 
 tens1 <- tensor$new( rnorm( 10 ), 3L, device = 1 )
-tens0 <- tensor$new( tens1, init = "mimic", device = 0 )
+tens0 <- tensor$new( tens1, copy = FALSE, device = 0 )
 
 pip <- pipe$new( tens1, tens0 )
 pip$run()

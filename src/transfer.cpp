@@ -3,9 +3,9 @@
 template <typename s, typename d>
 void cuR_transfer_host_host( s* src_ptr,
                              d* dst_ptr,
+                             int* dims,
                              int* src_dims,
                              int* dst_dims,
-                             int* dims,
                              int* src_perm_ptr,
                              int* dst_perm_ptr,
                              int src_span_off,
@@ -105,9 +105,9 @@ void cuR_transfer_host_host( s* src_ptr,
 template <typename t>
 void cuR_transfer_host_device( t* src_ptr,
                                t* dst_ptr,
+                               int* dims,
                                int* src_dims,
                                int* dst_dims,
-                               int* dims,
                                int* src_perm_ptr,
                                int* dst_perm_ptr,
                                int src_span_off,
@@ -238,15 +238,17 @@ void cuR_transfer_host_device( t* src_ptr,
   if( stream_ptr ){
     // Flush for WDDM
     cudaStreamQuery(0);
+  }else{
+    cudaDeviceSynchronize();
   }
 }
 
 template <typename t>
 void cuR_transfer_device_host( t* src_ptr,
                                t* dst_ptr,
+                               int* dims,
                                int* src_dims,
                                int* dst_dims,
-                               int* dims,
                                int* src_perm_ptr,
                                int* dst_perm_ptr,
                                int src_span_off,
@@ -309,13 +311,13 @@ void cuR_transfer_device_host( t* src_ptr,
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
                                   src_ptr + src_off,
                                   dims[0] * sizeof(t),
-                                  cudaMemcpyHostToDevice,
+                                  cudaMemcpyDeviceToHost,
                                   *stream_ptr ) );
       }else{
         cudaTry( cudaMemcpy( dst_ptr + dst_off,
                              src_ptr + src_off,
                              dims[0] * sizeof(t),
-                             cudaMemcpyHostToDevice ) );
+                             cudaMemcpyDeviceToHost ) );
       }
     }
   }else if( !src_perm_ptr ){
@@ -334,13 +336,13 @@ void cuR_transfer_device_host( t* src_ptr,
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
                                   src_ptr + src_off,
                                   dims[0] * sizeof(t),
-                                  cudaMemcpyHostToDevice,
+                                  cudaMemcpyDeviceToHost,
                                   *stream_ptr ) );
       }else{
         cudaTry( cudaMemcpy( dst_ptr + dst_off,
                              src_ptr + src_off,
                              dims[0] * sizeof(t),
-                             cudaMemcpyHostToDevice ) );
+                             cudaMemcpyDeviceToHost ) );
       }
 
       src_off += dims[0];
@@ -361,13 +363,13 @@ void cuR_transfer_device_host( t* src_ptr,
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
                                   src_ptr + src_off,
                                   dims[0] * sizeof(t),
-                                  cudaMemcpyHostToDevice,
+                                  cudaMemcpyDeviceToHost,
                                   *stream_ptr ) );
       }else{
         cudaTry( cudaMemcpy( dst_ptr + dst_off,
                              src_ptr + src_off,
                              dims[0] * sizeof(t),
-                             cudaMemcpyHostToDevice ) );
+                             cudaMemcpyDeviceToHost ) );
       }
 
       dst_off += dims[0];
@@ -377,6 +379,8 @@ void cuR_transfer_device_host( t* src_ptr,
   if( stream_ptr ){
     // Flush for WDDM
     cudaStreamQuery(0);
+  }else{
+    cudaDeviceSynchronize();
   }
 }
 
@@ -389,9 +393,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                    SEXP src_level_r,
                    SEXP dst_level_r,
                    SEXP type_r,
-                   SEXP src_dims_r,
-                   SEXP dst_dims_r,
                    SEXP dims_r,
+                   SEXP src_dims_r,      // Optional
+                   SEXP dst_dims_r,      // Optional
                    SEXP src_perm_ptr_r,  // Optional
                    SEXP dst_perm_ptr_r,  // Optional
                    SEXP src_span_off_r,  // Optional
@@ -399,12 +403,13 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                    SEXP stream_ptr_r ){  // Optional
 
   // Arg conversions (except src_ptr, dst_ptr)
-  int src_level   = Rf_asInteger( src_level_r );
-  int dst_level   = Rf_asInteger( dst_level_r );
-  const char type = CHAR( STRING_ELT( type_r, 0 ) )[0];
-  int* src_dims   = INTEGER( src_dims_r );
-  int* dst_dims   = INTEGER( dst_dims_r );
-  int* dims       = INTEGER( dims_r );
+  int src_level     = Rf_asInteger( src_level_r );
+  int dst_level     = Rf_asInteger( dst_level_r );
+  const char type   = CHAR( STRING_ELT( type_r, 0 ) )[0];
+  int* dims         = INTEGER( dims_r );
+
+  int* src_dims     = ( R_NilValue == src_dims_r ) ? NULL : INTEGER( src_dims_r );
+  int* dst_dims     = ( R_NilValue == dst_dims_r ) ? NULL : INTEGER( dst_dims_r );
 
   int* src_perm_ptr = ( R_NilValue == src_perm_ptr_r ) ? NULL :
     ( TYPEOF( src_perm_ptr_r ) == EXTPTRSXP ? (int*) R_ExternalPtrAddr( src_perm_ptr_r ) :
@@ -423,6 +428,14 @@ SEXP cuR_transfer( SEXP src_ptr_r,
   cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
     (cudaStream_t*) R_ExternalPtrAddr( stream_ptr_r );
 
+  if( src_perm_ptr && !src_dims ){
+    Rf_error( "Source dimensions need to be supplied with permutation" );
+  }
+
+  if( dst_perm_ptr && !dst_dims ){
+    Rf_error( "Destination dimensions need to be supplied with permutation" );
+  }
+
   // Calls
   switch( src_level ){
   case 0:
@@ -433,9 +446,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         cuR_transfer_host_host<double, double>( REAL( src_ptr_r ),
                                                 REAL( dst_ptr_r ),
+                                                dims,
                                                 src_dims,
                                                 dst_dims,
-                                                dims,
                                                 src_perm_ptr,
                                                 dst_perm_ptr,
                                                 src_span_off,
@@ -446,9 +459,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'i':
         cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
                                           INTEGER( dst_ptr_r ),
+                                          dims,
                                           src_dims,
                                           dst_dims,
-                                          dims,
                                           src_perm_ptr,
                                           dst_perm_ptr,
                                           src_span_off,
@@ -459,9 +472,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'l':
         cuR_transfer_host_host<int, int>( LOGICAL( src_ptr_r ),
                                           LOGICAL( dst_ptr_r ),
+                                          dims,
                                           src_dims,
                                           dst_dims,
-                                          dims,
                                           src_perm_ptr,
                                           dst_perm_ptr,
                                           src_span_off,
@@ -480,9 +493,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
                                                (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                               dims,
                                                src_dims,
                                                dst_dims,
-                                               dims,
                                                src_perm_ptr,
                                                dst_perm_ptr,
                                                src_span_off,
@@ -493,9 +506,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'i':
         cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
                                           (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                          dims,
                                           src_dims,
                                           dst_dims,
-                                          dims,
                                           src_perm_ptr,
                                           dst_perm_ptr,
                                           src_span_off,
@@ -506,9 +519,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'l':
         cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
                                            (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                           dims,
                                            src_dims,
                                            dst_dims,
-                                           dims,
                                            src_perm_ptr,
                                            dst_perm_ptr,
                                            src_span_off,
@@ -527,9 +540,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
                                                (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                               dims,
                                                src_dims,
                                                dst_dims,
-                                               dims,
                                                src_perm_ptr,
                                                dst_perm_ptr,
                                                src_span_off,
@@ -540,9 +553,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'i':
         cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
                                           (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                          dims,
                                           src_dims,
                                           dst_dims,
-                                          dims,
                                           src_perm_ptr,
                                           dst_perm_ptr,
                                           src_span_off,
@@ -553,9 +566,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'l':
         cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
                                            (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                           dims,
                                            src_dims,
                                            dst_dims,
-                                           dims,
                                            src_perm_ptr,
                                            dst_perm_ptr,
                                            src_span_off,
@@ -581,9 +594,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                                REAL( dst_ptr_r ),
+                                               dims,
                                                src_dims,
                                                dst_dims,
-                                               dims,
                                                src_perm_ptr,
                                                dst_perm_ptr,
                                                src_span_off,
@@ -594,9 +607,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'i':
         cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                           INTEGER( dst_ptr_r ),
+                                          dims,
                                           src_dims,
                                           dst_dims,
-                                          dims,
                                           src_perm_ptr,
                                           dst_perm_ptr,
                                           src_span_off,
@@ -607,9 +620,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'l':
         cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                            LOGICAL( dst_ptr_r ),
+                                           dims,
                                            src_dims,
                                            dst_dims,
-                                           dims,
                                            src_perm_ptr,
                                            dst_perm_ptr,
                                            src_span_off,
@@ -628,9 +641,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                               (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dims,
                                               src_dims,
                                               dst_dims,
-                                              dims,
                                               src_perm_ptr,
                                               dst_perm_ptr,
                                               src_span_off,
@@ -641,9 +654,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'i':
         cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                           (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                          dims,
                                           src_dims,
                                           dst_dims,
-                                          dims,
                                           src_perm_ptr,
                                           dst_perm_ptr,
                                           src_span_off,
@@ -654,9 +667,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'l':
         cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                             (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                            dims,
                                             src_dims,
                                             dst_dims,
-                                            dims,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
@@ -675,9 +688,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                               (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dims,
                                               src_dims,
                                               dst_dims,
-                                              dims,
                                               src_perm_ptr,
                                               dst_perm_ptr,
                                               src_span_off,
@@ -688,9 +701,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'i':
         cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                           (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                          dims,
                                           src_dims,
                                           dst_dims,
-                                          dims,
                                           src_perm_ptr,
                                           dst_perm_ptr,
                                           src_span_off,
@@ -701,9 +714,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'l':
         cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                             (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                            dims,
                                             src_dims,
                                             dst_dims,
-                                            dims,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
@@ -722,9 +735,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         cuR_transfer_host_device<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                          (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                         dims,
                                          src_dims,
                                          dst_dims,
-                                         dims,
                                          src_perm_ptr,
                                          dst_perm_ptr,
                                          src_span_off,
@@ -735,9 +748,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'i':
         cuR_transfer_host_device<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                        (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                       dims,
                                        src_dims,
                                        dst_dims,
-                                       dims,
                                        src_perm_ptr,
                                        dst_perm_ptr,
                                        src_span_off,
@@ -748,9 +761,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'l':
         cuR_transfer_host_device<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                         (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                        dims,
                                         src_dims,
                                         dst_dims,
-                                        dims,
                                         src_perm_ptr,
                                         dst_perm_ptr,
                                         src_span_off,
@@ -776,9 +789,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                                REAL( dst_ptr_r ),
+                                               dims,
                                                src_dims,
                                                dst_dims,
-                                               dims,
                                                src_perm_ptr,
                                                dst_perm_ptr,
                                                src_span_off,
@@ -789,9 +802,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'i':
         cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                           INTEGER( dst_ptr_r ),
+                                          dims,
                                           src_dims,
                                           dst_dims,
-                                          dims,
                                           src_perm_ptr,
                                           dst_perm_ptr,
                                           src_span_off,
@@ -802,9 +815,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'l':
         cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                            LOGICAL( dst_ptr_r ),
+                                           dims,
                                            src_dims,
                                            dst_dims,
-                                           dims,
                                            src_perm_ptr,
                                            dst_perm_ptr,
                                            src_span_off,
@@ -823,9 +836,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                               (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dims,
                                               src_dims,
                                               dst_dims,
-                                              dims,
                                               src_perm_ptr,
                                               dst_perm_ptr,
                                               src_span_off,
@@ -836,9 +849,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'i':
         cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                           (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                          dims,
                                           src_dims,
                                           dst_dims,
-                                          dims,
                                           src_perm_ptr,
                                           dst_perm_ptr,
                                           src_span_off,
@@ -849,9 +862,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'l':
         cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                             (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                            dims,
                                             src_dims,
                                             dst_dims,
-                                            dims,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
@@ -870,9 +883,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                               (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dims,
                                               src_dims,
                                               dst_dims,
-                                              dims,
                                               src_perm_ptr,
                                               dst_perm_ptr,
                                               src_span_off,
@@ -883,9 +896,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'i':
         cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                           (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                          dims,
                                           src_dims,
                                           dst_dims,
-                                          dims,
                                           src_perm_ptr,
                                           dst_perm_ptr,
                                           src_span_off,
@@ -896,9 +909,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'l':
         cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                             (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                            dims,
                                             src_dims,
                                             dst_dims,
-                                            dims,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
@@ -917,9 +930,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         cuR_transfer_host_device<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                          (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                         dims,
                                          src_dims,
                                          dst_dims,
-                                         dims,
                                          src_perm_ptr,
                                          dst_perm_ptr,
                                          src_span_off,
@@ -930,9 +943,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'i':
         cuR_transfer_host_device<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                        (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                       dims,
                                        src_dims,
                                        dst_dims,
-                                       dims,
                                        src_perm_ptr,
                                        dst_perm_ptr,
                                        src_span_off,
@@ -943,9 +956,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'l':
         cuR_transfer_host_device<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                         (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                        dims,
                                         src_dims,
                                         dst_dims,
-                                        dims,
                                         src_perm_ptr,
                                         dst_perm_ptr,
                                         src_span_off,
@@ -971,9 +984,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         cuR_transfer_device_host<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                          (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                         dims,
                                          src_dims,
                                          dst_dims,
-                                         dims,
                                          src_perm_ptr,
                                          dst_perm_ptr,
                                          src_span_off,
@@ -984,9 +997,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'i':
         cuR_transfer_device_host<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                        (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                       dims,
                                        src_dims,
                                        dst_dims,
-                                       dims,
                                        src_perm_ptr,
                                        dst_perm_ptr,
                                        src_span_off,
@@ -997,9 +1010,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'l':
         cuR_transfer_device_host<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                         (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                        dims,
                                         src_dims,
                                         dst_dims,
-                                        dims,
                                         src_perm_ptr,
                                         dst_perm_ptr,
                                         src_span_off,
@@ -1018,9 +1031,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         cuR_transfer_device_host<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                          (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                         dims,
                                          src_dims,
                                          dst_dims,
-                                         dims,
                                          src_perm_ptr,
                                          dst_perm_ptr,
                                          src_span_off,
@@ -1031,9 +1044,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'i':
         cuR_transfer_device_host<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                        (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                       dims,
                                        src_dims,
                                        dst_dims,
-                                       dims,
                                        src_perm_ptr,
                                        dst_perm_ptr,
                                        src_span_off,
@@ -1044,9 +1057,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'l':
         cuR_transfer_device_host<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                         (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                        dims,
                                         src_dims,
                                         dst_dims,
-                                        dims,
                                         src_perm_ptr,
                                         dst_perm_ptr,
                                         src_span_off,
@@ -1064,9 +1077,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       cuR_transfer_device_device_cu( (void*) R_ExternalPtrAddr( src_ptr_r ),
                                      (void*) R_ExternalPtrAddr( dst_ptr_r ),
                                      type,
+                                     dims,
                                      src_dims,
                                      dst_dims,
-                                     dims,
                                      src_perm_ptr,
                                      dst_perm_ptr,
                                      src_span_off,

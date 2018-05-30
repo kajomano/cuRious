@@ -1,4 +1,5 @@
 #include "transfer.h"
+#include "omp.h"
 
 template <typename s, typename d>
 void cuR_transfer_host_host( s* src_ptr,
@@ -11,6 +12,13 @@ void cuR_transfer_host_host( s* src_ptr,
                              int src_span_off,
                              int dst_span_off,
                              cudaStream_t* stream_ptr ){
+  omp_set_dynamic(0);
+  omp_set_num_threads(4);
+// #pragma omp parallel
+// {
+//   int ID = omp_get_thread_num();
+//   printf( "%d", ID );
+// }
 
   // Offsets with permutations offset the permutation vector itself
   if( src_span_off ){
@@ -33,16 +41,18 @@ void cuR_transfer_host_host( s* src_ptr,
   // Span checks are done in R
 
   // Copy
-  if( !src_perm_ptr && !src_perm_ptr ){
+  if( !src_perm_ptr && !dst_perm_ptr ){
     // No subsetting
     int l = dims[0]*dims[1];
+#pragma omp parallel for
     for( int j = 0; j < l; j++ ){
       dst_ptr[j] = (d)src_ptr[j];
     }
-  }else if( src_perm_ptr && src_perm_ptr ){
+  }else if( src_perm_ptr && dst_perm_ptr ){
     // Both subsetted
     int dst_off, src_off;
 
+#pragma omp parallel for
     for( int i = 0; i < dims[1]; i ++ ){
       if( src_perm_ptr[i] > src_dims[1] ){
         Rf_error( "Out-of-bounds transfer call on source tensor" );
@@ -55,11 +65,14 @@ void cuR_transfer_host_host( s* src_ptr,
       src_off = ( src_perm_ptr[i] - 1 ) * dims[0];
       dst_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
 
+#pragma omp simd
       for( int j = 0; j < dims[0]; j++ ){
-        dst_ptr[dst_off+j] = (d)src_ptr[src_off+j];
+        dst_ptr[dst_off] = (d)src_ptr[src_off];
+        dst_off++;
+        src_off++;
       }
     }
-  }else if( !src_perm_ptr ){
+  }else if( dst_perm_ptr ){
     // Destination subsetted
     int dst_off;
     int src_off = 0;
@@ -72,10 +85,10 @@ void cuR_transfer_host_host( s* src_ptr,
       dst_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
 
       for( int j = 0; j < dims[0]; j++ ){
-        dst_ptr[dst_off+j] = (d)src_ptr[j];
+        dst_ptr[dst_off] = (d)src_ptr[src_off];
+        dst_off++;
+        src_off++;
       }
-
-      src_off += dims[0];
     }
   }else{
     // Source subsetted
@@ -91,9 +104,9 @@ void cuR_transfer_host_host( s* src_ptr,
 
       for( int j = 0; j < dims[0]; j++ ){
         dst_ptr[dst_off+j] = (d)src_ptr[src_off+j];
+        dst_off++;
+        src_off++;
       }
-
-      dst_off += dims[0];
     }
   }
 
@@ -135,7 +148,7 @@ void cuR_transfer_host_device( t* src_ptr,
   // Span checks are done in R
 
   // Copy
-  if( !src_perm_ptr && !src_perm_ptr ){
+  if( !src_perm_ptr && !dst_perm_ptr ){
     // No subsetting
     int l = dims[0]*dims[1];
     if( stream_ptr ){
@@ -150,7 +163,7 @@ void cuR_transfer_host_device( t* src_ptr,
                            l * sizeof(t),
                            cudaMemcpyHostToDevice ) );
     }
-  }else if( src_perm_ptr && src_perm_ptr ){
+  }else if( src_perm_ptr && dst_perm_ptr ){
     // Both subsetted
     int dst_off, src_off;
 
@@ -179,7 +192,7 @@ void cuR_transfer_host_device( t* src_ptr,
                              cudaMemcpyHostToDevice ) );
       }
     }
-  }else if( !src_perm_ptr ){
+  }else if( dst_perm_ptr ){
     // Destination subsetted
     int dst_off;
     int src_off = 0;
@@ -276,7 +289,7 @@ void cuR_transfer_device_host( t* src_ptr,
   // Span checks are done in R
 
   // Copy
-  if( !src_perm_ptr && !src_perm_ptr ){
+  if( !src_perm_ptr && !dst_perm_ptr ){
     // No subsetting
     int l = dims[0]*dims[1];
     if( stream_ptr ){
@@ -320,7 +333,7 @@ void cuR_transfer_device_host( t* src_ptr,
                              cudaMemcpyDeviceToHost ) );
       }
     }
-  }else if( !src_perm_ptr ){
+  }else if( dst_perm_ptr ){
     // Destination subsetted
     int dst_off;
     int src_off = 0;

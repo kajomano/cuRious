@@ -19,7 +19,7 @@ void cuR_transfer_device_device_cu_kern( t* src_ptr,
     for ( int i = index; i < l; i += stride ){
       dst_ptr[ i ] = src_ptr[ i ];
     }
-  }else if( !src_perm_ptr && !dst_perm_ptr ){
+  }else if( src_perm_ptr && dst_perm_ptr ){
     // Both subsetted
     for ( int i = index; i < l; i += stride ){
       int src_perm_ind = src_perm_ptr[ i / dims_0 ];
@@ -44,7 +44,7 @@ void cuR_transfer_device_device_cu_kern( t* src_ptr,
 
       dst_ptr[ dst_perm_off + dst_off ] = src_ptr[ src_perm_off + src_off ];
     }
-  }else if( !src_perm_ptr ){
+  }else if( dst_perm_ptr ){
     // Destination subsetted
     for ( int i = index; i < l; i += stride ){
       int dst_perm_ind = dst_perm_ptr[ i / dims_0 ];

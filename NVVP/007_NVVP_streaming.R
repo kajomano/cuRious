@@ -22,7 +22,6 @@ mat.proc <- t(diag( 1, n, n ))
 
 # Cheating version (L1)
 tens.in       <- tensor$new( mat.in, 1L )
-tens.out.CUDA <- tensor$new( tens.in, copy = FALSE )
 
 tens.in.1  <- tensor$new( NULL, 3L, c( n, n ) )
 tens.proc  <- tensor$new( mat.proc, 3L )
@@ -30,7 +29,7 @@ tens.out.1 <- tensor$new( NULL, 3L, c( n, n ) )
 
 handle <- cublas.handle$new()
 
-tens.out.CUDA.async <- tensor$new( tens.out.CUDA, copy = FALSE )
+tens.out.CUDA.async <- tensor$new( tens.in, copy = FALSE )
 
 # Asynchronous transfers require L2 staging buffers:
 tens.in.stage  <- tensor$new( NULL, 2L, c( n, n ) )
@@ -119,7 +118,7 @@ proc.CUDA.async <- function(){
     #                                                    |       |
     # Wait for the async data out to finish <------------|       |
     stream.out$sync()  #                                         |
-    #                                                            |
+
     # Finish moving new data to the device                       |
     pipes.in.L2.L3[[i %% 2 + 1]]$run()      # Async: stream.in   |
     #                                                    |       |

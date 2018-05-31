@@ -40,7 +40,7 @@ all: cuRious.so
 cuRious.so: $(all_objs)
 
 %.o: %.cpp $(h_srcs)
-	$(CXX) -O3 -fPIC -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
+	$(CXX) -O3 -fopenmp -fPIC -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
 
 %.o: %.cu $(h_srcs)
 	$(NVCC) -Xcompiler -fPIC $(NVCC_ARGS) $< -o $@ -c

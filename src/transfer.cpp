@@ -1,5 +1,6 @@
 #include "transfer.h"
 #include "omp.h"
+// #include <string.h>
 
 template <typename s, typename d>
 void cuR_transfer_host_host( s* src_ptr,
@@ -12,20 +13,44 @@ void cuR_transfer_host_host( s* src_ptr,
                              int src_span_off,
                              int dst_span_off,
                              cudaStream_t* stream_ptr ){
+  int src_dims_1;
+  if( src_dims ){
+    src_dims_1 = src_dims[1];
+  }else{
+    src_dims_1 = 0;
+  }
+
+  int dst_dims_1;
+  if( dst_dims ){
+    dst_dims_1 = dst_dims[1];
+  }else{
+    dst_dims_1 = 0;
+  }
+
+  int dims_0 = dims[0];
+  int dims_1 = dims[1];
+
   omp_set_dynamic(0);
-  omp_set_num_threads(4);
+  omp_set_num_threads( omp_get_num_procs() / 2 );
+
 // #pragma omp parallel
 // {
 //   int ID = omp_get_thread_num();
 //   printf( "%d", ID );
 // }
 
+///////////////////////////////////////////////////////////////
+// What I have so far:
+// SIMD does not do as well as auto-vectorization (-O3), but:
+// The code needs to be SIMD compatible to be auto-vectorized
+///////////////////////////////////////////////////////////////
+
   // Offsets with permutations offset the permutation vector itself
   if( src_span_off ){
     if( src_perm_ptr ){
       src_perm_ptr = src_perm_ptr + src_span_off;
     }else{
-      src_ptr = src_ptr + ( src_span_off * dims[0] );
+      src_ptr = src_ptr + ( src_span_off * dims_0 );
     }
   }
 
@@ -33,9 +58,12 @@ void cuR_transfer_host_host( s* src_ptr,
     if( dst_perm_ptr ){
       dst_perm_ptr = dst_perm_ptr + dst_span_off;
     }else{
-      dst_ptr = dst_ptr + ( dst_span_off * dims[0] );
+      dst_ptr = dst_ptr + ( dst_span_off * dims_0 );
     }
   }
+
+  int dst_pos;
+  int src_pos;
 
   // Out-of-bounds checks only check for permutation content
   // Span checks are done in R
@@ -43,69 +71,75 @@ void cuR_transfer_host_host( s* src_ptr,
   // Copy
   if( !src_perm_ptr && !dst_perm_ptr ){
     // No subsetting
-    int l = dims[0]*dims[1];
-#pragma omp parallel for
-    for( int j = 0; j < l; j++ ){
-      dst_ptr[j] = (d)src_ptr[j];
+
+    // Bandwidth test
+    // memcpy( dst_ptr, src_ptr, sizeof( double ) * dims[0] * dims[1] );
+
+    // #pragma omp parallel for
+    //     for( int j = 0; j < dims[0] * dims[1]; j++ ){
+    //       dst_ptr[j] = (d)src_ptr[j];
+    //     }
+
+#pragma omp parallel for private( src_pos, dst_pos) firstprivate( dims_0 )
+    for( int i = 0; i < dims_1; i++ ){
+      dst_pos = i * dims_0;
+      src_pos = i * dims_0;
+
+      // #pragma omp simd
+      for( int j = 0; j < dims_0; j++ ){
+        dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+      }
     }
   }else if( src_perm_ptr && dst_perm_ptr ){
     // Both subsetted
-    int dst_off, src_off;
-
-#pragma omp parallel for
-    for( int i = 0; i < dims[1]; i ++ ){
-      if( src_perm_ptr[i] > src_dims[1] ){
+#pragma omp parallel for private( src_pos, dst_pos) firstprivate( src_dims_1, dst_dims_1, dims_0 )
+    for( int i = 0; i < dims_1; i ++ ){
+      if( src_perm_ptr[i] > src_dims_1 ){
         Rf_error( "Out-of-bounds transfer call on source tensor" );
       }
 
-      if( dst_perm_ptr[i] > dst_dims[1] ){
+      if( dst_perm_ptr[i] > dst_dims_1 ){
         Rf_error( "Out-of-bounds transfer call on destination tensor" );
       }
 
-      src_off = ( src_perm_ptr[i] - 1 ) * dims[0];
-      dst_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
 
-#pragma omp simd
-      for( int j = 0; j < dims[0]; j++ ){
-        dst_ptr[dst_off] = (d)src_ptr[src_off];
-        dst_off++;
-        src_off++;
+      // #pragma omp simd
+      for( int j = 0; j < dims_0; j++ ){
+        dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
       }
     }
   }else if( dst_perm_ptr ){
     // Destination subsetted
-    int dst_off;
-    int src_off = 0;
-
-    for( int i = 0; i < dims[1]; i ++ ){
-      if( dst_perm_ptr[i] > dst_dims[1] ){
+#pragma omp parallel for private( src_pos, dst_pos) firstprivate( dst_dims_1, dims_0 )
+    for( int i = 0; i < dims_1; i ++ ){
+      if( dst_perm_ptr[i] > dst_dims_1 ){
         Rf_error( "Out-of-bounds transfer call on destination tensor" );
       }
 
-      dst_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+      src_pos = i * dims_0;
+      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
 
-      for( int j = 0; j < dims[0]; j++ ){
-        dst_ptr[dst_off] = (d)src_ptr[src_off];
-        dst_off++;
-        src_off++;
+      // #pragma omp simd
+      for( int j = 0; j < dims_0; j++ ){
+        dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
       }
     }
   }else{
     // Source subsetted
-    int dst_off = 0;
-    int src_off;
-
-    for( int i = 0; i < dims[1]; i ++ ){
-      if( src_perm_ptr[i] > src_dims[1] ){
+#pragma omp parallel for private( src_pos, dst_pos) firstprivate( src_dims_1, dims_0 )
+    for( int i = 0; i < dims_1; i ++ ){
+      if( src_perm_ptr[i] > src_dims_1 ){
         Rf_error( "Out-of-bounds transfer call on source tensor" );
       }
 
-      src_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+      dst_pos = i * dims_0;
 
-      for( int j = 0; j < dims[0]; j++ ){
-        dst_ptr[dst_off+j] = (d)src_ptr[src_off+j];
-        dst_off++;
-        src_off++;
+      // #pragma omp simd
+      for( int j = 0; j < dims_0; j++ ){
+        dst_ptr[dst_pos+j] = (d)src_ptr[src_pos+j];
       }
     }
   }
@@ -127,12 +161,32 @@ void cuR_transfer_host_device( t* src_ptr,
                                int dst_span_off,
                                cudaStream_t* stream_ptr ){
 
+  int src_dims_1;
+  if( src_dims ){
+    src_dims_1 = src_dims[1];
+  }else{
+    src_dims_1 = 0;
+  }
+
+  int dst_dims_1;
+  if( dst_dims ){
+    dst_dims_1 = dst_dims[1];
+  }else{
+    dst_dims_1 = 0;
+  }
+
+  int dims_0 = dims[0];
+  int dims_1 = dims[1];
+
+  omp_set_dynamic(0);
+  omp_set_num_threads( omp_get_num_procs() / 2 );
+
   // Offsets with permutations offset the permutation vector itself
   if( src_span_off ){
     if( src_perm_ptr ){
       src_perm_ptr = src_perm_ptr + src_span_off;
     }else{
-      src_ptr = src_ptr + ( src_span_off * dims[0] );
+      src_ptr = src_ptr + ( src_span_off * dims_0 );
     }
   }
 
@@ -140,111 +194,100 @@ void cuR_transfer_host_device( t* src_ptr,
     if( dst_perm_ptr ){
       dst_perm_ptr = dst_perm_ptr + dst_span_off;
     }else{
-      dst_ptr = dst_ptr + ( dst_span_off * dims[0] );
+      dst_ptr = dst_ptr + ( dst_span_off * dims_0 );
     }
   }
 
-  // Out-of-bounds checks only check for permutation content
-  // Span checks are done in R
+  int dst_pos;
+  int src_pos;
 
   // Copy
   if( !src_perm_ptr && !dst_perm_ptr ){
     // No subsetting
-    int l = dims[0]*dims[1];
     if( stream_ptr ){
       cudaTry( cudaMemcpyAsync( dst_ptr,
                                 src_ptr,
-                                l * sizeof(t),
+                                sizeof(t) * dims_0 * dims_1,
                                 cudaMemcpyHostToDevice,
                                 *stream_ptr ) );
     }else{
-      cudaTry( cudaMemcpy( dst_ptr,
-                           src_ptr,
-                           l * sizeof(t),
-                           cudaMemcpyHostToDevice ) );
+      cudaTry( cudaMemcpyAsync( dst_ptr,
+                                src_ptr,
+                                sizeof(t) * dims_0 * dims_1,
+                                cudaMemcpyHostToDevice ) );
     }
   }else if( src_perm_ptr && dst_perm_ptr ){
-    // Both subsetted
-    int dst_off, src_off;
-
-    for( int i = 0; i < dims[1]; i ++ ){
-      if( src_perm_ptr[i] > src_dims[1] ){
+#pragma omp parallel for private( src_pos, dst_pos) firstprivate( src_dims_1, dst_dims_1, dims_0 )
+    for( int i = 0; i < dims_1; i ++ ){
+      if( src_perm_ptr[i] > src_dims_1 ){
         Rf_error( "Out-of-bounds transfer call on source tensor" );
       }
 
-      if( dst_perm_ptr[i] > dst_dims[1] ){
+      if( dst_perm_ptr[i] > dst_dims_1 ){
         Rf_error( "Out-of-bounds transfer call on destination tensor" );
       }
 
-      src_off = ( src_perm_ptr[i] - 1 ) * dims[0];
-      dst_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
 
       if( stream_ptr ){
-        cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
-                                  src_ptr + src_off,
-                                  dims[0] * sizeof(t),
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
                                   cudaMemcpyHostToDevice,
                                   *stream_ptr ) );
       }else{
-        cudaTry( cudaMemcpy( dst_ptr + dst_off,
-                             src_ptr + src_off,
-                             dims[0] * sizeof(t),
-                             cudaMemcpyHostToDevice ) );
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyHostToDevice ) );
       }
     }
   }else if( dst_perm_ptr ){
-    // Destination subsetted
-    int dst_off;
-    int src_off = 0;
-
-    for( int i = 0; i < dims[1]; i ++ ){
-      if( dst_perm_ptr[i] > dst_dims[1] ){
+#pragma omp parallel for private( src_pos, dst_pos) firstprivate( dst_dims_1, dims_0 )
+    for( int i = 0; i < dims_1; i ++ ){
+      if( dst_perm_ptr[i] > dst_dims_1 ){
         Rf_error( "Out-of-bounds transfer call on destination tensor" );
       }
 
-      dst_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+      src_pos = i * dims_0;
+      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
 
       if( stream_ptr ){
-        cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
-                                  src_ptr + src_off,
-                                  dims[0] * sizeof(t),
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
                                   cudaMemcpyHostToDevice,
                                   *stream_ptr ) );
       }else{
-        cudaTry( cudaMemcpy( dst_ptr + dst_off,
-                             src_ptr + src_off,
-                             dims[0] * sizeof(t),
-                             cudaMemcpyHostToDevice ) );
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyHostToDevice ) );
       }
-
-      src_off += dims[0];
     }
   }else{
-    // Source subsetted
-    int dst_off = 0;
-    int src_off;
-
-    for( int i = 0; i < dims[1]; i ++ ){
-      if( src_perm_ptr[i] > src_dims[1] ){
+#pragma omp parallel for private( src_pos, dst_pos) firstprivate( src_dims_1, dims_0 )
+    for( int i = 0; i < dims_1; i ++ ){
+      if( src_perm_ptr[i] > src_dims_1 ){
         Rf_error( "Out-of-bounds transfer call on source tensor" );
       }
 
-      src_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+      dst_pos = i * dims_0;
 
       if( stream_ptr ){
-        cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
-                                  src_ptr + src_off,
-                                  dims[0] * sizeof(t),
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
                                   cudaMemcpyHostToDevice,
                                   *stream_ptr ) );
       }else{
-        cudaTry( cudaMemcpy( dst_ptr + dst_off,
-                             src_ptr + src_off,
-                             dims[0] * sizeof(t),
-                             cudaMemcpyHostToDevice ) );
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyHostToDevice ) );
       }
-
-      dst_off += dims[0];
     }
   }
 
@@ -268,12 +311,32 @@ void cuR_transfer_device_host( t* src_ptr,
                                int dst_span_off,
                                cudaStream_t* stream_ptr ){
 
+  int src_dims_1;
+  if( src_dims ){
+    src_dims_1 = src_dims[1];
+  }else{
+    src_dims_1 = 0;
+  }
+
+  int dst_dims_1;
+  if( dst_dims ){
+    dst_dims_1 = dst_dims[1];
+  }else{
+    dst_dims_1 = 0;
+  }
+
+  int dims_0 = dims[0];
+  int dims_1 = dims[1];
+
+  omp_set_dynamic(0);
+  omp_set_num_threads( omp_get_num_procs() / 2 );
+
   // Offsets with permutations offset the permutation vector itself
   if( src_span_off ){
     if( src_perm_ptr ){
       src_perm_ptr = src_perm_ptr + src_span_off;
     }else{
-      src_ptr = src_ptr + ( src_span_off * dims[0] );
+      src_ptr = src_ptr + ( src_span_off * dims_0 );
     }
   }
 
@@ -281,111 +344,102 @@ void cuR_transfer_device_host( t* src_ptr,
     if( dst_perm_ptr ){
       dst_perm_ptr = dst_perm_ptr + dst_span_off;
     }else{
-      dst_ptr = dst_ptr + ( dst_span_off * dims[0] );
+      dst_ptr = dst_ptr + ( dst_span_off * dims_0 );
     }
   }
 
-  // Out-of-bounds checks only check for permutation content
-  // Span checks are done in R
+  int dst_pos;
+  int src_pos;
 
   // Copy
   if( !src_perm_ptr && !dst_perm_ptr ){
     // No subsetting
-    int l = dims[0]*dims[1];
     if( stream_ptr ){
       cudaTry( cudaMemcpyAsync( dst_ptr,
                                 src_ptr,
-                                l * sizeof(t),
+                                sizeof(t) * dims_0 * dims_1,
                                 cudaMemcpyDeviceToHost,
                                 *stream_ptr ) );
     }else{
-      cudaTry( cudaMemcpy( dst_ptr,
-                           src_ptr,
-                           l * sizeof(t),
-                           cudaMemcpyDeviceToHost ) );
+      cudaTry( cudaMemcpyAsync( dst_ptr,
+                                src_ptr,
+                                sizeof(t) * dims_0 * dims_1,
+                                cudaMemcpyDeviceToHost ) );
     }
-  }else if( src_perm_ptr && src_perm_ptr ){
-    // Both subsetted
-    int dst_off, src_off;
-
-    for( int i = 0; i < dims[1]; i ++ ){
-      if( src_perm_ptr[i] > src_dims[1] ){
+  }else if( src_perm_ptr && dst_perm_ptr ){
+#pragma omp parallel for private( src_pos, dst_pos) firstprivate( src_dims_1, dst_dims_1, dims_0 )
+    for( int i = 0; i < dims_1; i ++ ){
+      if( src_perm_ptr[i] > src_dims_1 ){
         Rf_error( "Out-of-bounds transfer call on source tensor" );
       }
 
-      if( dst_perm_ptr[i] > dst_dims[1] ){
+      if( dst_perm_ptr[i] > dst_dims_1 ){
         Rf_error( "Out-of-bounds transfer call on destination tensor" );
       }
 
-      src_off = ( src_perm_ptr[i] - 1 ) * dims[0];
-      dst_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
 
       if( stream_ptr ){
-        cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
-                                  src_ptr + src_off,
-                                  dims[0] * sizeof(t),
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
                                   cudaMemcpyDeviceToHost,
                                   *stream_ptr ) );
       }else{
-        cudaTry( cudaMemcpy( dst_ptr + dst_off,
-                             src_ptr + src_off,
-                             dims[0] * sizeof(t),
-                             cudaMemcpyDeviceToHost ) );
+        // This copy is not async to the host if dst is unpinned, or just takes
+        // a very long time.
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyDeviceToHost ) );
       }
     }
   }else if( dst_perm_ptr ){
-    // Destination subsetted
-    int dst_off;
-    int src_off = 0;
-
-    for( int i = 0; i < dims[1]; i ++ ){
-      if( dst_perm_ptr[i] > dst_dims[1] ){
+#pragma omp parallel for private( src_pos, dst_pos) firstprivate( dst_dims_1, dims_0 )
+    for( int i = 0; i < dims_1; i ++ ){
+      if( dst_perm_ptr[i] > dst_dims_1 ){
         Rf_error( "Out-of-bounds transfer call on destination tensor" );
       }
 
-      dst_off = ( dst_perm_ptr[i] - 1 ) * dims[0];
+      src_pos = i * dims_0;
+      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
 
       if( stream_ptr ){
-        cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
-                                  src_ptr + src_off,
-                                  dims[0] * sizeof(t),
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
                                   cudaMemcpyDeviceToHost,
                                   *stream_ptr ) );
       }else{
-        cudaTry( cudaMemcpy( dst_ptr + dst_off,
-                             src_ptr + src_off,
-                             dims[0] * sizeof(t),
-                             cudaMemcpyDeviceToHost ) );
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyDeviceToHost ) );
       }
-
-      src_off += dims[0];
     }
   }else{
-    // Source subsetted
-    int dst_off = 0;
-    int src_off;
-
-    for( int i = 0; i < dims[1]; i ++ ){
-      if( src_perm_ptr[i] > src_dims[1] ){
+#pragma omp parallel for private( src_pos, dst_pos) firstprivate( src_dims_1, dims_0 )
+    for( int i = 0; i < dims_1; i ++ ){
+      if( src_perm_ptr[i] > src_dims_1 ){
         Rf_error( "Out-of-bounds transfer call on source tensor" );
       }
 
-      src_off = ( src_perm_ptr[i] - 1 ) * dims[0];
+      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+      dst_pos = i * dims_0;
 
       if( stream_ptr ){
-        cudaTry( cudaMemcpyAsync( dst_ptr + dst_off,
-                                  src_ptr + src_off,
-                                  dims[0] * sizeof(t),
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
                                   cudaMemcpyDeviceToHost,
                                   *stream_ptr ) );
       }else{
-        cudaTry( cudaMemcpy( dst_ptr + dst_off,
-                             src_ptr + src_off,
-                             dims[0] * sizeof(t),
-                             cudaMemcpyDeviceToHost ) );
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyDeviceToHost ) );
       }
-
-      dst_off += dims[0];
     }
   }
 

@@ -108,6 +108,7 @@ __declspec( dllexport )
 
     int dims_0 = dims[0];
     int dims_1 = dims[1];
+
     int blockSize = 256;
     int numBlocks = ( ( dims_0 * dims_1 + blockSize ) - 1 ) / blockSize;
 

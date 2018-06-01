@@ -270,20 +270,7 @@ print( identical( tens.out.CUDA$ptr, tens.out.CUDA.async$ptr ) )
 # to the same speedup that we have seen when comparing just the GEMM
 # implementations.
 
-# You can increase the speed even more by pre-converting numeric data to float,
-# and only converting output back to doubles after the operation (this is of
-# course cheating, but ususally when training neural networks, output is not
-# expected of the network anyway):
-tens.in$level <- 1L
-tens.out.CUDA.async$level <- 1L
-
-bench.CUDA.async.preproc <- microbenchmark( proc.CUDA.async(), times = 10 )
-print( bench.R.sync )
-print( bench.CUDA.sync )
-print( bench.CUDA.async )
-print( bench.CUDA.async.preproc )
-
-# Check out the cheating version in NVVP!
+# Check out the async cuda process in NVVP!
 # ./NVVP/007_NVVP_streaming.R
 
 clean()

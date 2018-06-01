@@ -20,8 +20,7 @@ n <- 1000
 mat.in   <- matrix( round(rnorm( 10*n*n )), nrow = n, ncol = 10*n )
 mat.proc <- t(diag( 1, n, n ))
 
-# Cheating version (L1)
-tens.in       <- tensor$new( mat.in, 1L )
+tens.in       <- tensor$new( mat.in, 0L )
 
 tens.in.1  <- tensor$new( NULL, 3L, c( n, n ) )
 tens.proc  <- tensor$new( mat.proc, 3L )

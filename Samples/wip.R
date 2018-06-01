@@ -1,7 +1,7 @@
 library( cuRious )
 library( microbenchmark )
 
-level.src <- 3L
+level.src <- 0L
 level.dst <- 1L
 
 mat <- matrix( as.numeric( 1:10^6 ), 1000, 1000 )
@@ -29,10 +29,10 @@ fun <- function(){
          dims,
          dims,
          dims,
-         subs1,
-         subs2,
-         # NULL,
-         # NULL,
+         # subs1,
+         # subs2,
+         NULL,
+         NULL,
          NULL,
          NULL,
          NULL )

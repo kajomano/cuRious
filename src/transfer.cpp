@@ -1,6 +1,5 @@
 #include "transfer.h"
 #include "omp.h"
-// #include <string.h>
 
 template <typename s, typename d>
 void cuR_transfer_host_host( s* src_ptr,
@@ -71,14 +70,6 @@ void cuR_transfer_host_host( s* src_ptr,
   // Copy
   if( !src_perm_ptr && !dst_perm_ptr ){
     // No subsetting
-
-    // Bandwidth test
-    // memcpy( dst_ptr, src_ptr, sizeof( double ) * dims[0] * dims[1] );
-
-    // #pragma omp parallel for
-    //     for( int j = 0; j < dims[0] * dims[1]; j++ ){
-    //       dst_ptr[j] = (d)src_ptr[j];
-    //     }
 
 #pragma omp parallel for private( src_pos, dst_pos) firstprivate( dims_0 )
     for( int i = 0; i < dims_1; i++ ){

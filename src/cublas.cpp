@@ -57,46 +57,53 @@ cublasStatus_t cuR_cublas_recover_stream( cudaStream_t* stream, cublasHandle_t* 
 }
 
 extern "C"
-SEXP cuR_cublas_sger( SEXP tens_x_r,
-                      SEXP tens_y_r,
-                      SEXP tens_A_r,
-                      SEXP dims_A_r,
-                      SEXP ox_r,
-                      SEXP oy_r,
-                      SEXP oA_r,
-                      SEXP al_r,
-                      SEXP handle_r,
-                      SEXP stream_r ){
+SEXP cuR_cublas_sger( SEXP x_ptr_r,
+                      SEXP y_ptr_r,
+                      SEXP A_ptr_r,
+                      SEXP dims_r,
+                      SEXP x_span_off_r,
+                      SEXP y_span_off_r,
+                      SEXP A_span_off_r,
+                      SEXP alpha_r,
+                      SEXP handle_ptr_r,
+                      SEXP stream_ptr_r ){
 
   // Recover handle
-  cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
-  cudaStream_t* stream = ( R_NilValue == stream_r ) ? NULL : (cudaStream_t*)R_ExternalPtrAddr( stream_r );
+  cublasHandle_t* handle_ptr = (cublasHandle_t*)R_ExternalPtrAddr( handle_ptr_r );
+  cudaStream_t* stream_ptr   = ( R_NilValue == stream_ptr_r ) ? NULL :
+    (cudaStream_t*)R_ExternalPtrAddr( stream_ptr_r );
 
   // Recover tensors, the dims and the scalars
-  int* dims_A = INTEGER( dims_A_r );
-  float* tens_x = (float*)R_ExternalPtrAddr( tens_x_r );
-  float* tens_y = (float*)R_ExternalPtrAddr( tens_y_r );
-  float* tens_A = (float*)R_ExternalPtrAddr( tens_A_r );
-  float al = (float)Rf_asReal( al_r );
-  int ox   = ( R_NilValue == ox_r ) ? 0 : (Rf_asInteger( ox_r ) - 1);
-  int oy   = ( R_NilValue == oy_r ) ? 0 : (Rf_asInteger( oy_r ) - 1);
-  int oA   = ( R_NilValue == oA_r ) ? 0 : (Rf_asInteger( oA_r ) - 1);
+  float* x_ptr = (float*)R_ExternalPtrAddr( x_ptr_r );
+  float* y_ptr = (float*)R_ExternalPtrAddr( y_ptr_r );
+  float* A_ptr = (float*)R_ExternalPtrAddr( A_ptr_r );
+  int* dims    = INTEGER( dims_r );
+
+  int x_span_off = ( R_NilValue == x_span_off_r ) ? 0 :
+    ( Rf_asInteger( x_span_off_r ) - 1 );
+  int y_span_off = ( R_NilValue == y_span_off_r ) ? 0 :
+    ( Rf_asInteger( y_span_off_r ) - 1 );
+  int A_span_off = ( R_NilValue == A_span_off_r ) ? 0 :
+    ( Rf_asInteger( y_span_off_r ) - 1 );
+
+  float alpha = (float)Rf_asReal( alpha_r );
+
 
   // Offsets
-  tens_x = tens_x + ox;
-  tens_y = tens_y + oy;
-  tens_A = tens_A + (oA * dims_A[0]);
+  x_ptr = x_ptr + x_span_off;
+  y_ptr = y_ptr + y_span_off;
+  A_ptr = A_ptr + ( y_span_off * dims[0] );
 
-  int m = dims_A[0];
-  int n = dims_A[1];
+  int m = dims[0];
+  int n = dims[1];
 
   // Handle stream
-  cublasTry( cuR_cublas_recover_stream( stream, handle ) );
+  cublasTry( cuR_cublas_recover_stream( stream_ptr, handle_ptr ) );
 
   // Do the op
-  cublasTry( cublasSger( *handle, m, n, &al, tens_x, 1, tens_y,1, tens_A, m ) );
+  cublasTry( cublasSger( *handle_ptr, m, n, &alpha, x_ptr, 1, y_ptr, 1, A_ptr, m ) );
 
-  if( stream ){
+  if( stream_ptr ){
     // Flush for WDDM
     cudaStreamQuery(0);
   }else{
@@ -106,71 +113,93 @@ SEXP cuR_cublas_sger( SEXP tens_x_r,
   return R_NilValue;
 }
 
-extern "C"
-SEXP cuR_cublas_sgemm( SEXP tens_A_r,
-                       SEXP tens_B_r,
-                       SEXP tens_C_r,
-                       SEXP dims_A_r,
-                       SEXP dims_B_r,
-                       SEXP oa_r,
-                       SEXP ob_r,
-                       SEXP oc_r,
-                       SEXP tp_A_r,
-                       SEXP tp_B_r,
-                       SEXP al_r,
-                       SEXP be_r,
-                       SEXP handle_r,
-                       SEXP stream_r ){
+// A.ptr,
+// B.ptr,
+// C.ptr,
+// A.dims,
+// B.dims,
+// A.span.off = NULL,
+// B.span.off = NULL,
+// C.span.off = NULL,
+// A.tp,
+// B.tp,
+// alpha,
+// beta,
+// handle.ptr,
+// stream.ptr = NULL
 
-  // Recover handle
-  cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
-  cudaStream_t* stream = ( R_NilValue == stream_r ) ? NULL : (cudaStream_t*)R_ExternalPtrAddr( stream_r );
+extern "C"
+SEXP cuR_cublas_sgemm( SEXP A_ptr_r,
+                       SEXP B_ptr_r,
+                       SEXP C_ptr_r,
+                       SEXP A_dims_r,
+                       SEXP B_dims_r,
+                       SEXP A_span_off_r,
+                       SEXP B_span_off_r,
+                       SEXP C_span_off_r,
+                       SEXP A_tp_r,
+                       SEXP B_tp_r,
+                       SEXP alpha_r,
+                       SEXP beta_r,
+                       SEXP handle_ptr_r,
+                       SEXP stream_ptr_r ){
+
+  // Recover handle_ptr
+  cublasHandle_t* handle_ptr = (cublasHandle_t*)R_ExternalPtrAddr( handle_ptr_r );
+  cudaStream_t* stream_ptr   = ( R_NilValue == stream_ptr_r ) ? NULL :
+    (cudaStream_t*)R_ExternalPtrAddr( stream_ptr_r );
 
   // Recover tensors, the dims and the scalars
-  int* dims_A = INTEGER( dims_A_r );
-  int* dims_B = INTEGER( dims_B_r );
-  float* tens_A = (float*)R_ExternalPtrAddr( tens_A_r );
-  float* tens_B = (float*)R_ExternalPtrAddr( tens_B_r );
-  float* tens_C = (float*)R_ExternalPtrAddr( tens_C_r );
-  float al = (float)Rf_asReal( al_r );
-  float be = (float)Rf_asReal( be_r );
-  int oa   = ( R_NilValue == oa_r ) ? 0 : (Rf_asInteger( oa_r ) - 1);
-  int ob   = ( R_NilValue == ob_r ) ? 0 : (Rf_asInteger( ob_r ) - 1);
-  int oc   = ( R_NilValue == oc_r ) ? 0 : (Rf_asInteger( oc_r ) - 1);
+  float* A_ptr = (float*)R_ExternalPtrAddr( A_ptr_r );
+  float* B_ptr = (float*)R_ExternalPtrAddr( B_ptr_r );
+  float* C_ptr = (float*)R_ExternalPtrAddr( C_ptr_r );
+  int* A_dims  = INTEGER( A_dims_r );
+  int* B_dims  = INTEGER( B_dims_r );
+
+  int A_span_off = ( R_NilValue == A_span_off_r ) ? 0 :
+    ( Rf_asInteger( A_span_off_r ) - 1 );
+  int B_span_off = ( R_NilValue == B_span_off_r ) ? 0 :
+    ( Rf_asInteger( B_span_off_r ) - 1 );
+  int C_span_off = ( R_NilValue == C_span_off_r ) ? 0 :
+    ( Rf_asInteger( C_span_off_r ) - 1 );
+
+  float alpha = (float)Rf_asReal( alpha_r );
+  float beta  = (float)Rf_asReal( beta_r );
+
 
   // Offsets
-  tens_A = tens_A + (oa * dims_A[0]);
-  tens_B = tens_B + (ob * dims_B[0]);
-  tens_C = tens_C + (oc * dims_A[0]);
+  A_ptr = A_ptr + ( A_span_off * A_dims[0] );
+  B_ptr = B_ptr + ( B_span_off * B_dims[0] );
+  C_ptr = C_ptr + ( C_span_off * A_dims[0] );
 
   // Transposes
   cublasOperation_t op_A, op_B;
   int m, n, k;
-  if( Rf_asLogical( tp_A_r ) == 1 ){
+  if( Rf_asLogical( A_tp_r ) == 1 ){
     op_A = CUBLAS_OP_T;
-    m = dims_A[1];
-    k = dims_A[0];
+    m = A_dims[1];
+    k = A_dims[0];
   }else{
     op_A = CUBLAS_OP_N;
-    m = dims_A[0];
-    k = dims_A[1];
+    m = A_dims[0];
+    k = A_dims[1];
   }
 
-  if( Rf_asLogical( tp_B_r ) == 1 ){
+  if( Rf_asLogical( B_tp_r ) == 1 ){
     op_B = CUBLAS_OP_T;
-    n = dims_B[0];
+    n = B_dims[0];
   }else{
     op_B = CUBLAS_OP_N;
-    n = dims_B[1];
+    n = B_dims[1];
   }
 
-  // Handle stream
-  cublasTry( cuR_cublas_recover_stream( stream, handle ) );
+  // Handle stream_ptr
+  cublasTry( cuR_cublas_recover_stream( stream_ptr, handle_ptr ) );
 
   // Do the op
-  cublasTry( cublasSgemm( *handle, op_A, op_B, m, n, k, &al, tens_A, dims_A[0], tens_B, dims_B[0], &be, tens_C, m ) );
+  cublasTry( cublasSgemm( *handle_ptr, op_A, op_B, m, n, k, &alpha, A_ptr, A_dims[0], B_ptr, B_dims[0], &beta, C_ptr, m ) );
 
-  if( stream ){
+  if( stream_ptr ){
     // Flush for WDDM
     cudaStreamQuery(0);
   }else{

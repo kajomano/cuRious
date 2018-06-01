@@ -88,7 +88,6 @@ SEXP cuR_cublas_sger( SEXP x_ptr_r,
 
   float alpha = (float)Rf_asReal( alpha_r );
 
-
   // Offsets
   x_ptr = x_ptr + x_span_off;
   y_ptr = y_ptr + y_span_off;
@@ -112,21 +111,6 @@ SEXP cuR_cublas_sger( SEXP x_ptr_r,
 
   return R_NilValue;
 }
-
-// A.ptr,
-// B.ptr,
-// C.ptr,
-// A.dims,
-// B.dims,
-// A.span.off = NULL,
-// B.span.off = NULL,
-// C.span.off = NULL,
-// A.tp,
-// B.tp,
-// alpha,
-// beta,
-// handle.ptr,
-// stream.ptr = NULL
 
 extern "C"
 SEXP cuR_cublas_sgemm( SEXP A_ptr_r,
@@ -165,7 +149,6 @@ SEXP cuR_cublas_sgemm( SEXP A_ptr_r,
 
   float alpha = (float)Rf_asReal( alpha_r );
   float beta  = (float)Rf_asReal( beta_r );
-
 
   // Offsets
   A_ptr = A_ptr + ( A_span_off * A_dims[0] );

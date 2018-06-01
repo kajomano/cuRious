@@ -1,8 +1,8 @@
 library( cuRious )
 library( microbenchmark )
 
-level.src <- 0L
-level.dst <- 1L
+level.src <- 3L
+level.dst <- 3L
 
 mat <- matrix( as.numeric( 1:10^6 ), 1000, 1000 )
 tens.src <- tensor$new( mat, level.src )

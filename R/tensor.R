@@ -51,14 +51,6 @@ tensor <- R6Class(
 
       # If data is supported
       }else{
-        if( !is.null( dims ) ){
-          stop( "Dims can not be defined when data is supplied" )
-        }
-
-        if( !is.null( type ) ){
-          stop( "Type can not be defined when data is supplied" )
-        }
-
         if( is.obj( data ) ){
           private$.dims <- obj.dims( data )
           private$.type <- obj.type( data )
@@ -91,6 +83,18 @@ tensor <- R6Class(
           }
         }else{
           stop( "Invalid data format" )
+        }
+
+        if( !is.null( dims ) ){
+          if( !identical( check.dims( dims ), private$.dims ) ){
+            stop( "Data dims and supported dims do not match" )
+          }
+        }
+
+        if( !is.null( type ) ){
+          if( check.type( type ) != private$.type ) ){
+            stop( "Data type and supported type does not match" )
+          }
         }
       }
 

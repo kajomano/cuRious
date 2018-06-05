@@ -92,7 +92,7 @@ tensor <- R6Class(
         }
 
         if( !is.null( type ) ){
-          if( check.type( type ) != private$.type ) ){
+          if( check.type( type ) != private$.type ){
             stop( "Data type and supported type does not match" )
           }
         }

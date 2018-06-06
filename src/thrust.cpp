@@ -37,6 +37,43 @@ SEXP cuR_thrust_pow2( SEXP A_ptr_r,
   return R_NilValue;
 }
 
+extern "C"
+SEXP cuR_thrust_cmins( SEXP A_ptr_r,
+                       SEXP x_ptr_r,
+                       SEXP A_dims_r,
+                       SEXP A_span_off_r,   // Optional
+                       SEXP x_span_off_r,   // Optional
+                       SEXP stream_ptr_r ){ // Optional
+
+  float* A_ptr    = (float*)R_ExternalPtrAddr( A_ptr_r );
+  int*   x_ptr    = (int*)R_ExternalPtrAddr( x_ptr_r );
+  int*   A_dims   = INTEGER( A_dims_r );
+
+  int A_span_off  = ( R_NilValue == A_span_off_r ) ? 0:
+    ( Rf_asInteger( A_span_off_r ) - 1 );
+
+  int x_span_off  = ( R_NilValue == x_span_off_r ) ? 0:
+    ( Rf_asInteger( x_span_off_r ) - 1 );
+
+  cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
+    (cudaStream_t*) R_ExternalPtrAddr( stream_ptr_r );
+
+  // Offsets
+  A_ptr = A_ptr + A_span_off * A_dims[0];
+  x_ptr = x_ptr + x_span_off;
+
+  cuR_thrust_cmins_cu( A_ptr, x_ptr, A_dims, stream_ptr );
+
+  if( stream_ptr ){
+    // Flush for WDDM
+    cudaStreamQuery(0);
+  }else{
+    cudaTry( cudaDeviceSynchronize() );
+  }
+
+  return R_NilValue;
+}
+
 // extern "C"
 // SEXP cuB_thrust_cmins( SEXP prod_r, SEXP dims_r, SEXP quant_r ) {
 //   float* prod  = (float*)R_ExternalPtrAddr( prod_r );

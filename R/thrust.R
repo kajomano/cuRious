@@ -155,3 +155,109 @@ thrust.pow2 <- R6Class(
     }
   )
 )
+
+# cmins ====
+# Tells which row is the smallest in every column
+thrust.cmins <- R6Class(
+  "cuR.thrust.cmins",
+  inherit = .thrust.fusion,
+  public = list(
+    initialize = function( A,
+                           x,
+                           A.span = NULL,
+                           x.span = NULL,
+                           stream = NULL  ){
+      # Sanity checks
+      check.tensor( A )
+      check.tensor( x )
+
+      if( A$type != "n" ){
+        stop( "Input tensors is not numeric" )
+      }
+
+      if( x$type != "i" ){
+        stop( "Input tensors is not numeric" )
+      }
+
+      # Dim checks
+      A.dims <- .tensor.dims$new( A )
+      x.dims <- .tensor.dims$new( x )
+
+      A.dims$check.span( A.span )
+      x.dims$check.span( B.span )
+
+      x.dims$check.vect()
+
+      # ITT ====
+
+      if( !identical( A.dims$dims, B.dims$dims ) ){
+        stop( "Not all tensors have matching dimensions" )
+      }
+
+      # Assignments
+      private$.add.ep( A, "A" )
+      private$.add.ep( B, "B", TRUE )
+
+      private$.params$A.dims <- A.dims$dims
+
+      private$.params$A.span.off <- A.dims$span.off
+      private$.params$B.span.off <- B.dims$span.off
+
+      super$initialize( stream )
+    }
+  ),
+
+  private = list(
+    .L3.call = function( A.ptr,
+                         B.ptr,
+                         A.dims,
+                         A.span.off = NULL,
+                         B.span.off = NULL,
+                         stream.ptr = NULL ){
+
+      .Call( "cuR_thrust_pow2",
+             A.ptr,
+             B.ptr,
+             A.dims,
+             A.span.off,
+             B.span.off,
+             stream.ptr )
+
+      invisible( TRUE )
+    },
+
+    .L0.call = function( A.ptr,
+                         B.ptr,
+                         A.dims,
+                         A.span.off = NULL,
+                         B.span.off = NULL,
+                         stream.ptr = NULL ){
+
+      if( !is.null( A.span.off ) ){
+        A.range <- A.span.off:( A.span.off + A.dims[[2]] - 1 )
+
+        if( A.dims[[1]] == 1L ){
+          A.ptr <- A.ptr[ A.range ]
+        }else{
+          A.ptr <- A.ptr[, A.range ]
+        }
+      }
+
+      if( !is.null( B.span.off ) ){
+        B.range <- B.span.off:( B.span.off + A.dims[[2]] - 1 )
+      }else{
+        B.range <- 1:A.dims[[2]]
+      }
+
+      res <- A.ptr ^ 2
+
+      if( A.dims[[1]] == 1L ){
+        private$.eps.out$B$obj[ B.range ] <- res
+      }else{
+        private$.eps.out$B$obj[, B.range ] <- res
+      }
+
+      invisible( TRUE )
+    }
+  )
+)

@@ -39,7 +39,6 @@ void cuR_transfer_host_host( s* src_ptr,
 // }
 
 ///////////////////////////////////////////////////////////////
-// What I have so far:
 // SIMD does not do as well as auto-vectorization (-O3), but:
 // The code needs to be SIMD compatible to be auto-vectorized
 ///////////////////////////////////////////////////////////////

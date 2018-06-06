@@ -18,7 +18,7 @@ tens.A.0 <- tensor$new( mat.A  , 0 )
 tens.x.0 <- tensor$new( vect.x , 0 )
 tens.y.0 <- tensor$new( vect.y , 0 )
 
-handle <- cublas.handle$new()
+handle   <- cublas.handle$new()
 
 L3.sgemv <- cublas.sgemv$new( tens.A.3, tens.x.3, tens.y.3, subs, subs, subs, TRUE, handle = handle )
 L0.sgemv <- cublas.sgemv$new( tens.A.0, tens.x.0, tens.y.0, subs, subs, subs, TRUE )

@@ -2,9 +2,6 @@
 
 #ifndef CUDA_EXCLUDE
 
-#include <cuda.h>
-#include <cuda_runtime_api.h>
-
 extern "C"
 #ifdef _WIN32
 __declspec( dllimport )

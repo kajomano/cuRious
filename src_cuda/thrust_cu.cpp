@@ -1,89 +1,88 @@
-// #include <thrust/device_vector.h>
-// #include <thrust/reduce.h>
-// #include <thrust/functional.h>
-// #include <thrust/sequence.h>
-// #include <thrust/sort.h>
-//
-// #include <thrust/iterator/discard_iterator.h>
-// #include <thrust/iterator/zip_iterator.h>
-// #include <thrust/iterator/counting_iterator.h>
-// #include <thrust/iterator/transform_iterator.h>
-// #include <thrust/iterator/constant_iterator.h>
-//
-// #include <cublas_v2.h>
-//
-// #include "stdio.h"
-//
-// // Functor for pow
-// class power_functor{
-//   const float p; // Power
-// public:
-//   power_functor(float _p) : p(_p) {}
-//
-//   __host__ __device__
-//   float operator()(const float& x) const {
-//     return pow( x, p );
-//   }
-// };
-//
-// // Convert a linear index to col index
-// struct linear_index_to_col_index : public thrust::unary_function<int, int>
-// {
-//   const int r; // Number of rows
-//
-//   __host__ __device__
-//   linear_index_to_col_index(int _r) : r(_r) {}
-//
-//   __host__ __device__
-//   int operator()(int i){
-//     return i / r + 1;
-//   }
-// };
-//
-// // Convert a linear index to row index
-// struct linear_index_to_row_index : public thrust::unary_function<int, int>
-// {
-//   const int r; // Number of rows
-//
-//   __host__ __device__
-//   linear_index_to_row_index(int _r) : r(_r) {}
-//
-//   __host__ __device__
-//   int operator()(int i){
-//     return i % r + 1;
-//   }
-// };
-//
+#include <thrust/device_vector.h>
+#include <thrust/reduce.h>
+#include <thrust/functional.h>
+#include <thrust/sequence.h>
+#include <thrust/sort.h>
+
+#include <thrust/iterator/discard_iterator.h>
+#include <thrust/iterator/zip_iterator.h>
+#include <thrust/iterator/counting_iterator.h>
+#include <thrust/iterator/transform_iterator.h>
+#include <thrust/iterator/constant_iterator.h>
+
+// Functor for pow
+class power_functor{
+  const float p; // Power
+public:
+  power_functor(float _p) : p(_p) {}
+
+  __host__ __device__
+  float operator()(const float& x) const {
+    return pow( x, p );
+  }
+};
+
+// Convert a linear index to col index
+struct linear_index_to_col_index : public thrust::unary_function<int, int>
+{
+  const int r; // Number of rows
+
+  __host__ __device__
+  linear_index_to_col_index(int _r) : r(_r) {}
+
+  __host__ __device__
+  int operator()(int i){
+    return i / r + 1;
+  }
+};
+
+// Convert a linear index to row index
+struct linear_index_to_row_index : public thrust::unary_function<int, int>
+{
+  const int r; // Number of rows
+
+  __host__ __device__
+  linear_index_to_row_index(int _r) : r(_r) {}
+
+  __host__ __device__
+  int operator()(int i){
+    return i % r + 1;
+  }
+};
+
+extern "C"
+#ifdef _WIN32
+__declspec( dllexport )
+#endif
+void cuR_thrust_pow2_cu( float* A_ptr, float* B_ptr, int* dims ){
+  // Thrust pointers
+  thrust::device_ptr<float> t_A_ptr( A_ptr );
+  thrust::device_ptr<float> t_B_ptr( B_ptr );
+
+  // // Temporary storages
+  // thrust::device_vector<float> t_tmp_cent( dims[0]*dims[1] );
+  // thrust::device_vector<float> t_tmp_ones( dims[0], 1.0 );
+
+  // cent ^ 2
+  thrust::transform(
+    t_A_ptr,
+    t_A_ptr + (dims[0]*dims[1] ),
+    t_B_ptr,
+    power_functor(2.0)
+  );
+
+  // float* tmp_cent = thrust::raw_pointer_cast(t_tmp_cent.data());
+  // float* tmp_ones = thrust::raw_pointer_cast(t_tmp_ones.data());
+
+  // float al = 1.0;
+  // float be = 0.0;
+  //
+  // // colsums
+  // cublasSgemv( *handle, CUBLAS_OP_T, dims[0], dims[1], &al, tmp_cent, dims[0], tmp_ones, 1, &be, norm, 1);
+};
+
 // extern "C"
-// void cuB_thrust_pow2_csum_cublas( float* cent, int* dims, float* norm, cublasHandle_t* handle ){
-//   // Thrust pointers
-//   thrust::device_ptr<float> t_ptr_cent( cent );
-//   thrust::device_ptr<float> t_ptr_norm( norm );
-//
-//   // Temporary storages
-//   thrust::device_vector<float> t_tmp_cent( dims[0]*dims[1] );
-//   thrust::device_vector<float> t_tmp_ones( dims[0], 1.0 );
-//
-//   // cent ^ 2
-//   thrust::transform(
-//     t_ptr_cent,
-//     t_ptr_cent + dims[0]*dims[1],
-//     t_tmp_cent.begin(),
-//     power_functor(2.0)
-//   );
-//
-//   float* tmp_cent = thrust::raw_pointer_cast(t_tmp_cent.data());
-//   float* tmp_ones = thrust::raw_pointer_cast(t_tmp_ones.data());
-//
-//   float al = 1.0;
-//   float be = 0.0;
-//
-//   // colsums
-//   cublasSgemv( *handle, CUBLAS_OP_T, dims[0], dims[1], &al, tmp_cent, dims[0], tmp_ones, 1, &be, norm, 1);
-// };
-//
-// extern "C"
-// void cuB_thrust_cmins_cu( float* prod, int* dims, int* quant ){
+// void cuR_thrust_cmins_cu( float* prod, int* dims, int* quant ){
 //   // Thrust pointers
 //   thrust::device_ptr<float> t_ptr_prod( prod );
 //   thrust::device_ptr<int>   t_ptr_quant( quant );
@@ -113,7 +112,7 @@
 // };
 //
 // extern "C"
-// void cuB_thrust_table_cu( int* quant, int* perm, int* temp_quant, int* dims, int* weights, int* dims_weights ){
+// void cuR_thrust_table_cu( int* quant, int* perm, int* temp_quant, int* dims, int* weights, int* dims_weights ){
 //   // Thrust pointers
 //   thrust::device_ptr<int> t_ptr_quant( quant );
 //   thrust::device_ptr<int> t_ptr_perm( perm );
@@ -140,4 +139,4 @@
 //     thrust::plus<int>()
 //   );
 // };
-//
+

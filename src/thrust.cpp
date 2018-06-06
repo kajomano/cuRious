@@ -1,12 +1,38 @@
 #include "thrust.h"
 
 extern "C"
-SEXP cuR_thrust_pow2( SEXP A_ptr_r, SEXP B_ptr_r, SEXP dims_r ) {
-  float* A_ptr = (float*)R_ExternalPtrAddr( A_ptr_r );
-  float* B_ptr = (float*)R_ExternalPtrAddr( B_ptr_r );
-  int*   dims = INTEGER( dims_r );
+SEXP cuR_thrust_pow2( SEXP A_ptr_r,
+                      SEXP B_ptr_r,
+                      SEXP dims_r,
+                      SEXP A_span_off_r,   // Optional
+                      SEXP B_span_off_r,   // Optional
+                      SEXP stream_ptr_r ){ // Optional
 
-  cuR_thrust_pow2_cu( A_ptr, B_ptr, dims );
+  float* A_ptr    = (float*)R_ExternalPtrAddr( A_ptr_r );
+  float* B_ptr    = (float*)R_ExternalPtrAddr( B_ptr_r );
+  int*   dims     = INTEGER( dims_r );
+
+  int A_span_off  = ( R_NilValue == A_span_off_r ) ? 0:
+    ( Rf_asInteger( A_span_off_r ) - 1 );
+
+  int B_span_off  = ( R_NilValue == B_span_off_r ) ? 0:
+    ( Rf_asInteger( B_span_off_r ) - 1 );
+
+  cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
+    (cudaStream_t*) R_ExternalPtrAddr( stream_ptr_r );
+
+  // Offsets
+  A_ptr = A_ptr + A_span_off * dims[0];
+  B_ptr = B_ptr + B_span_off * dims[0];
+
+  cuR_thrust_pow2_cu( A_ptr, B_ptr, dims, stream_ptr );
+
+  if( stream_ptr ){
+    // Flush for WDDM
+    cudaStreamQuery(0);
+  }else{
+    cudaTry( cudaDeviceSynchronize() );
+  }
 
   return R_NilValue;
 }

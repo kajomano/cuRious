@@ -10,6 +10,8 @@
 #include <thrust/iterator/transform_iterator.h>
 #include <thrust/iterator/constant_iterator.h>
 
+#include <thrust/system/cuda/execution_policy.h>
+
 // Functor for pow
 class power_functor{
   const float p; // Power
@@ -54,22 +56,34 @@ extern "C"
 #ifdef _WIN32
 __declspec( dllexport )
 #endif
-void cuR_thrust_pow2_cu( float* A_ptr, float* B_ptr, int* dims ){
+void cuR_thrust_pow2_cu( float* A_ptr, float* B_ptr, int* dims, cudaStream_t* stream_ptr ){
   // Thrust pointers
   thrust::device_ptr<float> t_A_ptr( A_ptr );
   thrust::device_ptr<float> t_B_ptr( B_ptr );
+
+  // thrust::cuda::par(s1)
 
   // // Temporary storages
   // thrust::device_vector<float> t_tmp_cent( dims[0]*dims[1] );
   // thrust::device_vector<float> t_tmp_ones( dims[0], 1.0 );
 
   // cent ^ 2
-  thrust::transform(
-    t_A_ptr,
-    t_A_ptr + (dims[0]*dims[1] ),
-    t_B_ptr,
-    power_functor(2.0)
-  );
+  if( stream_ptr ){
+    thrust::transform(
+      thrust::cuda::par.on( *stream_ptr ),
+      t_A_ptr,
+      t_A_ptr + ( dims[0] * dims[1] ),
+      t_B_ptr,
+      power_functor( 2.0 )
+    );
+  }else{
+    thrust::transform(
+      t_A_ptr,
+      t_A_ptr + ( dims[0] * dims[1] ),
+      t_B_ptr,
+      power_functor( 2.0 )
+    );
+  }
 
   // float* tmp_cent = thrust::raw_pointer_cast(t_tmp_cent.data());
   // float* tmp_ones = thrust::raw_pointer_cast(t_tmp_ones.data());

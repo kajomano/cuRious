@@ -111,6 +111,9 @@ cublas.handle <- R6Class(
 # TODO ====
 # Add sdgmm from cuBLAS!
 
+# TODO ====
+# L0 calls have wrong subsets if a supposed matrix is actually a vector
+
 # sgemv ====
 # y.span(y) = alpha*A.tp(A.span(A)) %*% x.span(x) + beta*y.span(y)
 # tp = transpose

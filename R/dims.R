@@ -23,7 +23,8 @@
 
       check.tensor( perm )
 
-      if( perm$type != "i" ){
+      if( perm$type != "i" ||
+          perm$dims[[1]] != 1L ){
         stop( "Invalid tensor permutation" )
       }
 

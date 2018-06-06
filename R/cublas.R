@@ -111,8 +111,152 @@ cublas.handle <- R6Class(
 # TODO ====
 # Add sdgmm from cuBLAS!
 
+# sgemv ====
+# y.span(y) = alpha*A.tp(A.span(A)) %*% x.span(x) + beta*y.span(y)
+# tp = transpose
+cublas.sgemv <- R6Class(
+  "cuR.cublas.sgemv",
+  inherit = .cublas.fusion,
+  public = list(
+    initialize = function( A,
+                           x,
+                           y,
+                           A.span = NULL,
+                           x.span = NULL,
+                           y.span = NULL,
+                           A.tp   = FALSE,
+                           alpha  = 1,
+                           beta   = 1,
+                           handle = NULL,
+                           stream = NULL  ){
+      # Sanity checks
+      check.tensor( A )
+      check.tensor( x )
+      check.tensor( y )
+
+      if( !all( c( x$type == "n", y$type == "n", A$type == "n" ) ) ){
+        stop( "All input tensors need to be numeric" )
+      }
+
+      # Dim checks
+      A.dims <- .tensor.dims$new( A )
+      x.dims <- .tensor.dims$new( x )
+      y.dims <- .tensor.dims$new( y )
+
+      x.dims$check.vect()
+      y.dims$check.vect()
+
+      A.dims$check.span( A.span )
+      x.dims$check.span( x.span )
+      y.dims$check.span( y.span )
+
+      if( x.dims$dims[[2]] != A.dims$check.trans( A.tp )[[2]] ||
+          y.dims$dims[[2]] != A.dims$check.trans( A.tp )[[1]] ){
+        stop( "Not all tensors have matching dimensions" )
+      }
+
+      if( !is.numeric( alpha ) || !( length( alpha ) == 1L ) ){
+        stop( "Invalid alpha parameter" )
+      }
+
+      if( !is.numeric( beta ) || !( length( beta ) == 1L ) ){
+        stop( "Invalid beta parameter" )
+      }
+
+      # Assignments
+      private$.add.ep( A, "A" )
+      private$.add.ep( x, "x" )
+      private$.add.ep( y, "y", TRUE )
+
+      private$.params$A.dims <- A.dims$dims
+
+      private$.params$x.span.off <- x.dims$span.off
+      private$.params$y.span.off <- y.dims$span.off
+      private$.params$A.span.off <- A.dims$span.off
+
+      private$.params$A.tp  <- as.logical( A.tp )
+
+      private$.params$alpha <- as.numeric( alpha )
+      private$.params$beta  <- as.numeric( beta )
+
+      super$initialize( handle, stream )
+    }
+  ),
+
+  private = list(
+    .L3.call = function( A.ptr,
+                         x.ptr,
+                         y.ptr,
+                         A.dims,
+                         A.span.off = NULL,
+                         x.span.off = NULL,
+                         y.span.off = NULL,
+                         A.tp,
+                         alpha,
+                         beta,
+                         handle.ptr,
+                         stream.ptr = NULL ){
+
+      .Call( "cuR_cublas_sgemv",
+             A.ptr,
+             x.ptr,
+             y.ptr,
+             A.dims,
+             A.span.off,
+             x.span.off,
+             y.span.off,
+             A.tp,
+             alpha,
+             beta,
+             handle.ptr,
+             stream.ptr )
+
+      invisible( TRUE )
+    },
+
+    .L0.call = function( A.ptr,
+                         x.ptr,
+                         y.ptr,
+                         A.dims,
+                         A.span.off = NULL,
+                         x.span.off = NULL,
+                         y.span.off = NULL,
+                         A.tp,
+                         alpha,
+                         beta,
+                         handle.ptr = NULL,
+                         stream.ptr = NULL ){
+
+      if( !is.null( A.span.off ) ){
+        A.ptr <- A.ptr[, A.span.off:( A.span.off + A.dims[[2]] - 1 ) ]
+      }
+
+      if( A.tp ){
+        A.ptr  <- t( A.ptr )
+        A.dims <- rev( A.dims )
+      }
+
+      if( !is.null( x.span.off ) ){
+        x.ptr <- x.ptr[ x.span.off:( x.span.off + A.dims[[2]] - 1 ) ]
+      }
+
+      if( is.null( y.span.off ) ){
+        y.range <- 1:A.dims[[1]]
+      }else{
+        y.range <- y.span.off:( y.span.off + A.dims[[1]] - 1 )
+        y.ptr <- y.ptr[ y.range ]
+      }
+
+      res <- ( alpha * A.ptr ) %*% x.ptr + ( beta * y.ptr )
+      private$.eps.out$y$obj[ y.range ] <- res
+
+      invisible( TRUE )
+    }
+  )
+)
+
 # sger ====
-# A = a*x %*% tp(y) + A
+# A.span(A) = alpha*x.span(x) %*% tp(y.span(y)) + A.span(A)
 # tp = transpose
 cublas.sger <- R6Class(
   "cuR.cublas.sger",
@@ -162,7 +306,7 @@ cublas.sger <- R6Class(
       private$.add.ep( y, "y" )
       private$.add.ep( A, "A", TRUE )
 
-      private$.params$dims <- A.dims$dims
+      private$.params$A.dims <- A.dims$dims
 
       private$.params$x.span.off <- x.dims$span.off
       private$.params$y.span.off <- y.dims$span.off
@@ -178,7 +322,7 @@ cublas.sger <- R6Class(
     .L3.call = function( x.ptr,
                          y.ptr,
                          A.ptr,
-                         dims,
+                         A.dims,
                          x.span.off = NULL,
                          y.span.off = NULL,
                          A.span.off = NULL,
@@ -190,7 +334,7 @@ cublas.sger <- R6Class(
              x.ptr,
              y.ptr,
              A.ptr,
-             dims,
+             A.dims,
              x.span.off,
              y.span.off,
              A.span.off,
@@ -204,7 +348,7 @@ cublas.sger <- R6Class(
     .L0.call = function( x.ptr,
                          y.ptr,
                          A.ptr,
-                         dims,
+                         A.dims,
                          x.span.off = NULL,
                          y.span.off = NULL,
                          A.span.off = NULL,
@@ -213,17 +357,17 @@ cublas.sger <- R6Class(
                          stream.ptr = NULL ){
 
       if( !is.null( x.span.off ) ){
-        x.ptr <- x.ptr[ x.span.off:( x.span.off + dims[[1]] - 1 ) ]
+        x.ptr <- x.ptr[ x.span.off:( x.span.off + A.dims[[1]] - 1 ) ]
       }
 
       if( !is.null( y.span.off ) ){
-        y.ptr <- y.ptr[ y.span.off:( y.span.off + dims[[2]] - 1 ) ]
+        y.ptr <- y.ptr[ y.span.off:( y.span.off + A.dims[[2]] - 1 ) ]
       }
 
       if( is.null( A.span.off ) ){
-        A.range <- 1:dims[[2]]
+        A.range <- 1:A.dims[[2]]
       }else{
-        A.range <- A.span.off:( A.span.off + dims[[2]] - 1 )
+        A.range <- A.span.off:( A.span.off + A.dims[[2]] - 1 )
         A.ptr <- A.ptr[, A.range ]
       }
 
@@ -236,7 +380,7 @@ cublas.sger <- R6Class(
 )
 
 # sgemm ====
-# cols.C(C) = alpha*tp.a(cols.A(A)) %*% tp.b(cols.B(B)) + beta*(cols.C(C))
+# C.span(C) = alpha*A.tp(A.span(A)) %*% B.tp(B.span(B)) + beta*(C.span(C))
 # tp = transpose
 cublas.sgemm <- R6Class(
   "cuR.cublas.sgemm",
@@ -370,16 +514,17 @@ cublas.sgemm <- R6Class(
         A.ptr <- A.ptr[, A.span.off:( A.span.off + A.dims[[2]] - 1 ) ]
       }
 
-      if( !is.null( B.span.off ) ){
-        B.ptr <- B.ptr[, B.span.off:( B.span.off + B.dims[[2]] - 1 ) ]
-      }
-
       if( A.tp ){
         A.ptr  <- t( A.ptr )
       }
 
+      if( !is.null( B.span.off ) ){
+        B.ptr <- B.ptr[, B.span.off:( B.span.off + B.dims[[2]] - 1 ) ]
+      }
+
       if( B.tp ){
         B.ptr  <- t( B.ptr )
+        B.dims <- rev( B.dims )
       }
 
       if( is.null( C.span.off ) ){
@@ -397,36 +542,3 @@ cublas.sgemm <- R6Class(
     }
   )
 )
-
-# TODO ====
-# Add cols subset to other cublas calls
-
-# # B = alpha*A + B
-# # The trick here is that element-wise addition can be done this way also on
-# # matrices, even though thats not the intended use
-# cublas.saxpy <- function( handle, tens.A, tens.B, alpha = 1, stream = NULL ){
-#   check.cublas.handle.active( handle )
-#   check.tensor.under( tens.A, tens.B )
-#   if( !is.null( stream ) ){
-#     check.cuda.stream( stream )
-#     stream <- stream$get.stream
-#   }
-#
-#   # Results go into tens.B
-#   ret <- .Call( "cuR_cublas_saxpy",
-#                 tens.A$get.obj,
-#                 tens.B$get.obj,
-#                 tens.A$get.l,
-#                 alpha,
-#                 handle$get.handle,
-#                 stream )
-#
-#   if( is.null( ret ) ) stop( "Subroutine failed" )
-#
-#   # If no stream is given, make this call blocking
-#   if( is.null( stream ) ){
-#     cuda.stream.sync.all()
-#   }
-#
-#   invisible( NULL )
-# }

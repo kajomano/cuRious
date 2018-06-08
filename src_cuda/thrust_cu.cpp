@@ -12,6 +12,8 @@
 
 #include <thrust/system/cuda/execution_policy.h>
 
+#include "stdio.h"
+
 // Functor for pow
 class power_functor{
   const float p; // Power
@@ -56,7 +58,7 @@ extern "C"
 #ifdef _WIN32
 __declspec( dllexport )
 #endif
-void cuR_thrust_pow2_cu( float* A_ptr, float* B_ptr, int* dims, cudaStream_t* stream_ptr ){
+void cuR_thrust_pow_cu( float* A_ptr, float* B_ptr, int* dims, float pow, cudaStream_t* stream_ptr ){
   // Thrust pointers
   thrust::device_ptr<float> t_A_ptr( A_ptr );
   thrust::device_ptr<float> t_B_ptr( B_ptr );
@@ -72,51 +74,96 @@ void cuR_thrust_pow2_cu( float* A_ptr, float* B_ptr, int* dims, cudaStream_t* st
       t_A_ptr,
       t_A_ptr + ( dims[0] * dims[1] ),
       t_B_ptr,
-      power_functor( 2.0 )
+      power_functor( pow )
     );
   }else{
     thrust::transform(
       t_A_ptr,
       t_A_ptr + ( dims[0] * dims[1] ),
       t_B_ptr,
-      power_functor( 2.0 )
+      power_functor( pow )
     );
   }
 
   // float* tmp_cent = thrust::raw_pointer_cast(t_tmp_cent.data());
   // float* tmp_ones = thrust::raw_pointer_cast(t_tmp_ones.data());
-};
+}
+
+__global__
+void cuR_thrust_cmin_pos_cu_kern( thrust::device_ptr<float> t_A_ptr, thrust::device_ptr<int> t_x_ptr, int dims_0, int dims_1 ){
+  thrust::reduce_by_key(
+    thrust::cuda::par,
+
+    thrust::make_transform_iterator(
+      thrust::counting_iterator<int>( 0 ),
+      linear_index_to_col_index( dims_0 )
+    ),
+
+    thrust::make_transform_iterator(
+      thrust::counting_iterator<int>( 0 ),
+      linear_index_to_col_index( dims_0 )
+    ) + ( dims_0 * dims_1 ),
+
+    thrust::make_zip_iterator(
+      thrust::make_tuple(
+        t_A_ptr,
+        thrust::make_transform_iterator(
+          thrust::counting_iterator<int>( 0 ),
+          linear_index_to_row_index( dims_0 )
+        )
+      )
+    ),
+
+    thrust::make_discard_iterator(),
+
+    thrust::make_zip_iterator(
+      thrust::make_tuple(
+        thrust::make_discard_iterator(),
+        t_x_ptr
+      )
+    ),
+
+    thrust::equal_to<int>(),
+
+    thrust::minimum< thrust::tuple<float, int> >()
+  );
+}
 
 extern "C"
 #ifdef _WIN32
 __declspec( dllexport )
 #endif
-void cuR_thrust_cmins_cu( float* A_ptr, int* x_ptr, int* dims, cudaStream_t* stream_ptr ){
+void cuR_thrust_cmin_pos_cu( float* A_ptr, int* x_ptr, int* dims, cudaStream_t* stream_ptr ){
   // Thrust pointers
   thrust::device_ptr<float> t_A_ptr( A_ptr );
   thrust::device_ptr<int>   t_x_ptr( x_ptr );
 
-  // colmins
+  // No arrayed host-side args!
+  int dims_0 = dims[0];
+  int dims_1 = dims[1];
+
   if( stream_ptr ){
+    // cuR_thrust_cmin_pos_cu_kern<<<1, 1, 0, *stream_ptr>>>( t_A_ptr, t_x_ptr, dims_0, dims_1 );
+
     thrust::reduce_by_key(
       thrust::cuda::par.on( *stream_ptr ),
 
       thrust::make_transform_iterator(
         thrust::counting_iterator<int>( 0 ),
-        linear_index_to_col_index( dims[0] )
+        linear_index_to_col_index( dims_0 )
       ),
 
       thrust::make_transform_iterator(
         thrust::counting_iterator<int>( 0 ),
-        linear_index_to_col_index( dims[0] )
-      ) + ( dims[0] * dims[1] ),
+        linear_index_to_col_index( dims_0 )
+      ) + ( dims_0 * dims_1 ),
 
       thrust::make_zip_iterator(
         thrust::make_tuple(
           t_A_ptr,
           thrust::make_transform_iterator(
             thrust::counting_iterator<int>( 0 ),
-            linear_index_to_row_index( dims[0] )
+            linear_index_to_row_index( dims_0 )
           )
         )
       ),
@@ -138,20 +185,20 @@ void cuR_thrust_cmins_cu( float* A_ptr, int* x_ptr, int* dims, cudaStream_t* str
     thrust::reduce_by_key(
       thrust::make_transform_iterator(
         thrust::counting_iterator<int>( 0 ),
-        linear_index_to_col_index( dims[0] )
+        linear_index_to_col_index( dims_0 )
       ),
 
       thrust::make_transform_iterator(
         thrust::counting_iterator<int>( 0 ),
-        linear_index_to_col_index( dims[0] )
-      ) + ( dims[0] * dims[1] ),
+        linear_index_to_col_index( dims_0 )
+      ) + ( dims_0 * dims_1 ),
 
       thrust::make_zip_iterator(
         thrust::make_tuple(
           t_A_ptr,
           thrust::make_transform_iterator(
             thrust::counting_iterator<int>( 0 ),
-            linear_index_to_row_index( dims[0] )
+            linear_index_to_row_index( dims_0 )
           )
         )
       ),
@@ -170,7 +217,9 @@ void cuR_thrust_cmins_cu( float* A_ptr, int* x_ptr, int* dims, cudaStream_t* str
       thrust::minimum< thrust::tuple<float, int> >()
     );
   }
-};
+}
+
+
 
 // extern "C"
 // void cuR_thrust_table_cu( int* quant, int* perm, int* temp_quant, int* dims, int* weights, int* dims_weights ){

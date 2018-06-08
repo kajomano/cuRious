@@ -58,16 +58,17 @@
   )
 )
 
-# pow2 ====
-# B <- A^2
-thrust.pow2 <- R6Class(
-  "cuR.thrust.pow2",
+# pow ====
+# B <- A^pow
+thrust.pow <- R6Class(
+  "cuR.thrust.pow",
   inherit = .thrust.fusion,
   public = list(
     initialize = function( A,
                            B,
                            A.span = NULL,
                            B.span = NULL,
+                           pow    = 2,
                            stream = NULL  ){
       # Sanity checks
       check.tensor( A )
@@ -75,6 +76,10 @@ thrust.pow2 <- R6Class(
 
       if( !all( c( A$type == "n", B$type == "n" ) ) ){
         stop( "All input tensors need to be numeric" )
+      }
+
+      if( !is.numeric( pow ) || !( length( pow ) == 1L ) ){
+        stop( "Invalid pow parameter" )
       }
 
       # Dim checks
@@ -97,6 +102,8 @@ thrust.pow2 <- R6Class(
       private$.params$A.span.off <- A.dims$span.off
       private$.params$B.span.off <- B.dims$span.off
 
+      private$.params$pow <- as.numeric( pow )
+
       super$initialize( stream )
     }
   ),
@@ -107,14 +114,16 @@ thrust.pow2 <- R6Class(
                          A.dims,
                          A.span.off = NULL,
                          B.span.off = NULL,
+                         pow,
                          stream.ptr = NULL ){
 
-      .Call( "cuR_thrust_pow2",
+      .Call( "cuR_thrust_pow",
              A.ptr,
              B.ptr,
              A.dims,
              A.span.off,
              B.span.off,
+             pow,
              stream.ptr )
 
       invisible( TRUE )
@@ -125,6 +134,7 @@ thrust.pow2 <- R6Class(
                          A.dims,
                          A.span.off = NULL,
                          B.span.off = NULL,
+                         pow,
                          stream.ptr = NULL ){
 
       if( !is.null( A.span.off ) ){
@@ -143,7 +153,7 @@ thrust.pow2 <- R6Class(
         B.range <- 1:A.dims[[2]]
       }
 
-      res <- A.ptr ^ 2
+      res <- A.ptr ^ pow
 
       if( A.dims[[1]] == 1L ){
         private$.eps.out$B$obj[ B.range ] <- res
@@ -156,10 +166,10 @@ thrust.pow2 <- R6Class(
   )
 )
 
-# cmins ====
-# Tells which row is the smallest in every column
-thrust.cmins <- R6Class(
-  "cuR.thrust.cmins",
+# cmin pos ====
+# Tells which position is the smallest in every column
+thrust.cmin.pos <- R6Class(
+  "cuR.thrust.cmin.pos",
   inherit = .thrust.fusion,
   public = list(
     initialize = function( A,
@@ -172,11 +182,11 @@ thrust.cmins <- R6Class(
       check.tensor( x )
 
       if( A$type != "n" ){
-        stop( "Input tensors is not numeric" )
+        stop( "Input tensors A is not numeric" )
       }
 
       if( x$type != "i" ){
-        stop( "Input tensors is not numeric" )
+        stop( "Input tensors x is not integer" )
       }
 
       # Dim checks
@@ -184,24 +194,22 @@ thrust.cmins <- R6Class(
       x.dims <- .tensor.dims$new( x )
 
       A.dims$check.span( A.span )
-      x.dims$check.span( B.span )
+      x.dims$check.span( x.span )
 
       x.dims$check.vect()
 
-      # ITT ====
-
-      if( !identical( A.dims$dims, B.dims$dims ) ){
+      if( A.dims$dims[[2]] != x.dims$dims[[2]] ){
         stop( "Not all tensors have matching dimensions" )
       }
 
       # Assignments
       private$.add.ep( A, "A" )
-      private$.add.ep( B, "B", TRUE )
+      private$.add.ep( x, "x", TRUE )
 
       private$.params$A.dims <- A.dims$dims
 
       private$.params$A.span.off <- A.dims$span.off
-      private$.params$B.span.off <- B.dims$span.off
+      private$.params$x.span.off <- x.dims$span.off
 
       super$initialize( stream )
     }
@@ -209,28 +217,28 @@ thrust.cmins <- R6Class(
 
   private = list(
     .L3.call = function( A.ptr,
-                         B.ptr,
+                         x.ptr,
                          A.dims,
                          A.span.off = NULL,
-                         B.span.off = NULL,
+                         x.span.off = NULL,
                          stream.ptr = NULL ){
 
-      .Call( "cuR_thrust_pow2",
+      .Call( "cuR_thrust_cmin_pos",
              A.ptr,
-             B.ptr,
+             x.ptr,
              A.dims,
              A.span.off,
-             B.span.off,
+             x.span.off,
              stream.ptr )
 
       invisible( TRUE )
     },
 
     .L0.call = function( A.ptr,
-                         B.ptr,
+                         x.ptr,
                          A.dims,
                          A.span.off = NULL,
-                         B.span.off = NULL,
+                         x.span.off = NULL,
                          stream.ptr = NULL ){
 
       if( !is.null( A.span.off ) ){
@@ -243,19 +251,15 @@ thrust.cmins <- R6Class(
         }
       }
 
-      if( !is.null( B.span.off ) ){
-        B.range <- B.span.off:( B.span.off + A.dims[[2]] - 1 )
+      if( !is.null( x.span.off ) ){
+        x.range <- x.span.off:( x.span.off + A.dims[[2]] - 1 )
       }else{
-        B.range <- 1:A.dims[[2]]
+        x.range <- 1:A.dims[[2]]
       }
 
-      res <- A.ptr ^ 2
+      res <- apply( A.ptr, 2, which.min )
+      private$.eps.out$x$obj[ x.range ] <- res
 
-      if( A.dims[[1]] == 1L ){
-        private$.eps.out$B$obj[ B.range ] <- res
-      }else{
-        private$.eps.out$B$obj[, B.range ] <- res
-      }
 
       invisible( TRUE )
     }

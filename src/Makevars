@@ -43,4 +43,4 @@ cuRious.so: $(all_objs)
 	$(CXX) -O3 -fopenmp -fPIC -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
 
 %.o: %.cu $(h_srcs)
-	$(NVCC) -Xcompiler -fPIC $(NVCC_ARGS) $< -o $@ -c
+	$(NVCC) -O3 -Xcompiler -fPIC $(NVCC_ARGS) $< -o $@ -c

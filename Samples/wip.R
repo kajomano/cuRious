@@ -1,6 +1,8 @@
 library( cuRious )
 library( microbenchmark )
 
+microbenchmark( tensor$new( NULL, 3L, c( 100L, 100L ), "n" ) )
+
 level.src <- 3L
 level.dst <- 3L
 

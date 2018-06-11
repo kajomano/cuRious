@@ -1,5 +1,43 @@
 #include "thrust.h"
 
+void cuR_thrust_allocator_fin( SEXP handle_r ){
+  cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
+
+  // Destroy context and free memory!
+  // Clear R object too
+  if( handle ){
+    debugPrint( Rprintf( "<%p> Finalizing handle\n", (void*)handle ) );
+
+    cublasDestroy( *handle );
+    delete[] handle;
+    R_ClearExternalPtr( handle_r );
+  }
+}
+
+// extern "C"
+// SEXP cuR_cublas_handle_destroy( SEXP handle_r ){
+//   cuR_cublas_handle_fin( handle_r );
+//
+//   return R_NilValue;
+// }
+//
+// extern "C"
+// SEXP cuR_cublas_handle_create(){
+//   cublasHandle_t* handle = new cublasHandle_t;
+//
+//   debugPrint( Rprintf( "<%p> Creating handle\n", (void*)handle ) );
+//
+//   // Try to create handle
+//   cublasTry( cublasCreate( handle ) );
+//
+//   // Return to R with an external pointer SEXP
+//   SEXP handle_r = Rf_protect( R_MakeExternalPtr( handle, R_NilValue, R_NilValue ) );
+//   R_RegisterCFinalizerEx( handle_r, cuR_cublas_handle_fin, TRUE );
+//
+//   Rf_unprotect(1);
+//   return handle_r;
+// }
+
 extern "C"
 SEXP cuR_thrust_pow( SEXP A_ptr_r,
                      SEXP B_ptr_r,

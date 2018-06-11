@@ -43,6 +43,7 @@ lapply( dir( "./src_cuda", "\\.cpp$" ), function( file ){
       return( FALSE )
     }
   }
+
   file.copy( file.src.cuda.path, file.src.path, overwrite = TRUE )
 })
 

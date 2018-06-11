@@ -168,7 +168,9 @@ extern "C"
 #ifdef _WIN32
 __declspec( dllexport )
 #endif
-  void cuR_thrust_pow_cu( float* A_ptr, float* B_ptr, int* dims, float pow, cudaStream_t* stream_ptr ){
+  void cuR_thrust_pow_cu( float* A_ptr, float* B_ptr, int* dims, float pow, void* allocator_ptr, cudaStream_t* stream_ptr ){
+    cached_allocator* allocator = ( cached_allocator* ) allocator_ptr;
+
     // Thrust pointers
     thrust::device_ptr<float> t_A_ptr( A_ptr );
     thrust::device_ptr<float> t_B_ptr( B_ptr );
@@ -180,7 +182,7 @@ __declspec( dllexport )
     // cent ^ 2
     if( stream_ptr ){
       thrust::transform(
-        thrust::cuda::par.on( *stream_ptr ),
+        thrust::cuda::par( *allocator ).on( *stream_ptr ),
         t_A_ptr,
         t_A_ptr + ( dims[0] * dims[1] ),
         t_B_ptr,
@@ -188,6 +190,7 @@ __declspec( dllexport )
       );
     }else{
       thrust::transform(
+        thrust::cuda::par( *allocator ),
         t_A_ptr,
         t_A_ptr + ( dims[0] * dims[1] ),
         t_B_ptr,
@@ -203,7 +206,9 @@ extern "C"
 #ifdef _WIN32
 __declspec( dllexport )
 #endif
-  void cuR_thrust_cmin_pos_cu( float* A_ptr, int* x_ptr, int* dims, cudaStream_t* stream_ptr ){
+  void cuR_thrust_cmin_pos_cu( float* A_ptr, int* x_ptr, int* dims, void* allocator_ptr, cudaStream_t* stream_ptr ){
+    cached_allocator* allocator = ( cached_allocator* ) allocator_ptr;
+
     // Thrust pointers
     thrust::device_ptr<float> t_A_ptr( A_ptr );
     thrust::device_ptr<int>   t_x_ptr( x_ptr );
@@ -212,15 +217,13 @@ __declspec( dllexport )
     int dims_0 = dims[0];
     int dims_1 = dims[1];
 
-    cached_allocator alloc;
-
     if( stream_ptr ){
       // cuR_thrust_cmin_pos_cu_kern<<<1, 1, 0, *stream_ptr>>>( t_A_ptr, t_x_ptr, dims_0, dims_1 );
 
       printf( "This\n" );
 
       thrust::reduce_by_key(
-        thrust::cuda::par(alloc).on( *stream_ptr ),
+        thrust::cuda::par( *allocator ).on( *stream_ptr ),
 
         thrust::make_transform_iterator(
           thrust::counting_iterator<int>( 0 ),
@@ -259,7 +262,7 @@ __declspec( dllexport )
       printf( "Thus\n" );
 
       thrust::reduce_by_key(
-        thrust::cuda::par(alloc),
+        thrust::cuda::par( *allocator ),
 
         thrust::make_transform_iterator(
           thrust::counting_iterator<int>( 0 ),

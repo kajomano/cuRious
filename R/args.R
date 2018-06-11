@@ -89,6 +89,15 @@ check.cublas.handle <- function( handle ){
   invisible( handle )
 }
 
+is.thrust.allocator <- function( allocator ){
+  "cuR.thrust.allocator" %in% class( allocator )
+}
+
+check.thrust.allocator <- function( allocator ){
+  if( !is.thrust.allocator( allocator ) ) stop( "Invalid Thrust allocator" )
+  invisible( allocator )
+}
+
 is.device <- function( device ){
   if( !is.numeric( device ) || length( device ) != 1 ){
     return( FALSE )

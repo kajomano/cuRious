@@ -1,4 +1,24 @@
 # .Calls: src/thrust.cpp
+#
+# A thrust allocator is required for every thrust call. Altough not every thrust
+# operation requires temporary buffer allocations, whether or not one does is
+# not something I want to test for each. Thrust allocators are not thread safe,
+# a separate one needs to be created for use with each cuda stream and device.
+
+# Thrust allocator class ====
+thrust.allocator <- R6Class(
+  "cuR.thrust.allocator",
+  inherit = context,
+  private = list(
+    .activate = function(){
+      .Call( "cuR_thrust_allocator_create" )
+    },
+
+    .deactivate = function(){
+      .Call( "cuR_thrust_allocator_destroy", private$.ptr )
+    }
+  )
+)
 
 # Thrust operations ====
 # Parent fusion ====
@@ -6,7 +26,12 @@
   "cuR.thrust.fusion",
   inherit = fusion,
   public = list(
-    initialize = function( stream ){
+    initialize = function( allocator, stream ){
+      if( !is.null( allocator ) ){
+        check.thrust.allocator( allocator )
+      }
+      private$.add.ep( allocator, "allocator" )
+
       if( !is.null( stream ) ){
         check.cuda.stream( stream )
       }
@@ -33,12 +58,28 @@
         }
       }
 
+      if( under ){
+        allocator <- private$.eps$allocator
+
+        if( is.null( allocator ) ){
+          stop( "Subroutine requires an active thrust allocator" )
+        }else{
+          if( !allocator$is.active ){
+            stop( "Subroutine requires an active thrust allocator" )
+          }
+
+          if( allocator$device != device ){
+            stop( "Thrust allocator is not on the correct device" )
+          }
+        }
+      }
+
       stream <- private$.eps$stream
 
       if( !is.null( stream ) ){
         if( stream$is.active ){
           if( !under ){
-            stop( "An active stream is given to a synchronous cublas call" )
+            stop( "An active stream is given to a synchronous thrust call" )
           }else{
             if( stream$device != device ){
               stop( "Stream is not on the correct device" )
@@ -66,10 +107,11 @@ thrust.pow <- R6Class(
   public = list(
     initialize = function( A,
                            B,
-                           A.span = NULL,
-                           B.span = NULL,
-                           pow    = 2,
-                           stream = NULL  ){
+                           A.span    = NULL,
+                           B.span    = NULL,
+                           pow       = 2,
+                           allocator = NULL,
+                           stream    = NULL  ){
       # Sanity checks
       check.tensor( A )
       check.tensor( B )
@@ -104,7 +146,7 @@ thrust.pow <- R6Class(
 
       private$.params$pow <- as.numeric( pow )
 
-      super$initialize( stream )
+      super$initialize( allocator, stream )
     }
   ),
 
@@ -112,10 +154,11 @@ thrust.pow <- R6Class(
     .L3.call = function( A.ptr,
                          B.ptr,
                          A.dims,
-                         A.span.off = NULL,
-                         B.span.off = NULL,
+                         A.span.off    = NULL,
+                         B.span.off    = NULL,
                          pow,
-                         stream.ptr = NULL ){
+                         allocator.ptr = NULL,
+                         stream.ptr    = NULL ){
 
       .Call( "cuR_thrust_pow",
              A.ptr,
@@ -124,6 +167,7 @@ thrust.pow <- R6Class(
              A.span.off,
              B.span.off,
              pow,
+             allocator.ptr,
              stream.ptr )
 
       invisible( TRUE )
@@ -132,10 +176,11 @@ thrust.pow <- R6Class(
     .L0.call = function( A.ptr,
                          B.ptr,
                          A.dims,
-                         A.span.off = NULL,
-                         B.span.off = NULL,
+                         A.span.off    = NULL,
+                         B.span.off    = NULL,
                          pow,
-                         stream.ptr = NULL ){
+                         allocator.ptr = NULL,
+                         stream.ptr    = NULL ){
 
       if( !is.null( A.span.off ) ){
         A.range <- A.span.off:( A.span.off + A.dims[[2]] - 1 )
@@ -174,9 +219,10 @@ thrust.cmin.pos <- R6Class(
   public = list(
     initialize = function( A,
                            x,
-                           A.span = NULL,
-                           x.span = NULL,
-                           stream = NULL  ){
+                           A.span    = NULL,
+                           x.span    = NULL,
+                           allocator = NULL,
+                           stream    = NULL  ){
       # Sanity checks
       check.tensor( A )
       check.tensor( x )
@@ -211,7 +257,7 @@ thrust.cmin.pos <- R6Class(
       private$.params$A.span.off <- A.dims$span.off
       private$.params$x.span.off <- x.dims$span.off
 
-      super$initialize( stream )
+      super$initialize( allocator, stream )
     }
   ),
 
@@ -219,9 +265,10 @@ thrust.cmin.pos <- R6Class(
     .L3.call = function( A.ptr,
                          x.ptr,
                          A.dims,
-                         A.span.off = NULL,
-                         x.span.off = NULL,
-                         stream.ptr = NULL ){
+                         A.span.off    = NULL,
+                         x.span.off    = NULL,
+                         allocator.ptr = NULL,
+                         stream.ptr    = NULL ){
 
       .Call( "cuR_thrust_cmin_pos",
              A.ptr,
@@ -229,6 +276,7 @@ thrust.cmin.pos <- R6Class(
              A.dims,
              A.span.off,
              x.span.off,
+             allocator.ptr,
              stream.ptr )
 
       invisible( TRUE )
@@ -237,9 +285,10 @@ thrust.cmin.pos <- R6Class(
     .L0.call = function( A.ptr,
                          x.ptr,
                          A.dims,
-                         A.span.off = NULL,
-                         x.span.off = NULL,
-                         stream.ptr = NULL ){
+                         A.span.off    = NULL,
+                         x.span.off    = NULL,
+                         allocator.ptr = NULL,
+                         stream.ptr    = NULL ){
 
       if( !is.null( A.span.off ) ){
         A.range <- A.span.off:( A.span.off + A.dims[[2]] - 1 )

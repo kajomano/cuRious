@@ -1,42 +1,40 @@
 #include "thrust.h"
 
-void cuR_thrust_allocator_fin( SEXP handle_r ){
-  cublasHandle_t* handle = (cublasHandle_t*)R_ExternalPtrAddr( handle_r );
+void cuR_thrust_allocator_fin( SEXP allocator_r ){
+  void* allocator = R_ExternalPtrAddr( allocator_r );
 
   // Destroy context and free memory!
   // Clear R object too
-  if( handle ){
-    debugPrint( Rprintf( "<%p> Finalizing handle\n", (void*)handle ) );
+  if( allocator ){
+    debugPrint( Rprintf( "<%p> Finalizing allocator\n", allocator_r ) );
 
-    cublasDestroy( *handle );
-    delete[] handle;
-    R_ClearExternalPtr( handle_r );
+    cuR_thrust_allocator_destroy_cu( allocator );
+    R_ClearExternalPtr( allocator_r );
   }
 }
 
-// extern "C"
-// SEXP cuR_cublas_handle_destroy( SEXP handle_r ){
-//   cuR_cublas_handle_fin( handle_r );
-//
-//   return R_NilValue;
-// }
-//
-// extern "C"
-// SEXP cuR_cublas_handle_create(){
-//   cublasHandle_t* handle = new cublasHandle_t;
-//
-//   debugPrint( Rprintf( "<%p> Creating handle\n", (void*)handle ) );
-//
-//   // Try to create handle
-//   cublasTry( cublasCreate( handle ) );
-//
-//   // Return to R with an external pointer SEXP
-//   SEXP handle_r = Rf_protect( R_MakeExternalPtr( handle, R_NilValue, R_NilValue ) );
-//   R_RegisterCFinalizerEx( handle_r, cuR_cublas_handle_fin, TRUE );
-//
-//   Rf_unprotect(1);
-//   return handle_r;
-// }
+extern "C"
+SEXP cuR_thrust_allocator_destroy( SEXP allocator_r ){
+  cuR_thrust_allocator_fin( allocator_r );
+
+  return R_NilValue;
+}
+
+extern "C"
+SEXP cuR_thrust_allocator_create(){
+  void* allocator = cuR_thrust_allocator_create_cu();
+
+  debugPrint( Rprintf( "<%p> Creating allocator\n", allocator ) );
+
+  // Return to R with an external pointer SEXP
+  SEXP allocator_r = Rf_protect( R_MakeExternalPtr( allocator, R_NilValue, R_NilValue ) );
+  R_RegisterCFinalizerEx( allocator_r, cuR_thrust_allocator_fin, TRUE );
+
+  Rf_unprotect(1);
+  return allocator_r;
+}
+
+// -----------------------------------------------------------------------------
 
 extern "C"
 SEXP cuR_thrust_pow( SEXP A_ptr_r,
@@ -45,6 +43,7 @@ SEXP cuR_thrust_pow( SEXP A_ptr_r,
                      SEXP A_span_off_r,   // Optional
                      SEXP B_span_off_r,   // Optional
                      SEXP pow_r,
+                     SEXP allocator_ptr_r,
                      SEXP stream_ptr_r ){ // Optional
 
   float* A_ptr    = (float*)R_ExternalPtrAddr( A_ptr_r );
@@ -61,11 +60,13 @@ SEXP cuR_thrust_pow( SEXP A_ptr_r,
   cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
     (cudaStream_t*) R_ExternalPtrAddr( stream_ptr_r );
 
+  void* allocator_ptr = R_ExternalPtrAddr( allocator_ptr_r );
+
   // Offsets
   A_ptr = A_ptr + A_span_off * dims[0];
   B_ptr = B_ptr + B_span_off * dims[0];
 
-  cuR_thrust_pow_cu( A_ptr, B_ptr, dims, pow, stream_ptr );
+  cuR_thrust_pow_cu( A_ptr, B_ptr, dims, pow, allocator_ptr, stream_ptr );
 
   if( stream_ptr ){
     // Flush for WDDM
@@ -83,6 +84,7 @@ SEXP cuR_thrust_cmin_pos( SEXP A_ptr_r,
                           SEXP A_dims_r,
                           SEXP A_span_off_r,   // Optional
                           SEXP x_span_off_r,   // Optional
+                          SEXP allocator_ptr_r,
                           SEXP stream_ptr_r ){ // Optional
 
   float* A_ptr    = (float*)R_ExternalPtrAddr( A_ptr_r );
@@ -98,11 +100,13 @@ SEXP cuR_thrust_cmin_pos( SEXP A_ptr_r,
   cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
     (cudaStream_t*) R_ExternalPtrAddr( stream_ptr_r );
 
+  void* allocator_ptr = R_ExternalPtrAddr( allocator_ptr_r );
+
   // Offsets
   A_ptr = A_ptr + A_span_off * A_dims[0];
   x_ptr = x_ptr + x_span_off;
 
-  cuR_thrust_cmin_pos_cu( A_ptr, x_ptr, A_dims, stream_ptr );
+  cuR_thrust_cmin_pos_cu( A_ptr, x_ptr, A_dims, allocator_ptr, stream_ptr );
 
   if( stream_ptr ){
     // Flush for WDDM
@@ -114,20 +118,6 @@ SEXP cuR_thrust_cmin_pos( SEXP A_ptr_r,
   return R_NilValue;
 }
 
-// extern "C"
-// SEXP cuB_thrust_cmins( SEXP prod_r, SEXP dims_r, SEXP quant_r ) {
-//   float* prod  = (float*)R_ExternalPtrAddr( prod_r );
-//   int*   dims  = INTEGER( dims_r );
-//   int*   quant = (int*)R_ExternalPtrAddr( quant_r );
-//
-//   cuB_thrust_cmins_cu( prod, dims, quant );
-//
-//   // Return something that is not null
-//   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-//   Rf_unprotect(1);
-//   return ret_r;
-// }
-//
 // extern "C"
 // SEXP cuB_thrust_table( SEXP quant_r, SEXP perm_r, SEXP temp_quant_r, SEXP dims_r, SEXP weights_r, SEXP dims_weights_r ) {
 //   int* quant        = (int*)R_ExternalPtrAddr( quant_r );

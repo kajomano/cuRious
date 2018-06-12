@@ -1,4 +1,26 @@
 #include "thrust.h"
+// #include <thread>
+// #include <mutex>
+#include "threads.h"
+
+// Common mutex for spwned thrust threads
+// Number of still spawned and finished thrust threads
+
+// TODO ====
+// Enforce queueing order in the spawned threads
+
+// TODO ====
+// Write function to check if every spawn finished
+
+// TODO ====
+// Check function should be called by every destroy, so it should be in a common
+// header, together with all threading
+
+// std::mutex thrust_mutex;
+// int thrust_threads_spawned = 0;
+// int thrust_threads_finished = 0;
+
+dispatch_queue q;
 
 void cuR_thrust_allocator_fin( SEXP allocator_r ){
   void* allocator = R_ExternalPtrAddr( allocator_r );
@@ -36,6 +58,14 @@ SEXP cuR_thrust_allocator_create(){
 
 // -----------------------------------------------------------------------------
 
+// // As async thrust calls spawn detached child threads
+// extern "C"
+// SEXP cuR_thrust_threads_sync(){
+//
+// }
+
+// -----------------------------------------------------------------------------
+
 extern "C"
 SEXP cuR_thrust_pow( SEXP A_ptr_r,
                      SEXP B_ptr_r,
@@ -66,12 +96,21 @@ SEXP cuR_thrust_pow( SEXP A_ptr_r,
   A_ptr = A_ptr + A_span_off * dims[0];
   B_ptr = B_ptr + B_span_off * dims[0];
 
-  cuR_thrust_pow_cu( A_ptr, B_ptr, dims, pow, allocator_ptr, stream_ptr );
-
   if( stream_ptr ){
-    // Flush for WDDM
-    cudaStreamQuery(0);
+    // Launch a new thread so thrust becomes fully async
+    // Uses C11 lambda for the WDDM flush
+    // and common mutex for parallel access of variables
+    // std::thread t([=]{
+    //   thrust_mutex.lock();
+    //
+    //   cuR_thrust_pow_cu( A_ptr, B_ptr, dims, pow, allocator_ptr, stream_ptr );
+    //   cudaStreamQuery(0);
+    //
+    //   thrust_mutex.unlock();
+    // });
+    // t.detach();
   }else{
+    cuR_thrust_pow_cu( A_ptr, B_ptr, dims, pow, allocator_ptr, stream_ptr );
     cudaTry( cudaDeviceSynchronize() );
   }
 
@@ -106,12 +145,26 @@ SEXP cuR_thrust_cmin_pos( SEXP A_ptr_r,
   A_ptr = A_ptr + A_span_off * A_dims[0];
   x_ptr = x_ptr + x_span_off;
 
-  cuR_thrust_cmin_pos_cu( A_ptr, x_ptr, A_dims, allocator_ptr, stream_ptr );
-
   if( stream_ptr ){
-    // Flush for WDDM
-    cudaStreamQuery(0);
+    // Launch a new thread so thrust becomes fully async
+    // Uses C11 lambda for the WDDM flush
+    // and common mutex for parallel access of variables
+    q.dispatch( [=]{
+      cuR_thrust_cmin_pos_cu( A_ptr, x_ptr, A_dims, allocator_ptr, stream_ptr );
+      cudaStreamQuery(0);
+    });
+
+    // std::thread t([=]{
+    //   thrust_mutex.lock();
+    //
+    //   cuR_thrust_cmin_pos_cu( A_ptr, x_ptr, A_dims, allocator_ptr, stream_ptr );
+    //   cudaStreamQuery(0);
+    //
+    //   thrust_mutex.unlock();
+    // });
+    // t.detach();
   }else{
+    cuR_thrust_cmin_pos_cu( A_ptr, x_ptr, A_dims, allocator_ptr, stream_ptr );
     cudaTry( cudaDeviceSynchronize() );
   }
 

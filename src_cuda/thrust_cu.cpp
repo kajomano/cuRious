@@ -39,7 +39,7 @@ public:
   }
 
   void deallocate_all(){
-    printf("clean\n");
+    // printf("clean\n");
 
     // deallocate all outstanding blocks in both lists
     for ( free_blocks_type::iterator i = free_blocks.begin();
@@ -64,7 +64,7 @@ public:
     free_blocks_type::iterator free_block = free_blocks.find( num_bytes );
 
     if( free_block != free_blocks.end() ){
-      printf("hit\n");
+      // printf("hit\n");
 
       // get the pointer
       result = free_block->second;
@@ -75,7 +75,7 @@ public:
     else{
       // no allocation of the right size exists
       // create a new one with cuda::malloc
-      printf("nohit\n");
+      // printf("nohit\n");
 
       // allocate memory and convert cuda::pointer to raw pointer
       result = thrust::cuda::malloc<char>(num_bytes).get();
@@ -197,9 +197,6 @@ __declspec( dllexport )
         power_functor( pow )
       );
     }
-
-    // float* tmp_cent = thrust::raw_pointer_cast(t_tmp_cent.data());
-    // float* tmp_ones = thrust::raw_pointer_cast(t_tmp_ones.data());
   }
 
 extern "C"
@@ -218,10 +215,6 @@ __declspec( dllexport )
     int dims_1 = dims[1];
 
     if( stream_ptr ){
-      // cuR_thrust_cmin_pos_cu_kern<<<1, 1, 0, *stream_ptr>>>( t_A_ptr, t_x_ptr, dims_0, dims_1 );
-
-      printf( "This\n" );
-
       thrust::reduce_by_key(
         thrust::cuda::par( *allocator ).on( *stream_ptr ),
 
@@ -259,8 +252,6 @@ __declspec( dllexport )
         thrust::minimum< thrust::tuple<float, int> >()
       );
     }else{
-      printf( "Thus\n" );
-
       thrust::reduce_by_key(
         thrust::cuda::par( *allocator ),
 

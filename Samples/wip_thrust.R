@@ -17,9 +17,10 @@ tens0.res <- tensor$new( tens0 )
 tens3.res <- tensor$new( tens3 )
 
 stream <- cuda.stream$new( FALSE )
+allocator  <- thrust.allocator$new()
 
 thrust0 <- thrust.pow$new( tens0, tens0.res )
-thrust3 <- thrust.pow$new( tens3, tens3.res, stream = stream )
+thrust3 <- thrust.pow$new( tens3, tens3.res, allocator = allocator, stream = stream )
 
 print( microbenchmark( thrust0$run() ) )
 print( microbenchmark( thrust3$run() ) )

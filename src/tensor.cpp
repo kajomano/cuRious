@@ -1,4 +1,7 @@
-#include "common.h"
+#include "common_R.h"
+#include "common_cuda.h"
+#include "common_debug.h"
+
 #include <cstring>
 
 template <typename t>
@@ -12,6 +15,8 @@ void cuR_tensor_fin_1( SEXP ptr_r ){
     R_ClearExternalPtr( ptr_r );
   }
 }
+
+#ifndef CUDA_EXCLUDE
 
 template <typename t>
 void cuR_tensor_fin_2( SEXP ptr_r ){
@@ -36,6 +41,8 @@ void cuR_tensor_fin_3( SEXP ptr_r ){
     R_ClearExternalPtr( ptr_r );
   }
 }
+
+#endif
 
 extern "C"
 SEXP cuR_tensor_create( SEXP level_r, SEXP dims_r, SEXP type_r ){
@@ -69,6 +76,8 @@ SEXP cuR_tensor_create( SEXP level_r, SEXP dims_r, SEXP type_r ){
       Rf_error( "Invalid type in tensor clear call" );
     }
     break;
+
+#ifndef CUDA_EXCLUDE
 
   case 2:
     switch( type ){
@@ -114,6 +123,8 @@ SEXP cuR_tensor_create( SEXP level_r, SEXP dims_r, SEXP type_r ){
     }
     break;
 
+#endif
+
   default:
     Rf_error( "Invalid level in tensor clear call" );
   }
@@ -146,6 +157,8 @@ SEXP cuR_tensor_destroy( SEXP ptr_r, SEXP level_r, SEXP type_r ){
     }
     break;
 
+#ifndef CUDA_EXCLUDE
+
   case 2:
     switch( type ){
     case 'n':
@@ -177,6 +190,8 @@ SEXP cuR_tensor_destroy( SEXP ptr_r, SEXP level_r, SEXP type_r ){
       Rf_error( "Invalid type in tensor clear call" );
     }
     break;
+
+#endif
 
   default:
     Rf_error( "Invalid level in tensor clear call" );
@@ -226,6 +241,8 @@ SEXP cuR_tensor_clear( SEXP ptr_r, SEXP level_r, SEXP dims_r, SEXP type_r ){
     }
     break;
 
+#ifndef CUDA_EXCLUDE
+
   case 2:
     switch( type ){
     case 'n':
@@ -257,6 +274,8 @@ SEXP cuR_tensor_clear( SEXP ptr_r, SEXP level_r, SEXP dims_r, SEXP type_r ){
       Rf_error( "Invalid type in tensor clear call" );
     }
     break;
+
+#endif
 
   default:
     Rf_error( "Invalid level in tensor clear call" );

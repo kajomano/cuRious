@@ -1,3 +1,6 @@
+#include "common_debug.h"
+#include <cstdio>
+
 #include <thrust/system/cuda/vector.h>
 #include <thrust/system/cuda/execution_policy.h>
 #include <map>
@@ -14,18 +17,12 @@
 #include <thrust/iterator/transform_iterator.h>
 #include <thrust/iterator/constant_iterator.h>
 
-#include "stdio.h"
-
 // TODO ====
 // Error returns somehow
 
 // TODO ====
-// Make this even more clever: if there are free blocks that as large as the
+// Make this even more clever: if there are free blocks as large as the
 // request, return the smallest block. Now it is only returned on exact matches.
-
-// TODO ====
-// Move debug print switches to an even more common header, and include them
-// here and in any other .cu
 
 class cached_allocator{
 public:

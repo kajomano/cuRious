@@ -1,4 +1,6 @@
-#include "transfer.h"
+#include "common_R.h"
+#include "common_debug.h"
+#include "transfer.h"  // Includes common_cuda.h
 #include "omp.h"
 
 template <typename s, typename d>
@@ -38,10 +40,10 @@ void cuR_transfer_host_host( s* src_ptr,
 //   printf( "%d", ID );
 // }
 
-///////////////////////////////////////////////////////////////
-// SIMD does not do as well as auto-vectorization (-O3), but:
-// The code needs to be SIMD compatible to be auto-vectorized
-///////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////
+// SIMD does not do as well as auto-vectorization (-O3), but: //
+// The code needs to be SIMD compatible to be auto-vectorized //
+////////////////////////////////////////////////////////////////
 
   // Offsets with permutations offset the permutation vector itself
   if( src_span_off ){
@@ -138,6 +140,8 @@ void cuR_transfer_host_host( s* src_ptr,
     Rf_warning( "Active stream given to a synchronous transfer call" );
   }
 }
+
+#ifndef CUDA_EXCLUDE
 
 template <typename t>
 void cuR_transfer_host_device( t* src_ptr,
@@ -441,6 +445,8 @@ void cuR_transfer_device_host( t* src_ptr,
   }
 }
 
+#endif
+
 // Main transfer call
 // Steel yourself!
 // -----------------------------------------------------------------------------
@@ -591,6 +597,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       }
       break;
 
+#ifndef CUDA_EXCLUDE
+
       // 0-2 -------------------------------------------------------------------
     case 2:
       switch( type ){
@@ -642,6 +650,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       Rf_error( "Invalid destination level in transfer call" );
     }
     break;
+
+#endif
 
   case 1:
     switch( dst_level ){
@@ -739,6 +749,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       }
       break;
 
+#ifndef CUDA_EXCLUDE
+
       // 1-2 -------------------------------------------------------------------
     case 2:
       switch( type ){
@@ -833,10 +845,14 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       }
       break;
 
+#endif
+
     default:
       Rf_error( "Invalid destination level in transfer call" );
     }
     break;
+
+#ifndef CUDA_EXCLUDE
 
   case 2:
     switch( dst_level ){
@@ -1148,6 +1164,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       Rf_error( "Invalid destination level in transfer call" );
     }
     break;
+
+#endif
 
   default:
     Rf_error( "Invalid source level in transfer call" );

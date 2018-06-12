@@ -3,12 +3,6 @@
 
 // Options
 // #define CUDA_EXCLUDE 1
-#define DEBUG_PRINTS 1
-
-#define R_NO_REMAP 1
-
-#include <R.h>
-#include <Rinternals.h>
 
 // Debug macros for cuda functions
 #ifndef CUDA_EXCLUDE
@@ -43,11 +37,4 @@ inline void cudaAssert( cudaError_t code, const char *file, int line){
   }
 }
 
-#endif
-
-// Debug print macros
-#ifdef DEBUG_PRINTS
-#define debugPrint(ans){ (ans); }
-#else
-#define debugPrint(ans){ }
 #endif

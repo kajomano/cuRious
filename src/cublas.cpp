@@ -1,4 +1,7 @@
-#include "common.h"
+#include "common_R.h"
+#include "common_cuda.h"
+#include "common_debug.h"
+
 #ifndef CUDA_EXCLUDE
 
 // This is a good example how to access the handle in other functions

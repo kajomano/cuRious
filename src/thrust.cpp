@@ -1,7 +1,10 @@
+#include "common_R.h"
+#include "common_debug.h"
 #include "thrust.h"
+#include "threads.h"
+
 // #include <thread>
 // #include <mutex>
-#include "threads.h"
 
 // Common mutex for spwned thrust threads
 // Number of still spawned and finished thrust threads

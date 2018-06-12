@@ -1,6 +1,7 @@
 # Source this script to build the package
 
-clean.build <- FALSE
+clean.build  <- FALSE
+exclude.cuda <- FALSE
 
 # ------------------------------------------------------------------------------
 
@@ -33,19 +34,26 @@ if( clean.build ){
 # The cuda sources are compiled with NVCC into objects, which are then linked
 # with regular objects by gcc.
 
-lapply( dir( "./src_cuda", "\\.cpp$" ), function( file ){
-  file               <- sub( "\\.cpp$", "", file )
-  file.src.path      <- paste0( "./src/", file, ".cu" )
-  file.src.cuda.path <- paste0( "./src_cuda/", file, ".cpp" )
+if( exclude.cuda ){
+  # TODO ====
+  # Didnt remember the windows extensions for cuda dll files, extend regexp
 
-  if( file.exists( file.src.path ) ){
-    if( md5sum( file.src.cuda.path ) == md5sum( file.src.path ) ){
-      return( FALSE )
+  file.remove( dir( "./src", "\\.cu$", full.names = TRUE ) )
+}else{
+  lapply( dir( "./src_cuda", "\\.cpp$" ), function( file ){
+    file               <- sub( "\\.cpp$", "", file )
+    file.src.path      <- paste0( "./src/", file, ".cu" )
+    file.src.cuda.path <- paste0( "./src_cuda/", file, ".cpp" )
+
+    if( file.exists( file.src.path ) ){
+      if( md5sum( file.src.cuda.path ) == md5sum( file.src.path ) ){
+        return( FALSE )
+      }
     }
-  }
 
-  file.copy( file.src.cuda.path, file.src.path, overwrite = TRUE )
-})
+    file.copy( file.src.cuda.path, file.src.path, overwrite = TRUE )
+  })
+}
 
 build()
 install( args = "--no-lock" )

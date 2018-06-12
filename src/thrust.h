@@ -1,4 +1,4 @@
-#include "common.h"
+#include "common_cuda.h"
 
 extern "C"
 #ifdef _WIN32

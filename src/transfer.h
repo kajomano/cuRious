@@ -1,4 +1,4 @@
-#include "common.h"
+#include "common_cuda.h"
 
 #ifndef CUDA_EXCLUDE
 

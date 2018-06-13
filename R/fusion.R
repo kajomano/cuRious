@@ -3,7 +3,7 @@
 
 fusion <- R6Class(
   "cuR.fusion",
-  inherit = alert.recv,
+  inherit = .alert.recv,
   public = list(
     run = function(){
       self$check.destroyed()
@@ -93,5 +93,23 @@ fusion <- R6Class(
     is.destroyed = function( val ){
       if( missing( val ) ) return( is.null( private$.eps ) )
     }
+  )
+)
+
+# Parent class for all fusion contexts
+fusion.context <- R6Class(
+  "cuR.fusion.context",
+  inherit = .alert.send.recv,
+  public = list(
+    initialize = function( deployed = TRUE, stream = NULL, device = cuda.device.default.get() ){
+      if( !is.null( stream ) ){
+        check.stream( stream )
+      },
+
+      private$.add.ep( stream, "stream" )
+    },
+
+    # TODO ====
+    # Deploynal csekkolni a device mismatchet
   )
 )

@@ -71,32 +71,23 @@ check.level <- function( level ){
   invisible( as.integer( level ) )
 }
 
-is.cuda.stream <- function( stream ){
-  "cuR.cuda.stream" %in% class( stream )
+is.stream <- function( stream ){
+  "cuR.stream" %in% class( stream )
 }
 
-check.cuda.stream <- function( stream ){
-  if( !is.cuda.stream( stream ) ) stop( "Invalid CUDA stream" )
+check.stream <- function( stream ){
+  if( !is.stream( stream ) ) stop( "Invalid stream" )
   invisible( stream )
 }
 
-is.cublas.handle <- function( handle ){
-  "cuR.cublas.handle" %in% class( handle )
-}
-
-check.cublas.handle <- function( handle ){
-  if( !is.cublas.handle( handle ) ) stop( "Invalid cuBLAS handle" )
-  invisible( handle )
-}
-
-is.thrust.allocator <- function( allocator ){
-  "cuR.thrust.allocator" %in% class( allocator )
-}
-
-check.thrust.allocator <- function( allocator ){
-  if( !is.thrust.allocator( allocator ) ) stop( "Invalid Thrust allocator" )
-  invisible( allocator )
-}
+# is.cublas.handle <- function( handle ){
+#   "cuR.cublas.handle" %in% class( handle )
+# }
+#
+# check.cublas.handle <- function( handle ){
+#   if( !is.cublas.handle( handle ) ) stop( "Invalid cuBLAS handle" )
+#   invisible( handle )
+# }
 
 is.device <- function( device ){
   if( !is.numeric( device ) || length( device ) != 1 ){
@@ -113,13 +104,4 @@ is.device <- function( device ){
 check.device <- function( device ){
   if( !is.device( device ) ) stop( "Invalid device" )
   invisible( as.integer( device ) )
-}
-
-is.context <- function( context ){
-  "cuR.context" %in% class( context )
-}
-
-check.context <- function( context ){
-  if( !is.context( context ) ) stop( "Invalid context" )
-  invisible( as.integer( context ) )
 }

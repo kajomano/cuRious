@@ -12,7 +12,7 @@ pipe <- R6Class(
                            dst.perm = NULL,
                            src.span = NULL,
                            dst.span = NULL,
-                           stream   = NULL  ){
+                           stream   = NULL ){
       # Sanity checks
       check.tensor( src )
       check.tensor( dst )
@@ -50,7 +50,7 @@ pipe <- R6Class(
       private$.add.ep( dst.perm, "dst.perm" )
 
       if( !is.null( stream ) ){
-        check.cuda.stream( stream )
+        check.stream( stream )
       }
 
       private$.add.ep( stream, "stream" )
@@ -127,7 +127,7 @@ pipe <- R6Class(
       if( !is.null( private$.eps$stream ) ){
         stream <- private$.eps$stream
 
-        if( stream$is.active ){
+        if( stream$is.deployed ){
           if( transfer.deep ){
             if( stream$device != src.device ){
               stop( "Stream is not on the correct device" )

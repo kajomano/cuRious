@@ -37,28 +37,46 @@ cuda.device.sync <- function( device = cuda.device.default.get() ){
 }
 
 # CUDA streams ====
-cuda.stream <- R6Class(
-  "cuR.cuda.stream",
-  inherit = context,
+stream <- R6Class(
+  "cuR.stream",
+  inherit = .alert.send,
   public = list(
+    initialize = function( deployed = TRUE, device = cuda.device.default.get() ){
+      super$device <- device
+
+      if( deployed ){
+        self$deploy()
+      }
+    },
+
+    deploy = function(){
+      if( is.null( private$.ptr ) ){
+        private$.deploy( expression(
+          .Call( "cuR_cuda_stream_create" )
+        ) )
+      }
+
+      invisible( TRUE )
+    },
+
+    destroy = function(){
+      if( !is.null( private$.ptr ) ){
+        private$.destroy( expression(
+          .Call( "cuR_cuda_stream_destroy", private$.ptr )
+        ) )
+      }
+
+      invisible( TRUE )
+    },
+
     sync = function(){
-      if( self$is.active ){
+      if( self$is.deployed ){
         .Call( "cuR_cuda_stream_sync", private$.ptr )
 
         invisible( TRUE )
       }else{
-        stop( "CUDA stream is not yet activated" )
+        stop( "Stream is destroyed" )
       }
-    }
-  ),
-
-  private = list(
-    .activate = function(){
-      .Call( "cuR_cuda_stream_create" )
-    },
-
-    .deactivate = function(){
-      .Call( "cuR_cuda_stream_destroy", private$.ptr )
     }
   )
 )

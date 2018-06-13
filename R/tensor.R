@@ -9,12 +9,12 @@
 # Level 2: C array  ( pinned host memory, float,  int, bool )
 # Level 3: C array  (      device memory, float,  int, bool )
 
-# Tensors implement reference counting if the content is accessed by $ptr
+# Tensors implement reference counting if the content is accessed by $obj
 
 # Tensor class ====
 tensor <- R6Class(
   "cuR.tensor",
-  inherit = alert.send,
+  inherit = .alert.send,
   public = list(
     initialize = function( data   = NULL,
                            level  = NULL,
@@ -145,7 +145,6 @@ tensor <- R6Class(
 
     pull = function(){
       self$check.destroyed()
-
       private$.temp( level = 0L )
     },
 
@@ -162,20 +161,16 @@ tensor <- R6Class(
     },
 
     destroy = function(){
-      self$check.destroyed()
-      private$.destroy.ptr()
-      private$.alert()
-    },
-
-    check.destroyed = function(){
-      if( is.null( private$.ptr ) ){
-        stop( "The tensor is destroyed" )
+      if( !is.null( private$.ptr ) ){
+        private$.destroy( expression( private$.destroy.ptr() ) )
       }
 
       invisible( TRUE )
     },
 
     sever = function(){
+      self$check.destroyed()
+
       if( private$.level == 0L ){
         if( private$.refs ){
           private$.ptr  <- .Call( "cuR_object_duplicate", private$.ptr )
@@ -189,13 +184,11 @@ tensor <- R6Class(
   ),
 
   private = list(
-    .ptr     = NULL,
     .level   = NULL,
     .dims    = NULL,
     .type    = NULL,
-    .device  = NULL,
 
-    # Outside references
+    # External R references
     .refs    = FALSE,
 
     .create.ptr = function( level = private$.level, device = private$.device ){
@@ -226,8 +219,6 @@ tensor <- R6Class(
                private$.level,
                private$.type )
       }
-
-      private$.ptr <- NULL
     },
 
     .match = function( data ){
@@ -313,12 +304,7 @@ tensor <- R6Class(
 
     ptr = function( val ){
       self$check.destroyed()
-
-      if( missing( val ) ){
-        return( private$.ptr )
-      }else{
-        stop( "Tensor pointer is not directly settable" )
-      }
+      super$ptr( val )
     },
 
     dims = function( val ){
@@ -392,10 +378,6 @@ tensor <- R6Class(
 
         private$.device <- device
       }
-    },
-
-    is.destroyed = function( val ){
-      if( missing( val ) ) return( is.null( private$.ptr ) )
     }
   )
 )

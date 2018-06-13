@@ -1,142 +1,185 @@
-alert.recv <- R6Class(
-  "cuR.alert.subscriber",
-  public = list(
-    unsubscribe.flag = FALSE,
+# Alerting classes are organized this way because R6 is missing multiple
+# inheritance, hax by Benedek Schultz
 
-    alert = function( name ){
-      self$check.destroyed()
-      private$.add.content.changed( name )
-      private$.add.context.changed( name )
-    },
+# .alert.recv.public ====
+.alert.recv.public <- list(
+  unsubscribe.flag = FALSE,
 
-    alert.context = function( name ){
-      self$check.destroyed()
-      private$.add.context.changed( name )
-    },
+  alert = function( name ){
+    self$check.destroyed()
+    private$.add.content.changed( name )
+    private$.add.context.changed( name )
+  },
 
-    alert.content = function( name ){
-      self$check.destroyed()
-      private$.add.content.changed( name )
-    }
-  ),
+  alert.context = function( name ){
+    self$check.destroyed()
+    private$.add.context.changed( name )
+  },
 
-  private = list(
-    .context.changed = NULL,
-    .content.changed = NULL,
-
-    .subscribe = function( sender, name ){
-      if( !( "cuR.alert.sender" %in% class( sender ) ) ){
-        stop( "Invalid sender" )
-      }
-
-      sender$subscriber.add( self, name )
-
-      private$.add.content.changed( name )
-      private$.add.context.changed( name )
-    },
-
-    .unsubscribe = function( sender, name ){
-      if( !( "cuR.alert.sender" %in% class( sender ) ) ){
-        stop( "Invalid sender" )
-      }
-
-      self$unsubscribe.flag <- TRUE
-      sender$subscriber.remove()
-      self$unsubscribe.flag <- FALSE
-
-      private$.remove.content.changed( name )
-      private$.remove.context.changed( name )
-    },
-
-    .add.content.changed = function( name ){
-      name.match <- ( name == private$.content.changed )
-      if( !any( name.match ) ){
-        private$.content.changed <- c( private$.content.changed, name )
-      }
-    },
-
-    .add.context.changed = function( name ){
-      name.match <- ( name == private$.context.changed )
-      if( !any( name.match ) ){
-        private$.context.changed <- c( private$.context.changed, name )
-      }
-    },
-
-    .remove.content.changed = function( name ){
-      name.match <- ( name == private$.content.changed )
-      if( any( name.match ) ){
-        private$.content.changed <- private$.content.changed[ !name.match ]
-      }
-    },
-
-    .remove.context.changed = function( name ){
-      name.match <- ( name == private$.context.changed )
-      if( any( name.match ) ){
-        private$.context.changed <- private$.context.changed[ !name.match ]
-      }
-    }
-  ),
-
-  active = list(
-    listener.remove = function( val ){
-      if( missing( val ) ) return( private$.listener.remove )
-    }
-  )
+  alert.content = function( name ){
+    self$check.destroyed()
+    private$.add.content.changed( name )
+  }
 )
 
-alert.send <- R6Class(
-  "cuR.alert.sender",
-  public = list(
-    subscriber.add = function( subscriber, name ){
-      if( !( "cuR.alert.subscriber" %in% class( subscriber ) ) ){
-        stop( "Invalid subscriber" )
-      }
+# .alert.recv.private ====
+.alert.recv.private <- list(
+  .context.changed = NULL,
+  .content.changed = NULL,
 
-      subsc <- list( subscriber )
-      names( subsc ) <- name
-      private$.subscribers <- c( private$.subscribers, subsc )
-
-      invisible( self )
-    },
-
-    subscriber.remove = function(){
-      matched <- sapply( private$.subscribers, `[[`, "unsubscribe.flag" )
-      private$.subscribers <- private$.subscribers[ !matched ]
-      invisible( self )
+  .subscribe = function( sender, name ){
+    if( !( "cuR.alert.send" %in% class( sender ) ) ){
+      stop( "Invalid sender" )
     }
-  ),
 
-  private = list(
-    .subscribers = list(),
+    sender$subscriber.add( self, name )
 
-    .alert = function(){
-      if( length( private$.subscribers ) ){
-        for( i in 1:length( private$.subscribers ) ){
-          private$.subscribers[[i]]$alert( names( private$.subscribers )[[i]] )
-        }
-      }
+    private$.add.content.changed( name )
+    private$.add.context.changed( name )
+  },
 
-      invisible( TRUE )
-    },
-
-    .alert.context = function(){
-      if( length( private$.subscribers ) ){
-        for( i in 1:length( private$.subscribers ) ){
-          private$.subscribers[[i]]$alert.context( names( private$.subscribers )[[i]] )
-        }
-      }
-
-      invisible( TRUE )
-    },
-
-    .alert.content = function(){
-      if( length( private$.subscribers ) ){
-        for( i in 1:length( private$.subscribers ) ){
-          private$.subscribers[[i]]$alert.content( names( private$.subscribers )[[i]] )
-        }
-      }
-
-      invisible( TRUE )
+  .unsubscribe = function( sender, name ){
+    if( !( "cuR.alert.send" %in% class( sender ) ) ){
+      stop( "Invalid sender" )
     }
-  )
+
+    self$unsubscribe.flag <- TRUE
+    sender$subscriber.remove()
+    self$unsubscribe.flag <- FALSE
+
+    private$.remove.content.changed( name )
+    private$.remove.context.changed( name )
+  },
+
+  .add.content.changed = function( name ){
+    name.match <- ( name == private$.content.changed )
+    if( !any( name.match ) ){
+      private$.content.changed <- c( private$.content.changed, name )
+    }
+  },
+
+  .add.context.changed = function( name ){
+    name.match <- ( name == private$.context.changed )
+    if( !any( name.match ) ){
+      private$.context.changed <- c( private$.context.changed, name )
+    }
+  },
+
+  .remove.content.changed = function( name ){
+    name.match <- ( name == private$.content.changed )
+    if( any( name.match ) ){
+      private$.content.changed <- private$.content.changed[ !name.match ]
+    }
+  },
+
+  .remove.context.changed = function( name ){
+    name.match <- ( name == private$.context.changed )
+    if( any( name.match ) ){
+      private$.context.changed <- private$.context.changed[ !name.match ]
+    }
+  }
+)
+
+# .alert.recv.active ====
+.alert.recv.active <- list(
+  listener.remove = function( val ){
+    if( missing( val ) ) return( private$.listener.remove )
+  }
+)
+
+# .alert.send.public ====
+.alert.send.public <- list(
+  subscriber.add = function( subscriber, name ){
+    if( !( "cuR.alert.recv" %in% class( subscriber ) ) ){
+      stop( "Invalid subscriber" )
+    }
+
+    subsc <- list( subscriber )
+    names( subsc ) <- name
+    private$.subscribers <- c( private$.subscribers, subsc )
+
+    invisible( self )
+  },
+
+  subscriber.remove = function(){
+    matched <- sapply( private$.subscribers, `[[`, "unsubscribe.flag" )
+    private$.subscribers <- private$.subscribers[ !matched ]
+    invisible( self )
+  }
+)
+
+# .alert.send.private ====
+.alert.send.private <- list(
+  .subscribers = list(),
+
+  .deploy = function( ptr.expr ){
+    super$.deploy( ptr.expr )
+    private$.alert()
+  },
+
+  .destroy = function( ptr.expr ){
+    super$.destroy( ptr.expr )
+    private$.alert()
+  },
+
+  .alert = function(){
+    if( length( private$.subscribers ) ){
+      for( i in 1:length( private$.subscribers ) ){
+        private$.subscribers[[i]]$alert( names( private$.subscribers )[[i]] )
+      }
+    }
+
+    invisible( TRUE )
+  },
+
+  .alert.context = function(){
+    if( length( private$.subscribers ) ){
+      for( i in 1:length( private$.subscribers ) ){
+        private$.subscribers[[i]]$alert.context( names( private$.subscribers )[[i]] )
+      }
+    }
+
+    invisible( TRUE )
+  },
+
+  .alert.content = function(){
+    if( length( private$.subscribers ) ){
+      for( i in 1:length( private$.subscribers ) ){
+        private$.subscribers[[i]]$alert.content( names( private$.subscribers )[[i]] )
+      }
+    }
+
+    invisible( TRUE )
+  }
+)
+
+# .alert.send.active ====
+.alert.send.active <- list()
+
+# alert.recv ====
+# Pure alert recievers should are not containers
+.alert.recv <- R6Class(
+  "cuR.alert.recv",
+  public  = .alert.recv.public,
+  private = .alert.recv.private,
+  active  = .alert.recv.active
+)
+
+# alert.send ====
+# Alert recievers senders are also containers
+.alert.send <- R6Class(
+  inherit = .container,
+  "cuR.alert.send",
+  public  = .alert.send.public,
+  private = .alert.send.private,
+  active  = .alert.send.active
+)
+
+# alert.send.recv ====
+.alert.send.recv <- R6Class(
+  inherit = .alert.send,
+  "cuR.alert.recv",
+  public  = .alert.recv.public,
+  private = .alert.recv.private,
+  active  = .alert.recv.active
 )

@@ -1,13 +1,7 @@
-// #include "common.h"
-
 #include <thread>
 #include <functional>
-// #include <vector>
-// #include <cstdint>
-// #include <cstdio>
 #include <queue>
 #include <mutex>
-// #include <string>
 #include <condition_variable>
 
 // https://embeddedartistry.com/blog/2017/2/1/c11-implementing-a-dispatch-queue-using-stdfunction
@@ -43,7 +37,7 @@ private:
 
 thread_dispatch_queue::thread_dispatch_queue(){
   Rprintf("Creating dispatch queue");
-  thread_ = std::thread( std::bind( &dispatch_queue::dispatch_thread_handler, this ) );
+  thread_ = std::thread( std::bind( &thread_dispatch_queue::dispatch_thread_handler, this ) );
 }
 
 thread_dispatch_queue::~thread_dispatch_queue()
@@ -84,7 +78,7 @@ void thread_dispatch_queue::dispatch( fp_t&& op )
   cv_.notify_all();
 }
 
-void dispatch_queue::dispatch_thread_handler(void)
+void thread_dispatch_queue::dispatch_thread_handler(void)
 {
   std::unique_lock<std::mutex> lock(lock_);
 

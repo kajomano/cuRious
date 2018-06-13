@@ -12,23 +12,23 @@
 
 // https://embeddedartistry.com/blog/2017/2/1/c11-implementing-a-dispatch-queue-using-stdfunction
 
-class dispatch_queue {
+class thread_dispatch_queue{
   typedef std::function<void(void)> fp_t;
 
 public:
-  dispatch_queue();
-  ~dispatch_queue();
+  thread_dispatch_queue();
+  ~thread_dispatch_queue();
 
   // Dispatch and copy
-  void dispatch(const fp_t& op);
+  void dispatch( const fp_t& op );
   // Dispatch and move
-  void dispatch(fp_t&& op);
+  void dispatch( fp_t&& op );
 
   // Deleted operations
-  dispatch_queue(const dispatch_queue& rhs) = delete;
-  dispatch_queue& operator=(const dispatch_queue& rhs) = delete;
-  dispatch_queue(dispatch_queue&& rhs) = delete;
-  dispatch_queue& operator=(dispatch_queue&& rhs) = delete;
+  thread_dispatch_queue( const thread_dispatch_queue& rhs ) = delete;
+  thread_dispatch_queue& operator=( const thread_dispatch_queue& rhs ) = delete;
+  thread_dispatch_queue( thread_dispatch_queue&& rhs ) = delete;
+  thread_dispatch_queue& operator=( thread_dispatch_queue&& rhs ) = delete;
 
 private:
   // std::string name_;
@@ -41,12 +41,12 @@ private:
   void dispatch_thread_handler(void);
 };
 
-dispatch_queue::dispatch_queue(){
+thread_dispatch_queue::thread_dispatch_queue(){
   Rprintf("Creating dispatch queue");
   thread_ = std::thread( std::bind( &dispatch_queue::dispatch_thread_handler, this ) );
 }
 
-dispatch_queue::~dispatch_queue()
+thread_dispatch_queue::~thread_dispatch_queue()
 {
   Rprintf("Destructor: Destroying dispatch threads...\n");
 
@@ -62,7 +62,7 @@ dispatch_queue::~dispatch_queue()
   }
 }
 
-void dispatch_queue::dispatch(const fp_t& op)
+void thread_dispatch_queue::dispatch( const fp_t& op )
 {
   std::unique_lock<std::mutex> lock( lock_ );
   q_.push( op );
@@ -73,7 +73,7 @@ void dispatch_queue::dispatch(const fp_t& op)
   cv_.notify_all();
 }
 
-void dispatch_queue::dispatch(fp_t&& op)
+void thread_dispatch_queue::dispatch( fp_t&& op )
 {
   std::unique_lock<std::mutex> lock(lock_);
   q_.push(std::move(op));

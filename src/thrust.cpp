@@ -23,7 +23,7 @@
 // int thrust_threads_spawned = 0;
 // int thrust_threads_finished = 0;
 
-dispatch_queue q;
+thread_dispatch_queue q;
 
 void cuR_thrust_allocator_fin( SEXP allocator_r ){
   void* allocator = R_ExternalPtrAddr( allocator_r );

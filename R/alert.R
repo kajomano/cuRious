@@ -6,18 +6,15 @@
   unsubscribe.flag = FALSE,
 
   alert = function( name ){
-    self$check.destroyed()
     private$.add.content.changed( name )
     private$.add.context.changed( name )
   },
 
   alert.context = function( name ){
-    self$check.destroyed()
     private$.add.context.changed( name )
   },
 
   alert.content = function( name ){
-    self$check.destroyed()
     private$.add.content.changed( name )
   }
 )
@@ -112,14 +109,14 @@
 .alert.send.private <- list(
   .subscribers = list(),
 
-  .deploy = function( ptr.expr ){
-    super$.deploy( ptr.expr )
-    private$.alert()
+  .deploy = function( expr ){
+    super$.deploy( expr )
+    private$.alert.content()
   },
 
-  .destroy = function( ptr.expr ){
-    super$.destroy( ptr.expr )
-    private$.alert()
+  .destroy = function( expr ){
+    super$.destroy( expr )
+    private$.alert.content()
   },
 
   .alert = function(){
@@ -154,7 +151,16 @@
 )
 
 # .alert.send.active ====
-.alert.send.active <- list()
+.alert.send.active <- list(
+  device = function( device ){
+    if( missing( device ) ){
+      return( private$.device )
+    }else{
+      super$device <- device
+      private$.alert.context()
+    }
+  }
+)
 
 # alert.recv ====
 # Pure alert recievers should are not containers

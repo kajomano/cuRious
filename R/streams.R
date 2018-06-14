@@ -42,7 +42,7 @@ stream <- R6Class(
   inherit = .alert.send,
   public = list(
     initialize = function( deployed = TRUE, device = cuda.device.default.get() ){
-      super$device <- device
+      self$device <- device
 
       if( deployed ){
         self$deploy()
@@ -50,9 +50,9 @@ stream <- R6Class(
     },
 
     deploy = function(){
-      if( is.null( private$.ptr ) ){
+      if( is.null( private$.ptrs ) ){
         private$.deploy( expression(
-          .Call( "cuR_cuda_stream_create" )
+          list( stream = .Call( "cuR_cuda_stream_create" ) )
         ) )
       }
 
@@ -60,9 +60,9 @@ stream <- R6Class(
     },
 
     destroy = function(){
-      if( !is.null( private$.ptr ) ){
+      if( !is.null( private$.ptrs ) ){
         private$.destroy( expression(
-          .Call( "cuR_cuda_stream_destroy", private$.ptr )
+          .Call( "cuR_cuda_stream_destroy", private$.ptrs$stream )
         ) )
       }
 
@@ -71,7 +71,7 @@ stream <- R6Class(
 
     sync = function(){
       if( self$is.deployed ){
-        .Call( "cuR_cuda_stream_sync", private$.ptr )
+        .Call( "cuR_cuda_stream_sync", private$.ptrs$stream )
 
         invisible( TRUE )
       }else{

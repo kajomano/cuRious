@@ -1,7 +1,29 @@
 library( cuRious )
 library( microbenchmark )
 
-test <- tensor$new( NULL, 3L )
+stream  <- stream$new( )
+context <- fusion.context$new( )
+
+stream$destroy()
+stream$device <- 1
+
+context$destroy()
+context$stream <- stream
+
+context$device <- 1
+
+context$stream <- stream
+
+context$device <- 0
+
+context$deploy()
+
+context$stream <- NULL
+
+context$deploy()
+
+test$ptrs
+
 test$destroy()
 test$deploy()
-test$ptr
+

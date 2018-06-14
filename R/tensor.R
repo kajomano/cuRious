@@ -100,29 +100,29 @@ tensor <- R6Class(
 
       # Initial data
       if( is.null( data ) ){
-        private$.ptr <- private$.create.ptr()
+        private$.ptrs$tensor <- private$.create.ptr()
         self$clear()
       }else{
         if( copy ){
           if( is.tensor( data ) ){
             if( data$level == 0L && private$.level == 0L ){
-              private$.ptr  <- data$obj
+              private$.ptrs$tensor <- data$obj
               private$.refs <- TRUE
             }else{
-              private$.ptr  <- private$.create.ptr()
+              private$.ptrs$tensor <- private$.create.ptr()
               private$.push( data )
             }
           }else if( is.obj( data ) ){
             if( private$.level == 0L ){
-              private$.ptr  <- data
+              private$.ptrs$tensor <- data
               private$.refs <- TRUE
             }else{
-              private$.ptr  <- private$.create.ptr()
+              private$.ptrs$tensor <- private$.create.ptr()
               private$.push( data )
             }
           }
         }else{
-          private$.ptr <- private$.create.ptr()
+          private$.ptrs$tensor <- private$.create.ptr()
           self$clear()
         }
       }
@@ -152,7 +152,7 @@ tensor <- R6Class(
       self$sever()
 
       .Call( "cuR_tensor_clear",
-             private$.ptr,
+             private$.ptrs$tensor,
              private$.level,
              private$.dims,
              private$.type )
@@ -161,7 +161,7 @@ tensor <- R6Class(
     },
 
     destroy = function(){
-      if( !is.null( private$.ptr ) ){
+      if( !is.null( private$.ptrs ) ){
         private$.destroy( expression( private$.destroy.ptr() ) )
       }
 
@@ -173,7 +173,8 @@ tensor <- R6Class(
 
       if( private$.level == 0L ){
         if( private$.refs ){
-          private$.ptr  <- .Call( "cuR_object_duplicate", private$.ptr )
+          private$.ptrs$tensor <- .Call( "cuR_object_duplicate",
+                                         private$.ptrs$tensor )
           private$.refs <- FALSE
           private$.alert.content()
         }
@@ -215,7 +216,7 @@ tensor <- R6Class(
     .destroy.ptr = function(){
       if( private$.level ){
         .Call( "cuR_tensor_destroy",
-               private$.ptr,
+               private$.ptrs$tensor,
                private$.level,
                private$.type )
       }
@@ -243,7 +244,7 @@ tensor <- R6Class(
 
     .push = function( data ){
       if( is.tensor( data ) ){
-        ptr    <- data$ptr
+        ptr    <- data$ptrs$tensor
         level  <- data$level
         device <- data$device
       }else if( is.obj( data ) ){
@@ -258,7 +259,7 @@ tensor <- R6Class(
                             private$.level,
                             device,
                             private$.device )( ptr,
-                                               private$.ptr,
+                                               private$.ptrs$tensor,
                                                level,
                                                private$.level,
                                                private$.type,
@@ -270,7 +271,7 @@ tensor <- R6Class(
       .transfer.ptr.choose( private$.level,
                             level,
                             private$.device,
-                            device )( private$.ptr,
+                            device )( private$.ptrs$tensor,
                                       tmp,
                                       private$.level,
                                       level,
@@ -292,19 +293,24 @@ tensor <- R6Class(
       private$.refs <- TRUE
 
       if( missing( val ) ){
-        return( private$.ptr )
+        return( private$.ptrs$tensor )
       }else{
         val <- check.obj( val )
         private$.match( val )
 
-        private$.ptr <- val
+        private$.ptrs$tensor <- val
         private$.alert.content()
       }
     },
 
-    ptr = function( val ){
+    ptrs = function( val ){
       self$check.destroyed()
-      super$ptr( val )
+
+      if( missing( val ) ){
+        return( private$.ptrs )
+      }else{
+        stop( "Container contents are not directly settable" )
+      }
     },
 
     dims = function( val ){
@@ -340,7 +346,7 @@ tensor <- R6Class(
         private$.destroy.ptr()
 
         # Update
-        private$.ptr   <- tmp
+        private$.ptrs$tensor <- tmp
         private$.refs  <- FALSE
         private$.level <- level
 
@@ -361,6 +367,8 @@ tensor <- R6Class(
           return()
         }
 
+        private$.device <- device
+
         if( private$.level == 3L ){
           # Create a placeholder and copy
           tmp <- private$.temp( device = device )
@@ -369,14 +377,12 @@ tensor <- R6Class(
           private$.destroy.ptr()
 
           # Update
-          private$.ptr <- tmp
+          private$.ptrs$tensor <- tmp
 
           private$.alert()
         }else{
           private$.alert.context()
         }
-
-        private$.device <- device
       }
     }
   )

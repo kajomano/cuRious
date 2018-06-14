@@ -51,9 +51,9 @@
       }
     },
 
-    is.deployed = function( val ){
+    is.destroyed = function( val ){
       if( missing( val ) ){
-        return( !is.null( private$.ptrs ) )
+        return( is.null( private$.ptrs ) )
       }
     }
   )

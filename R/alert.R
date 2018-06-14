@@ -163,7 +163,7 @@
 )
 
 # alert.recv ====
-# Pure alert recievers should are not containers
+# Pure alert recievers are not containers
 .alert.recv <- R6Class(
   "cuR.alert.recv",
   public  = .alert.recv.public,

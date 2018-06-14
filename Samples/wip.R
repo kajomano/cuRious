@@ -21,9 +21,3 @@ context$deploy()
 context$stream <- NULL
 
 context$deploy()
-
-test$ptrs
-
-test$destroy()
-test$deploy()
-

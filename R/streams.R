@@ -70,7 +70,7 @@ stream <- R6Class(
     },
 
     sync = function(){
-      if( self$is.deployed ){
+      if( !is.null( private$.ptrs ) ){
         .Call( "cuR_cuda_stream_sync", private$.ptrs$stream )
 
         invisible( TRUE )

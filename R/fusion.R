@@ -1,4 +1,4 @@
-# Parent class for all fusion contexts
+# fusion.context ====
 fusion.context <- R6Class(
   "cuR.fusion.context",
   inherit = .alert.send.recv,
@@ -63,14 +63,14 @@ fusion.context <- R6Class(
     .stream = NULL,
 
     .deploy = function(){
-      super$.deploy( expression( list( test = 1 ) ) )
-      # stop( "Deploying is not implemented" )
+      # super$.deploy( expression( list( test = 1 ) ) )
+      stop( "Deploying is not implemented" )
       # Should call super$.deploy()
     },
 
     .destroy = function(){
-      super$.destroy( expression( NULL ) )
-      # stop( "Destroying is not implemented" )
+      # super$.destroy( expression( NULL ) )
+      stop( "Destroying is not implemented" )
       # Should call super$.destroy()
     },
 
@@ -107,34 +107,37 @@ fusion.context <- R6Class(
   )
 )
 
-# This is the parent class for every object that combines tensors and does
-# something with them. An example use can be seen in pipe.R or many in cublas.R.
-
+# fusion ====
 fusion <- R6Class(
   "cuR.fusion",
   inherit = .alert.recv,
   public = list(
+    initialize = function( context ){
+      private$.add.ep( context, "context" )
+      private$.add.ep( context$stream, "stream" )
+    },
+
     run = function(){
-      self$check.destroyed()
-
-      for( ep in private$.eps.out ){
-        ep$sever()
-      }
-
-      if( length( private$.context.changed ) ){
-        private$.update.context( private$.context.changed )
-        private$.context.changed <- NULL
-      }
-
-      if( length( private$.content.changed ) ){
-        private$.update.content( private$.content.changed )
-        private$.content.changed <- NULL
-      }
-
-      .cuda.device.set( private$.device )
-      res <- do.call( private$.fun, private$.params )
-
-      invisible( res )
+      # self$check.destroyed()
+      #
+      # for( ep in private$.eps.out ){
+      #   ep$sever()
+      # }
+      #
+      # if( length( private$.context.changed ) ){
+      #   private$.update.context( private$.context.changed )
+      #   private$.context.changed <- NULL
+      # }
+      #
+      # if( length( private$.content.changed ) ){
+      #   private$.update.content( private$.content.changed )
+      #   private$.content.changed <- NULL
+      # }
+      #
+      # .cuda.device.set( private$.device )
+      # res <- do.call( private$.fun, private$.params )
+      #
+      # invisible( res )
     },
 
     destroy = function(){
@@ -163,22 +166,12 @@ fusion <- R6Class(
     .eps     = NULL,
     .eps.out = NULL,
 
-    .context.changed = NULL,
-    .content.changed = NULL,
-
     # These fields need to be filled in the .update.context() function
-    .device  = NULL,
     .fun     = NULL,
     .params  = list(),
 
-    # TODO ====
-    # Get the variable name ep.name from the function call somehow
     .add.ep  = function( ep, ep.name, output = FALSE ){
       if( !is.null( ep ) ){
-        if( !is.tensor( ep ) && !is.context( ep ) ){
-          stop( "Invalid fusion endpoint" )
-        }
-
         private$.eps[[ep.name]] <- ep
         private$.subscribe( ep, ep.name )
 
@@ -193,14 +186,19 @@ fusion <- R6Class(
     },
 
     .update.content = function( names ){
-      private$.params[ paste0( names, ".ptr" ) ] <-
-        lapply( private$.eps[ names ], `[[`, "ptr" )
+      # TODO ====
+      browser()
+
+      ptrs <- unlist( lapply( private$.eps[ names ], `[[`, "ptrs" ) )
+      private$.params[ paste0( names( ptrs ), ".ptr" ) ] <- ptrs
     }
   ),
 
   active = list(
     is.destroyed = function( val ){
-      if( missing( val ) ) return( is.null( private$.eps ) )
+      if( missing( val ) ){
+        return( is.null( private$.eps ) )
+      }
     }
   )
 )

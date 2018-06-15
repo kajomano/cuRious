@@ -6,10 +6,10 @@
 
 ### Define variables
 ## R related
-R_INC     = $(R_HOME)/include
+R_INC     = /usr/share/R/include
 
 ## CUDA related
-CUDA_HOME = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v9.1"
+CUDA_HOME = %CUDA_HOME%
 NVCC      = $(CUDA_HOME)/bin/nvcc
 CUDA_INC  = $(CUDA_HOME)/include
 
@@ -18,12 +18,7 @@ CUDA_INC  = $(CUDA_HOME)/include
 # -arch=sm_30 -gencode=arch=compute_30,code=sm_30: what type of machine code to
 # generate, dependent on your graphics card, refer to:
 # http://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
-NVCC_ARGS = -arch=sm_52 -gencode=arch=compute_52,code=sm_52
-
-# NVCC uses the VC compiler on windows, but PATH is usually buggy, needs explicit
-# location to work, also the common includes are there
-VC_HOME   = "C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC"
-VC_BIN    = $(VC_HOME)/bin/amd64
+NVCC_ARGS = -arch=sm_61 -gencode=arch=compute_61,code=sm_61
 
 ### Define objects
 h_srcs    = $(wildcard *.h)
@@ -32,11 +27,12 @@ cpp_srcs  = $(wildcard *.cpp)
 cpp_objs  = $(patsubst %.cpp, %.o, $(cpp_srcs))
 
 cu_srcs   = $(wildcard *.cu)
+cu_objs   = $(patsubst %.cu, %.o, $(cu_srcs))
 
-all_objs  = $(cpp_objs) cudaR.dll
+all_objs  = $(cpp_objs) $(cu_objs)
 
 ### Linker options
-PKG_LIBS = -fopenmp -L$(CUDA_HOME)/lib/x64 -lcuda -lcudart -lcublas -L"D:/RProjects/cuRious/src" -lcudaR
+PKG_LIBS = $(cu_objs) -L$(CUDA_HOME)/lib64 -lcuda -lcudart -lcublas
 
 ### Recipes
 all: cuRious.so
@@ -44,7 +40,7 @@ all: cuRious.so
 cuRious.so: $(all_objs)
 
 %.o: %.cpp $(h_srcs)
-	$(CXX) -std=c++11 -O3 -fopenmp -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
+	$(CXX) -O3 -fopenmp -fPIC -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
 
-cudaR.dll: $(cu_srcs) $(h_srcs)
-	$(NVCC) -O3 -ccbin=$(VC_BIN) $(NVCC_ARGS) $(cu_srcs) -o cudaR.dll --shared
+%.o: %.cu $(h_srcs)
+	$(NVCC) -O3 -Xcompiler -fPIC $(NVCC_ARGS) $< -o $@ -c

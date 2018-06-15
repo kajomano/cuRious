@@ -1,7 +1,3 @@
-// TODO ====
-// Reinstate CUDA_EXCLUDES!
-
-// Options
 // #define CUDA_EXCLUDE 1
 
 // Debug macros for cuda functions

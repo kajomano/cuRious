@@ -1,4 +1,8 @@
-// Debug print macros
+// #define DEBUG_PRINTS 1
 
-#define debugPrint(ans){ (ans); } // Debug prints on
-// #define debugPrint(ans){ }        // Debug prints off
+// Debug print macros
+#ifdef DEBUG_PRINTS
+#define debugPrint(ans){ (ans); }  // Debug prints on
+#else
+#define debugPrint(ans){ }         // Debug prints off
+#endif

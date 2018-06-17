@@ -28,15 +28,16 @@ cuda.device.default.set <- function( device ){
   assign( "cuda.device.default", device, envir = .cuRious.env )
 }
 
-cuda.device.sync <- function( device = cuda.device.default.get() ){
-  device <- check.device( device )
-  .cuda.device.set( device )
-  .Call( "cuR_device_sync" )
+# Deprecated
+# cuda.device.sync <- function( device = cuda.device.default.get() ){
+#   device <- check.device( device )
+#   .cuda.device.set( device )
+#   .Call( "cuR_device_sync" )
+#
+#   invisible( TRUE )
+# }
 
-  invisible( TRUE )
-}
-
-# CUDA streams ====
+# CUDA streams and thread streams ====
 stream <- R6Class(
   "cuR.stream",
   inherit = .alert.send,
@@ -70,13 +71,15 @@ stream <- R6Class(
     },
 
     sync = function(){
-      if( !is.null( private$.ptrs ) ){
-        .Call( "cuR_cuda_stream_sync", private$.ptrs$stream )
-
-        invisible( TRUE )
-      }else{
-        stop( "Stream is destroyed" )
-      }
+      stop( "Implement stream queue join" )
+#
+#       if( !is.null( private$.ptrs ) ){
+#         .Call( "cuR_cuda_stream_sync", private$.ptrs$stream )
+#
+#         invisible( TRUE )
+#       }else{
+#         stop( "Stream is destroyed" )
+#       }
     }
   )
 )

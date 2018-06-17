@@ -1,7 +1,7 @@
 # Source this script to build the package
 
 # Build options
-clean.build  <- TRUE
+clean.build  <- FALSE
 debug.prints <- FALSE
 cuda.exclude <- FALSE
 
@@ -53,10 +53,6 @@ if( cuda.exclude ){
   if( cuda.header != "#define CUDA_EXCLUDE 1" ){
     writeLines( "#define CUDA_EXCLUDE 1", "./src/common_cuda.h" )
   }
-
-  # TODO ====
-  # Didnt remember the windows extensions for cuda dll files, extend regexp
-  file.remove( dir( "./src", "\\.(cu|lib|exp)$", full.names = TRUE ) )
 }else{
   if( cuda.header != "// #define CUDA_EXCLUDE 1" ){
     writeLines( "// #define CUDA_EXCLUDE 1", "./src/common_cuda.h" )
@@ -78,7 +74,7 @@ if( cuda.exclude ){
 }
 
 # Makevars =====================================================================
-file.remove( dir( "./src/Makevars", full.names = TRUE ) )
+file.remove( dir( "./src/", "^Makevars$", full.names = TRUE ) )
 card.list <- list()
 makevars.path <- "./Makevars/Makevars"
 
@@ -101,13 +97,12 @@ if( Sys.info()["sysname"] == "Windows" ){
     card.list$CUR_SRC   <- paste0( getwd(), "/src" )
   }
 }else{
+  makevars.path <- paste0( makevars.path, "_linux" )
+
   if( cuda.exclude ){
     makevars.path <- paste0( makevars.path, "_nocuda" )
   }else{
     makevars.path <- paste0( makevars.path, "_cuda" )
-
-    stop( "Check this" )
-    card.list$CUDA_HOME <- Sys.getenv()[[ "CUDA_PATH" ]]
   }
 }
 

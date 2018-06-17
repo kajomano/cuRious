@@ -37,7 +37,7 @@ cuda.device.default.set <- function( device ){
 #   invisible( TRUE )
 # }
 
-# CUDA streams and thread streams ====
+# CUDA and thread streams ====
 stream <- R6Class(
   "cuR.stream",
   inherit = .alert.send,
@@ -53,7 +53,8 @@ stream <- R6Class(
     deploy = function(){
       if( is.null( private$.ptrs ) ){
         private$.deploy( expression(
-          list( stream = .Call( "cuR_cuda_stream_create" ) )
+          list( stream = .Call( "cuR_cuda_stream_create" ),
+                queue  = .Call( "cuR_stream_queue_create" ) )
         ) )
       }
 
@@ -62,9 +63,10 @@ stream <- R6Class(
 
     destroy = function(){
       if( !is.null( private$.ptrs ) ){
-        private$.destroy( expression(
+        private$.destroy( expression( {
           .Call( "cuR_cuda_stream_destroy", private$.ptrs$stream )
-        ) )
+          .Call( "cuR_stream_queue_destroy", private$.ptrs$queue )
+        } ) )
       }
 
       invisible( TRUE )

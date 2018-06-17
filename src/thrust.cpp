@@ -1,7 +1,7 @@
 #include "common_R.h"
 #include "common_debug.h"
 #include "thrust.h"
-#include "threads.h"
+// #include "threads.h"
 
 // #include <thread>
 // #include <mutex>
@@ -23,7 +23,7 @@
 // int thrust_threads_spawned = 0;
 // int thrust_threads_finished = 0;
 
-thread_dispatch_queue q;
+// thread_dispatch_queue q;
 
 void cuR_thrust_allocator_fin( SEXP allocator_r ){
   void* allocator = R_ExternalPtrAddr( allocator_r );
@@ -152,10 +152,10 @@ SEXP cuR_thrust_cmin_pos( SEXP A_ptr_r,
     // Launch a new thread so thrust becomes fully async
     // Uses C11 lambda for the WDDM flush
     // and common mutex for parallel access of variables
-    q.dispatch( [=]{
-      cuR_thrust_cmin_pos_cu( A_ptr, x_ptr, A_dims, allocator_ptr, stream_ptr );
-      cudaStreamQuery(0);
-    });
+    // q.dispatch( [=]{
+    //   cuR_thrust_cmin_pos_cu( A_ptr, x_ptr, A_dims, allocator_ptr, stream_ptr );
+    //   cudaStreamQuery(0);
+    // });
 
     // std::thread t([=]{
     //   thrust_mutex.lock();

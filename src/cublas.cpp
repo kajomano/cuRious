@@ -16,7 +16,7 @@ void cuR_cublas_handle_fin( SEXP handle_r ){
     debugPrint( Rprintf( "<%p> Finalizing handle\n", (void*)handle ) );
 
     cublasDestroy( *handle );
-    delete[] handle;
+    delete handle;
     R_ClearExternalPtr( handle_r );
   }
 }

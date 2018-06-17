@@ -1,3 +1,104 @@
+# fusion ====
+fusion <- R6Class(
+  "cuR.fusion",
+  inherit = .alert.recv,
+  public = list(
+    initialize = function( stream ){
+      private$.add.ep( stream, "stream" )
+    },
+
+    run = function(){
+      self$check.destroyed()
+
+      for( ep in private$.eps.out ){
+        ep$sever()
+      }
+
+      if( length( private$.context.changed ) ){
+        private$.update.context( private$.context.changed )
+        private$.context.changed <- NULL
+      }
+
+      if( length( private$.content.changed ) ){
+        private$.update.content( private$.content.changed )
+        private$.content.changed <- NULL
+      }
+
+      .cuda.device.set( private$.device )
+      res <- do.call( private$.fun, private$.params )
+
+      invisible( res )
+    },
+
+    destroy = function(){
+      self$check.destroyed()
+
+      for( ep.name in names( private$.eps ) ){
+        private$.unsubscribe( private$.eps[[ep.name]], ep.name )
+      }
+
+      private$.eps     <- NULL
+      private$.eps.out <- NULL
+
+      invisible( TRUE )
+    },
+
+    check.destroyed = function(){
+      if( is.null( private$.eps ) ){
+        stop( "The fusion is destroyed" )
+      }
+
+      invisible( TRUE )
+    }
+  ),
+
+  private = list(
+    .eps     = NULL,
+    .eps.out = NULL,
+
+    # These fields need to be filled in the .update.context() function
+    .fun     = NULL,
+    .params  = list(),
+
+    .device  = NULL,
+
+    .add.ep  = function( ep, ep.name, output = FALSE ){
+      if( !is.null( ep ) ){
+        private$.eps[[ep.name]] <- ep
+        private$.subscribe( ep, ep.name )
+
+        if( output ){
+          private$.eps.out[[ep.name]] <- ep
+        }
+      }
+    },
+
+    .update.context = function( names ){
+      stop( "Context update not implemented" )
+    },
+
+    .update.content = function( names ){
+      lapply( names, function( ep.name ){
+        ptrs.names <- paste0( ep.name, ".", names( private$.eps[[ ep.name ]]$ptrs ) )
+        private$.params[ ptrs.names ] <- private$.eps[[ ep.name ]]$ptrs
+      } )
+
+      # ptrs <-  as.list( unlist( lapply( private$.eps[ names ], `[[`, "ptrs" ) ) )
+      # private$.params[ names( ptrs ) ] <- ptrs
+
+    }
+  ),
+
+  active = list(
+    is.destroyed = function( val ){
+      if( missing( val ) ){
+        return( is.null( private$.eps ) )
+      }
+    }
+  )
+)
+
+
 # fusion.context ====
 fusion.context <- R6Class(
   "cuR.fusion.context",
@@ -107,98 +208,17 @@ fusion.context <- R6Class(
   )
 )
 
-# fusion ====
-fusion <- R6Class(
-  "cuR.fusion",
-  inherit = .alert.recv,
+# contexted fusion ====
+contexted.fusion <- R6Class(
+  "cuR.contexted.fusion",
+  inherit = fusion,
   public = list(
     initialize = function( context ){
-      private$.add.ep( context, "context" )
+      if( class( self )[[1]] != sub( "\\.context$", "", class( context )[[1]] ) ){
+        stop( "Context does not match this fusion" )
+      }
+
       private$.add.ep( context$stream, "stream" )
-    },
-
-    run = function(){
-      # self$check.destroyed()
-      #
-      # for( ep in private$.eps.out ){
-      #   ep$sever()
-      # }
-      #
-      # if( length( private$.context.changed ) ){
-      #   private$.update.context( private$.context.changed )
-      #   private$.context.changed <- NULL
-      # }
-      #
-      # if( length( private$.content.changed ) ){
-      #   private$.update.content( private$.content.changed )
-      #   private$.content.changed <- NULL
-      # }
-      #
-      # .cuda.device.set( private$.device )
-      # res <- do.call( private$.fun, private$.params )
-      #
-      # invisible( res )
-    },
-
-    destroy = function(){
-      self$check.destroyed()
-
-      for( ep.name in names( private$.eps ) ){
-        private$.unsubscribe( private$.eps[[ep.name]], ep.name )
-      }
-
-      private$.eps     <- NULL
-      private$.eps.out <- NULL
-
-      invisible( TRUE )
-    },
-
-    check.destroyed = function(){
-      if( is.null( private$.eps ) ){
-        stop( "The fusion is destroyed" )
-      }
-
-      invisible( TRUE )
-    }
-  ),
-
-  private = list(
-    .eps     = NULL,
-    .eps.out = NULL,
-
-    # These fields need to be filled in the .update.context() function
-    .fun     = NULL,
-    .params  = list(),
-
-    .add.ep  = function( ep, ep.name, output = FALSE ){
-      if( !is.null( ep ) ){
-        private$.eps[[ep.name]] <- ep
-        private$.subscribe( ep, ep.name )
-
-        if( output ){
-          private$.eps.out[[ep.name]] <- ep
-        }
-      }
-    },
-
-    .update.context = function( names ){
-      stop( "Context update not implemented" )
-    },
-
-    .update.content = function( names ){
-      # TODO ====
-      browser()
-
-      ptrs <- unlist( lapply( private$.eps[ names ], `[[`, "ptrs" ) )
-      private$.params[ paste0( names( ptrs ), ".ptr" ) ] <- ptrs
-    }
-  ),
-
-  active = list(
-    is.destroyed = function( val ){
-      if( missing( val ) ){
-        return( is.null( private$.eps ) )
-      }
     }
   )
 )

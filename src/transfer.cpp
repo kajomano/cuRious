@@ -1,6 +1,7 @@
 #include "common_R.h"
 #include "common_debug.h"
 #include "transfer.h"  // Includes common_cuda.h
+#include "streams.h"
 #include "omp.h"
 
 template <typename s, typename d>
@@ -12,8 +13,8 @@ void cuR_transfer_host_host( s* src_ptr,
                              int* src_perm_ptr,
                              int* dst_perm_ptr,
                              int src_span_off,
-                             int dst_span_off,
-                             cudaStream_t* stream_ptr ){
+                             int dst_span_off ){
+
   int src_dims_1;
   if( src_dims ){
     src_dims_1 = src_dims[1];
@@ -32,7 +33,7 @@ void cuR_transfer_host_host( s* src_ptr,
   int dims_1 = dims[1];
 
   omp_set_dynamic(0);
-  omp_set_num_threads( omp_get_num_procs() / 2 );
+  omp_set_num_threads( omp_get_num_procs() );
 
 // #pragma omp parallel
 // {
@@ -134,10 +135,6 @@ void cuR_transfer_host_host( s* src_ptr,
         dst_ptr[dst_pos+j] = (d)src_ptr[src_pos+j];
       }
     }
-  }
-
-  if( stream_ptr ){
-    Rf_warning( "Active stream given to a synchronous transfer call" );
   }
 }
 
@@ -463,6 +460,7 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                    SEXP dst_perm_ptr_r,  // Optional
                    SEXP src_span_off_r,  // Optional
                    SEXP dst_span_off_r,  // Optional
+                   SEXP queue_ptr_r,     // Optional
                    SEXP stream_ptr_r ){  // Optional
 
   // Arg conversions (except src_ptr, dst_ptr)
@@ -491,6 +489,9 @@ SEXP cuR_transfer( SEXP src_ptr_r,
   cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
     (cudaStream_t*) R_ExternalPtrAddr( stream_ptr_r );
 
+  sd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
+    (sd_queue*) R_ExternalPtrAddr( queue_ptr_r );
+
   if( src_perm_ptr && !src_dims ){
     Rf_error( "Source dimensions need to be supplied with permutation" );
   }
@@ -507,42 +508,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 0:
       switch( type ){
       case 'n':
-        cuR_transfer_host_host<double, double>( REAL( src_ptr_r ),
-                                                REAL( dst_ptr_r ),
-                                                dims,
-                                                src_dims,
-                                                dst_dims,
-                                                src_perm_ptr,
-                                                dst_perm_ptr,
-                                                src_span_off,
-                                                dst_span_off,
-                                                stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<double, double>( REAL( src_ptr_r ),
+                                                    REAL( dst_ptr_r ),
+                                                    dims,
+                                                    src_dims,
+                                                    dst_dims,
+                                                    src_perm_ptr,
+                                                    dst_perm_ptr,
+                                                    src_span_off,
+                                                    dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<double, double>( REAL( src_ptr_r ),
+                                                  REAL( dst_ptr_r ),
+                                                  dims,
+                                                  src_dims,
+                                                  dst_dims,
+                                                  src_perm_ptr,
+                                                  dst_perm_ptr,
+                                                  src_span_off,
+                                                  dst_span_off );
+        }
         break;
 
       case 'i':
-        cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
-                                          INTEGER( dst_ptr_r ),
-                                          dims,
-                                          src_dims,
-                                          dst_dims,
-                                          src_perm_ptr,
-                                          dst_perm_ptr,
-                                          src_span_off,
-                                          dst_span_off,
-                                          stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
+                                              INTEGER( dst_ptr_r ),
+                                              dims,
+                                              src_dims,
+                                              dst_dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
+                                            INTEGER( dst_ptr_r ),
+                                            dims,
+                                            src_dims,
+                                            dst_dims,
+                                            src_perm_ptr,
+                                            dst_perm_ptr,
+                                            src_span_off,
+                                            dst_span_off );
+        }
         break;
 
       case 'l':
-        cuR_transfer_host_host<int, int>( LOGICAL( src_ptr_r ),
-                                          LOGICAL( dst_ptr_r ),
-                                          dims,
-                                          src_dims,
-                                          dst_dims,
-                                          src_perm_ptr,
-                                          dst_perm_ptr,
-                                          src_span_off,
-                                          dst_span_off,
-                                          stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<int, int>( LOGICAL( src_ptr_r ),
+                                              LOGICAL( dst_ptr_r ),
+                                              dims,
+                                              src_dims,
+                                              dst_dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<int, int>( LOGICAL( src_ptr_r ),
+                                            LOGICAL( dst_ptr_r ),
+                                            dims,
+                                            src_dims,
+                                            dst_dims,
+                                            src_perm_ptr,
+                                            dst_perm_ptr,
+                                            src_span_off,
+                                            dst_span_off );
+        }
         break;
 
       default:
@@ -554,42 +594,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 1:
       switch( type ){
       case 'n':
-        cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
-                                               (float*) R_ExternalPtrAddr( dst_ptr_r ),
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
+                                                   (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                   dims,
+                                                   src_dims,
+                                                   dst_dims,
+                                                   src_perm_ptr,
+                                                   dst_perm_ptr,
+                                                   src_span_off,
+                                                   dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
+                                                 (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off );
+        }
+        break;
+
+      case 'i':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
+                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dims,
+                                              src_dims,
+                                              dst_dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
+                                            (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                            dims,
+                                            src_dims,
+                                            dst_dims,
+                                            src_perm_ptr,
+                                            dst_perm_ptr,
+                                            src_span_off,
+                                            dst_span_off );
+        }
+        break;
+
+      case 'l':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
+                                               (bool*) R_ExternalPtrAddr( dst_ptr_r ),
                                                dims,
                                                src_dims,
                                                dst_dims,
                                                src_perm_ptr,
                                                dst_perm_ptr,
                                                src_span_off,
-                                               dst_span_off,
-                                               stream_ptr );
-        break;
-
-      case 'i':
-        cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
-                                          (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                          dims,
-                                          src_dims,
-                                          dst_dims,
-                                          src_perm_ptr,
-                                          dst_perm_ptr,
-                                          src_span_off,
-                                          dst_span_off,
-                                          stream_ptr );
-        break;
-
-      case 'l':
-        cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
-                                           (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                           dims,
-                                           src_dims,
-                                           dst_dims,
-                                           src_perm_ptr,
-                                           dst_perm_ptr,
-                                           src_span_off,
-                                           dst_span_off,
-                                           stream_ptr );
+                                               dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
+                                             (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                             dims,
+                                             src_dims,
+                                             dst_dims,
+                                             src_perm_ptr,
+                                             dst_perm_ptr,
+                                             src_span_off,
+                                             dst_span_off );
+        }
         break;
 
       default:
@@ -603,42 +682,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 2:
       switch( type ){
       case 'n':
-        cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
-                                               (float*) R_ExternalPtrAddr( dst_ptr_r ),
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
+                                                   (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                   dims,
+                                                   src_dims,
+                                                   dst_dims,
+                                                   src_perm_ptr,
+                                                   dst_perm_ptr,
+                                                   src_span_off,
+                                                   dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
+                                                 (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off );
+        }
+        break;
+
+      case 'i':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
+                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dims,
+                                              src_dims,
+                                              dst_dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
+                                            (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                            dims,
+                                            src_dims,
+                                            dst_dims,
+                                            src_perm_ptr,
+                                            dst_perm_ptr,
+                                            src_span_off,
+                                            dst_span_off );
+        }
+        break;
+
+      case 'l':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
+                                               (bool*) R_ExternalPtrAddr( dst_ptr_r ),
                                                dims,
                                                src_dims,
                                                dst_dims,
                                                src_perm_ptr,
                                                dst_perm_ptr,
                                                src_span_off,
-                                               dst_span_off,
-                                               stream_ptr );
-        break;
-
-      case 'i':
-        cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
-                                          (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                          dims,
-                                          src_dims,
-                                          dst_dims,
-                                          src_perm_ptr,
-                                          dst_perm_ptr,
-                                          src_span_off,
-                                          dst_span_off,
-                                          stream_ptr );
-        break;
-
-      case 'l':
-        cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
-                                           (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                           dims,
-                                           src_dims,
-                                           dst_dims,
-                                           src_perm_ptr,
-                                           dst_perm_ptr,
-                                           src_span_off,
-                                           dst_span_off,
-                                           stream_ptr );
+                                               dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
+                                             (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                             dims,
+                                             src_dims,
+                                             dst_dims,
+                                             src_perm_ptr,
+                                             dst_perm_ptr,
+                                             src_span_off,
+                                             dst_span_off );
+        }
         break;
 
       default:
@@ -659,42 +777,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 0:
       switch( type ){
       case 'n':
-        cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                               REAL( dst_ptr_r ),
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                   REAL( dst_ptr_r ),
+                                                   dims,
+                                                   src_dims,
+                                                   dst_dims,
+                                                   src_perm_ptr,
+                                                   dst_perm_ptr,
+                                                   src_span_off,
+                                                   dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                 REAL( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off );
+        }
+        break;
+
+      case 'i':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                              INTEGER( dst_ptr_r ),
+                                              dims,
+                                              src_dims,
+                                              dst_dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                            INTEGER( dst_ptr_r ),
+                                            dims,
+                                            src_dims,
+                                            dst_dims,
+                                            src_perm_ptr,
+                                            dst_perm_ptr,
+                                            src_span_off,
+                                            dst_span_off );
+        }
+        break;
+
+      case 'l':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                               LOGICAL( dst_ptr_r ),
                                                dims,
                                                src_dims,
                                                dst_dims,
                                                src_perm_ptr,
                                                dst_perm_ptr,
                                                src_span_off,
-                                               dst_span_off,
-                                               stream_ptr );
-        break;
-
-      case 'i':
-        cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                          INTEGER( dst_ptr_r ),
-                                          dims,
-                                          src_dims,
-                                          dst_dims,
-                                          src_perm_ptr,
-                                          dst_perm_ptr,
-                                          src_span_off,
-                                          dst_span_off,
-                                          stream_ptr );
-        break;
-
-      case 'l':
-        cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                           LOGICAL( dst_ptr_r ),
-                                           dims,
-                                           src_dims,
-                                           dst_dims,
-                                           src_perm_ptr,
-                                           dst_perm_ptr,
-                                           src_span_off,
-                                           dst_span_off,
-                                           stream_ptr );
+                                               dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                             LOGICAL( dst_ptr_r ),
+                                             dims,
+                                             src_dims,
+                                             dst_dims,
+                                             src_perm_ptr,
+                                             dst_perm_ptr,
+                                             src_span_off,
+                                             dst_span_off );
+        }
         break;
 
       default:
@@ -706,42 +863,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 1:
       switch( type ){
       case 'n':
-        cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                              (float*) R_ExternalPtrAddr( dst_ptr_r ),
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                  (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                  dims,
+                                                  src_dims,
+                                                  dst_dims,
+                                                  src_perm_ptr,
+                                                  dst_perm_ptr,
+                                                  src_span_off,
+                                                  dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                dims,
+                                                src_dims,
+                                                dst_dims,
+                                                src_perm_ptr,
+                                                dst_perm_ptr,
+                                                src_span_off,
+                                                dst_span_off );
+        }
+        break;
+
+      case 'i':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                               dims,
                                               src_dims,
                                               dst_dims,
                                               src_perm_ptr,
                                               dst_perm_ptr,
                                               src_span_off,
-                                              dst_span_off,
-                                              stream_ptr );
-        break;
-
-      case 'i':
-        cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                          (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                          dims,
-                                          src_dims,
-                                          dst_dims,
-                                          src_perm_ptr,
-                                          dst_perm_ptr,
-                                          src_span_off,
-                                          dst_span_off,
-                                          stream_ptr );
-        break;
-
-      case 'l':
-        cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                            (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                            (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                             dims,
                                             src_dims,
                                             dst_dims,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+                                            dst_span_off );
+        }
+        break;
+
+      case 'l':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                dims,
+                                                src_dims,
+                                                dst_dims,
+                                                src_perm_ptr,
+                                                dst_perm_ptr,
+                                                src_span_off,
+                                                dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dims,
+                                              src_dims,
+                                              dst_dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off );
+        }
         break;
 
       default:
@@ -755,42 +951,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 2:
       switch( type ){
       case 'n':
-        cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                              (float*) R_ExternalPtrAddr( dst_ptr_r ),
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                  (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                  dims,
+                                                  src_dims,
+                                                  dst_dims,
+                                                  src_perm_ptr,
+                                                  dst_perm_ptr,
+                                                  src_span_off,
+                                                  dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                dims,
+                                                src_dims,
+                                                dst_dims,
+                                                src_perm_ptr,
+                                                dst_perm_ptr,
+                                                src_span_off,
+                                                dst_span_off );
+        }
+        break;
+
+      case 'i':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                               dims,
                                               src_dims,
                                               dst_dims,
                                               src_perm_ptr,
                                               dst_perm_ptr,
                                               src_span_off,
-                                              dst_span_off,
-                                              stream_ptr );
-        break;
-
-      case 'i':
-        cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                          (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                          dims,
-                                          src_dims,
-                                          dst_dims,
-                                          src_perm_ptr,
-                                          dst_perm_ptr,
-                                          src_span_off,
-                                          dst_span_off,
-                                          stream_ptr );
-        break;
-
-      case 'l':
-        cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                            (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                            (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                             dims,
                                             src_dims,
                                             dst_dims,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+                                            dst_span_off );
+        }
+        break;
+
+      case 'l':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                dims,
+                                                src_dims,
+                                                dst_dims,
+                                                src_perm_ptr,
+                                                dst_perm_ptr,
+                                                src_span_off,
+                                                dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dims,
+                                              src_dims,
+                                              dst_dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off );
+        }
         break;
 
       default:
@@ -860,42 +1095,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 0:
       switch( type ){
       case 'n':
-        cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                               REAL( dst_ptr_r ),
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                   REAL( dst_ptr_r ),
+                                                   dims,
+                                                   src_dims,
+                                                   dst_dims,
+                                                   src_perm_ptr,
+                                                   dst_perm_ptr,
+                                                   src_span_off,
+                                                   dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                 REAL( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off );
+        }
+        break;
+
+      case 'i':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                              INTEGER( dst_ptr_r ),
+                                              dims,
+                                              src_dims,
+                                              dst_dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                            INTEGER( dst_ptr_r ),
+                                            dims,
+                                            src_dims,
+                                            dst_dims,
+                                            src_perm_ptr,
+                                            dst_perm_ptr,
+                                            src_span_off,
+                                            dst_span_off );
+        }
+        break;
+
+      case 'l':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                               LOGICAL( dst_ptr_r ),
                                                dims,
                                                src_dims,
                                                dst_dims,
                                                src_perm_ptr,
                                                dst_perm_ptr,
                                                src_span_off,
-                                               dst_span_off,
-                                               stream_ptr );
-        break;
-
-      case 'i':
-        cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                          INTEGER( dst_ptr_r ),
-                                          dims,
-                                          src_dims,
-                                          dst_dims,
-                                          src_perm_ptr,
-                                          dst_perm_ptr,
-                                          src_span_off,
-                                          dst_span_off,
-                                          stream_ptr );
-        break;
-
-      case 'l':
-        cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                           LOGICAL( dst_ptr_r ),
-                                           dims,
-                                           src_dims,
-                                           dst_dims,
-                                           src_perm_ptr,
-                                           dst_perm_ptr,
-                                           src_span_off,
-                                           dst_span_off,
-                                           stream_ptr );
+                                               dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                             LOGICAL( dst_ptr_r ),
+                                             dims,
+                                             src_dims,
+                                             dst_dims,
+                                             src_perm_ptr,
+                                             dst_perm_ptr,
+                                             src_span_off,
+                                             dst_span_off );
+        }
         break;
 
       default:
@@ -907,42 +1181,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 1:
       switch( type ){
       case 'n':
-        cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                              (float*) R_ExternalPtrAddr( dst_ptr_r ),
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                  (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                  dims,
+                                                  src_dims,
+                                                  dst_dims,
+                                                  src_perm_ptr,
+                                                  dst_perm_ptr,
+                                                  src_span_off,
+                                                  dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                dims,
+                                                src_dims,
+                                                dst_dims,
+                                                src_perm_ptr,
+                                                dst_perm_ptr,
+                                                src_span_off,
+                                                dst_span_off );
+        }
+        break;
+
+      case 'i':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                               dims,
                                               src_dims,
                                               dst_dims,
                                               src_perm_ptr,
                                               dst_perm_ptr,
                                               src_span_off,
-                                              dst_span_off,
-                                              stream_ptr );
-        break;
-
-      case 'i':
-        cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                          (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                          dims,
-                                          src_dims,
-                                          dst_dims,
-                                          src_perm_ptr,
-                                          dst_perm_ptr,
-                                          src_span_off,
-                                          dst_span_off,
-                                          stream_ptr );
-        break;
-
-      case 'l':
-        cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                            (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                            (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                             dims,
                                             src_dims,
                                             dst_dims,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+                                            dst_span_off );
+        }
+        break;
+
+      case 'l':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                dims,
+                                                src_dims,
+                                                dst_dims,
+                                                src_perm_ptr,
+                                                dst_perm_ptr,
+                                                src_span_off,
+                                                dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dims,
+                                              src_dims,
+                                              dst_dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off );
+        }
         break;
 
       default:
@@ -954,42 +1267,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 2:
       switch( type ){
       case 'n':
-        cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                              (float*) R_ExternalPtrAddr( dst_ptr_r ),
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                  (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                  dims,
+                                                  src_dims,
+                                                  dst_dims,
+                                                  src_perm_ptr,
+                                                  dst_perm_ptr,
+                                                  src_span_off,
+                                                  dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                dims,
+                                                src_dims,
+                                                dst_dims,
+                                                src_perm_ptr,
+                                                dst_perm_ptr,
+                                                src_span_off,
+                                                dst_span_off );
+        }
+        break;
+
+      case 'i':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                               dims,
                                               src_dims,
                                               dst_dims,
                                               src_perm_ptr,
                                               dst_perm_ptr,
                                               src_span_off,
-                                              dst_span_off,
-                                              stream_ptr );
-        break;
-
-      case 'i':
-        cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                          (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                          dims,
-                                          src_dims,
-                                          dst_dims,
-                                          src_perm_ptr,
-                                          dst_perm_ptr,
-                                          src_span_off,
-                                          dst_span_off,
-                                          stream_ptr );
-        break;
-
-      case 'l':
-        cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                            (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                            (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                             dims,
                                             src_dims,
                                             dst_dims,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+                                            dst_span_off );
+        }
+        break;
+
+      case 'l':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                dims,
+                                                src_dims,
+                                                dst_dims,
+                                                src_perm_ptr,
+                                                dst_perm_ptr,
+                                                src_span_off,
+                                                dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dims,
+                                              src_dims,
+                                              dst_dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off );
+        }
         break;
 
       default:
@@ -1001,8 +1353,50 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 3:
       switch( type ){
       case 'n':
-        cuR_transfer_host_device<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                         (float*) R_ExternalPtrAddr( dst_ptr_r ),
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_device<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                             (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                             dims,
+                                             src_dims,
+                                             dst_dims,
+                                             src_perm_ptr,
+                                             dst_perm_ptr,
+                                             src_span_off,
+                                             dst_span_off,
+                                             stream_ptr );
+          });
+        }else{
+          cuR_transfer_host_device<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                           (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                           dims,
+                                           src_dims,
+                                           dst_dims,
+                                           src_perm_ptr,
+                                           dst_perm_ptr,
+                                           src_span_off,
+                                           dst_span_off,
+                                           stream_ptr );
+        }
+        break;
+
+      case 'i':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_device<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                           (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                           dims,
+                                           src_dims,
+                                           dst_dims,
+                                           src_perm_ptr,
+                                           dst_perm_ptr,
+                                           src_span_off,
+                                           dst_span_off,
+                                           stream_ptr );
+          });
+        }else{
+          cuR_transfer_host_device<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                         (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                          dims,
                                          src_dims,
                                          dst_dims,
@@ -1011,32 +1405,35 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                          src_span_off,
                                          dst_span_off,
                                          stream_ptr );
-        break;
-
-      case 'i':
-        cuR_transfer_host_device<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                       (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                       dims,
-                                       src_dims,
-                                       dst_dims,
-                                       src_perm_ptr,
-                                       dst_perm_ptr,
-                                       src_span_off,
-                                       dst_span_off,
-                                       stream_ptr );
+        }
         break;
 
       case 'l':
-        cuR_transfer_host_device<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                        (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                        dims,
-                                        src_dims,
-                                        dst_dims,
-                                        src_perm_ptr,
-                                        dst_perm_ptr,
-                                        src_span_off,
-                                        dst_span_off,
-                                        stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_device<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                            (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                            dims,
+                                            src_dims,
+                                            dst_dims,
+                                            src_perm_ptr,
+                                            dst_perm_ptr,
+                                            src_span_off,
+                                            dst_span_off,
+                                            stream_ptr );
+          });
+        }else{
+          cuR_transfer_host_device<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                          (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                          dims,
+                                          src_dims,
+                                          dst_dims,
+                                          src_perm_ptr,
+                                          dst_perm_ptr,
+                                          src_span_off,
+                                          dst_span_off,
+                                          stream_ptr );
+        }
         break;
 
       default:
@@ -1102,8 +1499,50 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 2:
       switch( type ){
       case 'n':
-        cuR_transfer_device_host<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                         (float*) R_ExternalPtrAddr( dst_ptr_r ),
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_device_host<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                             (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                             dims,
+                                             src_dims,
+                                             dst_dims,
+                                             src_perm_ptr,
+                                             dst_perm_ptr,
+                                             src_span_off,
+                                             dst_span_off,
+                                             stream_ptr );
+          });
+        }else{
+          cuR_transfer_device_host<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                           (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                           dims,
+                                           src_dims,
+                                           dst_dims,
+                                           src_perm_ptr,
+                                           dst_perm_ptr,
+                                           src_span_off,
+                                           dst_span_off,
+                                           stream_ptr );
+        }
+        break;
+
+      case 'i':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_device_host<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                           (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                           dims,
+                                           src_dims,
+                                           dst_dims,
+                                           src_perm_ptr,
+                                           dst_perm_ptr,
+                                           src_span_off,
+                                           dst_span_off,
+                                           stream_ptr );
+          });
+        }else{
+          cuR_transfer_device_host<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                         (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                          dims,
                                          src_dims,
                                          dst_dims,
@@ -1112,32 +1551,35 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                          src_span_off,
                                          dst_span_off,
                                          stream_ptr );
-        break;
-
-      case 'i':
-        cuR_transfer_device_host<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                       (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                       dims,
-                                       src_dims,
-                                       dst_dims,
-                                       src_perm_ptr,
-                                       dst_perm_ptr,
-                                       src_span_off,
-                                       dst_span_off,
-                                       stream_ptr );
+        }
         break;
 
       case 'l':
-        cuR_transfer_device_host<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                        (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                        dims,
-                                        src_dims,
-                                        dst_dims,
-                                        src_perm_ptr,
-                                        dst_perm_ptr,
-                                        src_span_off,
-                                        dst_span_off,
-                                        stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_device_host<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                            (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                            dims,
+                                            src_dims,
+                                            dst_dims,
+                                            src_perm_ptr,
+                                            dst_perm_ptr,
+                                            src_span_off,
+                                            dst_span_off,
+                                            stream_ptr );
+          });
+        }else{
+          cuR_transfer_device_host<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                          (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                          dims,
+                                          src_dims,
+                                          dst_dims,
+                                          src_perm_ptr,
+                                          dst_perm_ptr,
+                                          src_span_off,
+                                          dst_span_off,
+                                          stream_ptr );
+        }
         break;
 
       default:
@@ -1147,17 +1589,33 @@ SEXP cuR_transfer( SEXP src_ptr_r,
 
       // 3-3 -------------------------------------------------------------------
     case 3:
-      cuR_transfer_device_device_cu( (void*) R_ExternalPtrAddr( src_ptr_r ),
-                                     (void*) R_ExternalPtrAddr( dst_ptr_r ),
-                                     type,
-                                     dims,
-                                     src_dims,
-                                     dst_dims,
-                                     src_perm_ptr,
-                                     dst_perm_ptr,
-                                     src_span_off,
-                                     dst_span_off,
-                                     stream_ptr );
+      if( queue_ptr ){
+        queue_ptr -> dispatch( [=]{
+          cuR_transfer_device_device_cu( (void*) R_ExternalPtrAddr( src_ptr_r ),
+                                         (void*) R_ExternalPtrAddr( dst_ptr_r ),
+                                         type,
+                                         dims,
+                                         src_dims,
+                                         dst_dims,
+                                         src_perm_ptr,
+                                         dst_perm_ptr,
+                                         src_span_off,
+                                         dst_span_off,
+                                         stream_ptr );
+        });
+      }else{
+        cuR_transfer_device_device_cu( (void*) R_ExternalPtrAddr( src_ptr_r ),
+                                       (void*) R_ExternalPtrAddr( dst_ptr_r ),
+                                       type,
+                                       dims,
+                                       src_dims,
+                                       dst_dims,
+                                       src_perm_ptr,
+                                       dst_perm_ptr,
+                                       src_span_off,
+                                       dst_span_off,
+                                       stream_ptr );
+      }
       break;
 
     default:

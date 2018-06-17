@@ -15,11 +15,11 @@ library( microbenchmark )
 # operations that were issued to a device.
 
 # Let's create a stream:
-stream <- cuda.stream$new()
+stream <- stream$new()
 
 # A synchronous and an asynchronous transfer:
-src <- tensor$new( rnorm( 10^6 ), 2L )
-dst <- tensor$new( src, 3L, copy = FALSE )
+src <- tensor$new( rnorm( 10^6 ), 0L )
+dst <- tensor$new( src, 0L, copy = FALSE )
 
 pip.sync  <- pipe$new( src, dst )
 pip.async <- pipe$new( src, dst, stream = stream )

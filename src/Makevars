@@ -1,0 +1,46 @@
+### Makevars is a Makefile, most of the problems you encounter are general, and
+### not specific to R. Search for Makefile problems first!
+### Manual: https://www.gnu.org/software/make/manual/html_node/index.html#SEC_Contents
+### Print any variable with: $(warning $(any_variable))
+### The file is made to mimic the Makeconf calls found in $(R_HOME)/etc/x64/
+
+### Define variables
+## R related
+R_INC     = /usr/share/R/include
+
+## CUDA related
+CUDA_HOME = /usr/local/cuda
+NVCC      = $(CUDA_HOME)/bin/nvcc
+CUDA_INC  = $(CUDA_HOME)/include
+
+## NVCC arguments
+# -x cu: even though the files have .c extensions, should understand them as .cu
+# -arch=sm_30 -gencode=arch=compute_30,code=sm_30: what type of machine code to
+# generate, dependent on your graphics card, refer to:
+# http://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/
+NVCC_ARGS = -arch=sm_61 -gencode=arch=compute_61,code=sm_61
+
+### Define objects
+h_srcs    = $(wildcard *.h)
+
+cpp_srcs  = $(wildcard *.cpp)
+cpp_objs  = $(patsubst %.cpp, %.o, $(cpp_srcs))
+
+cu_srcs   = $(wildcard *.cu)
+cu_objs   = $(patsubst %.cu, %.o, $(cu_srcs))
+
+all_objs  = $(cpp_objs) $(cu_objs)
+
+### Linker options
+PKG_LIBS = $(cu_objs) -L$(CUDA_HOME)/lib64 -lcuda -lcudart -lcublas
+
+### Recipes
+all: cuRious.so
+
+cuRious.so: $(all_objs)
+
+%.o: %.cpp $(h_srcs)
+	$(CXX) -O3 -fopenmp -fPIC -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
+
+%.o: %.cu $(h_srcs)
+	$(NVCC) -O3 -Xcompiler -fPIC $(NVCC_ARGS) $< -o $@ -c

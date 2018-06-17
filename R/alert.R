@@ -172,7 +172,7 @@
 )
 
 # alert.send ====
-# Alert recievers senders are also containers
+# Alert senders are also containers
 .alert.send <- R6Class(
   inherit = .container,
   "cuR.alert.send",

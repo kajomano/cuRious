@@ -19,7 +19,6 @@ transfer <- function( src,
 
 # Low level transfer calls that handles ptrs, for speed considerations
 # no argument checks are done, don't use interactively!
-
 .transfer.ptr.choose = function( src.level,
                                  dst.level,
                                  src.device = NULL,
@@ -41,72 +40,76 @@ transfer <- function( src,
   }
 }
 
-.transfer.ptr.uni = function( src.ptr,
-                              dst.ptr,
+.transfer.ptr.uni = function( src.tensor,
+                              dst.tensor,
                               src.level,
                               dst.level,
                               type,
                               dims,
-                              src.dims     = NULL,
-                              dst.dims     = NULL,
-                              src.perm.ptr = NULL,
-                              dst.perm.ptr = NULL,
-                              src.span.off = NULL,
-                              dst.span.off = NULL,
-                              stream.ptr   = NULL ){
+                              src.dims        = NULL,
+                              dst.dims        = NULL,
+                              src.perm.tensor = NULL,
+                              dst.perm.tensor = NULL,
+                              src.span.off    = NULL,
+                              dst.span.off    = NULL,
+                              stream.queue    = NULL,
+                              stream.stream   = NULL ){
 
   .Call( "cuR_transfer",
-         src.ptr,
-         dst.ptr,
+         src.tensor,
+         dst.tensor,
          src.level,
          dst.level,
          type,
          dims,
          src.dims,
          dst.dims,
-         src.perm.ptr,
-         dst.perm.ptr,
+         src.perm.tensor,
+         dst.perm.tensor,
          src.span.off,
          dst.span.off,
-         stream.ptr )
+         stream.queue,
+         stream.stream )
 }
 
 # Multi-transfer calls: 0L-2L-3L, 3L-2L-0L or 3L-2L-3L on different devices
-.transfer.ptr.multi = function( src.ptr,
-                                dst.ptr,
+.transfer.ptr.multi = function( src.tensor,
+                                dst.tensor,
                                 src.level,
                                 dst.level,
                                 type,
                                 dims,
-                                src.dims     = NULL,
-                                dst.dims     = NULL,
-                                src.perm.ptr = NULL,
-                                dst.perm.ptr = NULL,
-                                src.span.off = NULL,
-                                dst.span.off = NULL,
-                                stream.ptr   = NULL ){
+                                src.dims        = NULL,
+                                dst.dims        = NULL,
+                                src.perm.tensor = NULL,
+                                dst.perm.tensor = NULL,
+                                src.span.off    = NULL,
+                                dst.span.off    = NULL,
+                                stream.queue    = NULL,
+                                stream.stream   = NULL ){
 
   # Multi-transfer call 0L-2L-3L or 3L-2L-0L
-  tmp.ptr <- .Call( "cuR_tensor_create", 2L, dims, type )
+  tmp.tensor <- .Call( "cuR_tensor_create", 2L, dims, type )
 
   .Call( "cuR_transfer",
-         src.ptr,
-         tmp.ptr,
+         src.tensor,
+         tmp.tensor,
          src.level,
          2L,
          type,
          dims,
          src.dims,
          dims,
-         src.perm.ptr,
+         src.perm.tensor,
          NULL,
          src.span.off,
+         NULL,
          NULL,
          NULL )
 
   .Call( "cuR_transfer",
-         tmp.ptr,
-         dst.ptr,
+         tmp.tensor,
+         dst.tensor,
          2L,
          dst.level,
          type,
@@ -114,10 +117,11 @@ transfer <- function( src,
          dims,
          dst.dims,
          NULL,
-         dst.perm.ptr,
+         dst.perm.tensor,
          NULL,
          dst.span.off,
+         NULL,
          NULL )
 
-  .Call( "cuR_tensor_destroy", tmp.ptr, 2L, type )
+  .Call( "cuR_tensor_destroy", tmp.tensor, 2L, type )
 }

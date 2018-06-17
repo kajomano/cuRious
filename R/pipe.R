@@ -49,11 +49,7 @@ pipe <- R6Class(
       private$.add.ep( src.perm, "src.perm" )
       private$.add.ep( dst.perm, "dst.perm" )
 
-      if( !is.null( stream ) ){
-        check.stream( stream )
-      }
-
-      private$.add.ep( stream, "stream" )
+      super$initialize( stream )
     }
   ),
 
@@ -127,7 +123,7 @@ pipe <- R6Class(
       if( !is.null( private$.eps$stream ) ){
         stream <- private$.eps$stream
 
-        if( stream$is.deployed ){
+        if( !stream$is.destroyed ){
           if( transfer.deep ){
             if( stream$device != src.device ){
               stop( "Stream is not on the correct device" )
@@ -139,7 +135,7 @@ pipe <- R6Class(
       # This only works because you dont have to set the device correctly
       # if no kernels are run, and kernels are only run on L3-L3 same device
       # transfers
-      private$.device           <- src.device
+      private$.device <- src.device
       private$.params$src.level <- src.level
       private$.params$dst.level <- dst.level
 

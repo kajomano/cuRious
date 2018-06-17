@@ -1,23 +1,34 @@
 library( cuRious )
 library( microbenchmark )
 
-stream  <- stream$new( )
-context <- fusion.context$new( )
+stream1  <- stream$new()
+stream1$destroy()
 
-stream$destroy()
-stream$device <- 1
+tensor1 <- tensor$new( 1.0 )
+tensor2 <- tensor$new()
 
-context$destroy()
-context$stream <- stream
+transfer( tensor1, tensor2, stream = stream1 )
 
-context$device <- 1
+tensor1$pull()
+tensor2$pull()
 
-context$stream <- stream
 
-context$device <- 0
-
-context$deploy()
-
-context$stream <- NULL
-
-context$deploy()
+# context <- fusion.context$new( )
+#
+# stream$destroy()
+# stream$device <- 1
+#
+# context$destroy()
+# context$stream <- stream
+#
+# context$device <- 1
+#
+# context$stream <- stream
+#
+# context$device <- 0
+#
+# context$deploy()
+#
+# context$stream <- NULL
+#
+# context$deploy()

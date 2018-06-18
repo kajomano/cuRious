@@ -3,6 +3,8 @@
 #include "common_debug.h"
 #include "streams.h"
 
+#include <cstdio>
+
 #ifndef CUDA_EXCLUDE
 
 // Device selection and query ==================================================
@@ -34,18 +36,8 @@ SEXP cuR_device_set( SEXP dev_r ){
   return R_NilValue;
 }
 
-// extern "C"
-// SEXP cuR_device_sync(){
-//   cudaTry( cudaDeviceSynchronize() );
-//
-//   return R_NilValue;
-// }
-
 // Stream dispatch queues ======================================================
 // https://embeddedartistry.com/blog/2017/2/1/c11-implementing-a-dispatch-queue-using-stdfunction
-
-// TODO ====
-// Write a join/sync function
 
 sd_queue::sd_queue(){
   thread_ = std::thread( std::bind( &sd_queue::dispatch_thread_handler, this ) );
@@ -60,6 +52,24 @@ sd_queue::~sd_queue(){
   if( thread_.joinable() ){
     thread_.join();
   }
+}
+
+void sd_queue::sync(){
+  std::unique_lock<std::mutex> sync_lock( sync_lock_ );
+
+  dispatch( [this]{
+    std::unique_lock<std::mutex> sync_lock( sync_lock_ );
+    sync_ = true;
+    sync_lock.unlock();
+    sync_cv_.notify_one();
+  } );
+
+  sync_cv_.wait( sync_lock, [this]{
+    return sync_;
+  } );
+
+  sync_ = false;
+  sync_lock.unlock();
 }
 
 void sd_queue::dispatch( const fp_t& op ){
@@ -135,6 +145,14 @@ SEXP cuR_stream_queue_create(){
 extern "C"
 SEXP cuR_stream_queue_destroy( SEXP queue_r ){
   cuR_stream_queue_fin( queue_r );
+
+  return R_NilValue;
+}
+
+extern "C"
+SEXP cuR_stream_queue_sync( SEXP queue_r ){
+  sd_queue* queue = (sd_queue*)R_ExternalPtrAddr( queue_r );
+  queue -> sync();
 
   return R_NilValue;
 }

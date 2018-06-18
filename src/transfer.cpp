@@ -13,7 +13,8 @@ void cuR_transfer_host_host( s* src_ptr,
                              int* src_perm_ptr,
                              int* dst_perm_ptr,
                              int src_span_off,
-                             int dst_span_off ){
+                             int dst_span_off,
+                             cudaStream_t* stream_ptr ){
 
   int src_dims_1;
   if( src_dims ){
@@ -33,7 +34,7 @@ void cuR_transfer_host_host( s* src_ptr,
   int dims_1 = dims[1];
 
   omp_set_dynamic(0);
-  omp_set_num_threads( omp_get_num_procs() );
+  omp_set_num_threads( omp_get_num_procs() / 2 );
 
 // #pragma omp parallel
 // {
@@ -135,6 +136,10 @@ void cuR_transfer_host_host( s* src_ptr,
         dst_ptr[dst_pos+j] = (d)src_ptr[src_pos+j];
       }
     }
+  }
+
+  if( stream_ptr ){
+    Rf_warning( "Active stream given to a synchronous call" );
   }
 }
 
@@ -508,19 +513,6 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 0:
       switch( type ){
       case 'n':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<double, double>( REAL( src_ptr_r ),
-                                                    REAL( dst_ptr_r ),
-                                                    dims,
-                                                    src_dims,
-                                                    dst_dims,
-                                                    src_perm_ptr,
-                                                    dst_perm_ptr,
-                                                    src_span_off,
-                                                    dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<double, double>( REAL( src_ptr_r ),
                                                   REAL( dst_ptr_r ),
                                                   dims,
@@ -529,24 +521,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                                   src_perm_ptr,
                                                   dst_perm_ptr,
                                                   src_span_off,
-                                                  dst_span_off );
-        }
+                                                  dst_span_off,
+                                                  stream_ptr );
         break;
 
       case 'i':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
-                                              INTEGER( dst_ptr_r ),
-                                              dims,
-                                              src_dims,
-                                              dst_dims,
-                                              src_perm_ptr,
-                                              dst_perm_ptr,
-                                              src_span_off,
-                                              dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
                                             INTEGER( dst_ptr_r ),
                                             dims,
@@ -555,24 +534,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
-                                            dst_span_off );
-        }
+                                            dst_span_off,
+                                            stream_ptr );
         break;
 
       case 'l':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<int, int>( LOGICAL( src_ptr_r ),
-                                              LOGICAL( dst_ptr_r ),
-                                              dims,
-                                              src_dims,
-                                              dst_dims,
-                                              src_perm_ptr,
-                                              dst_perm_ptr,
-                                              src_span_off,
-                                              dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<int, int>( LOGICAL( src_ptr_r ),
                                             LOGICAL( dst_ptr_r ),
                                             dims,
@@ -581,8 +547,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
-                                            dst_span_off );
-        }
+                                            dst_span_off,
+                                            stream_ptr );
         break;
 
       default:
@@ -594,19 +560,6 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 1:
       switch( type ){
       case 'n':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
-                                                   (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                                   dims,
-                                                   src_dims,
-                                                   dst_dims,
-                                                   src_perm_ptr,
-                                                   dst_perm_ptr,
-                                                   src_span_off,
-                                                   dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
                                                  (float*) R_ExternalPtrAddr( dst_ptr_r ),
                                                  dims,
@@ -615,24 +568,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                                  src_perm_ptr,
                                                  dst_perm_ptr,
                                                  src_span_off,
-                                                 dst_span_off );
-        }
+                                                 dst_span_off,
+                                                 stream_ptr );
         break;
 
       case 'i':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
-                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                              dims,
-                                              src_dims,
-                                              dst_dims,
-                                              src_perm_ptr,
-                                              dst_perm_ptr,
-                                              src_span_off,
-                                              dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
                                             (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                             dims,
@@ -641,24 +581,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
-                                            dst_span_off );
-        }
+                                            dst_span_off,
+                                            stream_ptr );
         break;
 
       case 'l':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
-                                               (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                               dims,
-                                               src_dims,
-                                               dst_dims,
-                                               src_perm_ptr,
-                                               dst_perm_ptr,
-                                               src_span_off,
-                                               dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
                                              (bool*) R_ExternalPtrAddr( dst_ptr_r ),
                                              dims,
@@ -667,8 +594,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                              src_perm_ptr,
                                              dst_perm_ptr,
                                              src_span_off,
-                                             dst_span_off );
-        }
+                                             dst_span_off,
+                                             stream_ptr );
         break;
 
       default:
@@ -682,19 +609,6 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 2:
       switch( type ){
       case 'n':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
-                                                   (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                                   dims,
-                                                   src_dims,
-                                                   dst_dims,
-                                                   src_perm_ptr,
-                                                   dst_perm_ptr,
-                                                   src_span_off,
-                                                   dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
                                                  (float*) R_ExternalPtrAddr( dst_ptr_r ),
                                                  dims,
@@ -703,24 +617,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                                  src_perm_ptr,
                                                  dst_perm_ptr,
                                                  src_span_off,
-                                                 dst_span_off );
-        }
+                                                 dst_span_off,
+                                                 stream_ptr );
         break;
 
       case 'i':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
-                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                              dims,
-                                              src_dims,
-                                              dst_dims,
-                                              src_perm_ptr,
-                                              dst_perm_ptr,
-                                              src_span_off,
-                                              dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
                                             (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                             dims,
@@ -729,24 +630,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
-                                            dst_span_off );
-        }
+                                            dst_span_off,
+                                            stream_ptr );
         break;
 
       case 'l':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
-                                               (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                               dims,
-                                               src_dims,
-                                               dst_dims,
-                                               src_perm_ptr,
-                                               dst_perm_ptr,
-                                               src_span_off,
-                                               dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
                                              (bool*) R_ExternalPtrAddr( dst_ptr_r ),
                                              dims,
@@ -755,8 +643,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                              src_perm_ptr,
                                              dst_perm_ptr,
                                              src_span_off,
-                                             dst_span_off );
-        }
+                                             dst_span_off,
+                                             stream_ptr );
         break;
 
       default:
@@ -777,19 +665,6 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 0:
       switch( type ){
       case 'n':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                                   REAL( dst_ptr_r ),
-                                                   dims,
-                                                   src_dims,
-                                                   dst_dims,
-                                                   src_perm_ptr,
-                                                   dst_perm_ptr,
-                                                   src_span_off,
-                                                   dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                                  REAL( dst_ptr_r ),
                                                  dims,
@@ -798,24 +673,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                                  src_perm_ptr,
                                                  dst_perm_ptr,
                                                  src_span_off,
-                                                 dst_span_off );
-        }
+                                                 dst_span_off,
+                                                 stream_ptr );
         break;
 
       case 'i':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                              INTEGER( dst_ptr_r ),
-                                              dims,
-                                              src_dims,
-                                              dst_dims,
-                                              src_perm_ptr,
-                                              dst_perm_ptr,
-                                              src_span_off,
-                                              dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                             INTEGER( dst_ptr_r ),
                                             dims,
@@ -824,24 +686,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
-                                            dst_span_off );
-        }
+                                            dst_span_off,
+                                            stream_ptr );
         break;
 
       case 'l':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                               LOGICAL( dst_ptr_r ),
-                                               dims,
-                                               src_dims,
-                                               dst_dims,
-                                               src_perm_ptr,
-                                               dst_perm_ptr,
-                                               src_span_off,
-                                               dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                              LOGICAL( dst_ptr_r ),
                                              dims,
@@ -850,8 +699,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                              src_perm_ptr,
                                              dst_perm_ptr,
                                              src_span_off,
-                                             dst_span_off );
-        }
+                                             dst_span_off,
+                                             stream_ptr );
         break;
 
       default:
@@ -863,19 +712,6 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 1:
       switch( type ){
       case 'n':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                                  (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                                  dims,
-                                                  src_dims,
-                                                  dst_dims,
-                                                  src_perm_ptr,
-                                                  dst_perm_ptr,
-                                                  src_span_off,
-                                                  dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                                 (float*) R_ExternalPtrAddr( dst_ptr_r ),
                                                 dims,
@@ -884,24 +720,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                                 src_perm_ptr,
                                                 dst_perm_ptr,
                                                 src_span_off,
-                                                dst_span_off );
-        }
+                                                dst_span_off,
+                                                stream_ptr );
         break;
 
       case 'i':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                              dims,
-                                              src_dims,
-                                              dst_dims,
-                                              src_perm_ptr,
-                                              dst_perm_ptr,
-                                              src_span_off,
-                                              dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                             (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                             dims,
@@ -910,24 +733,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
-                                            dst_span_off );
-        }
+                                            dst_span_off,
+                                            stream_ptr );
         break;
 
       case 'l':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                                (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                                dims,
-                                                src_dims,
-                                                dst_dims,
-                                                src_perm_ptr,
-                                                dst_perm_ptr,
-                                                src_span_off,
-                                                dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                               (bool*) R_ExternalPtrAddr( dst_ptr_r ),
                                               dims,
@@ -936,8 +746,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                               src_perm_ptr,
                                               dst_perm_ptr,
                                               src_span_off,
-                                              dst_span_off );
-        }
+                                              dst_span_off,
+                                              stream_ptr );
         break;
 
       default:
@@ -951,19 +761,6 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 2:
       switch( type ){
       case 'n':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                                  (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                                  dims,
-                                                  src_dims,
-                                                  dst_dims,
-                                                  src_perm_ptr,
-                                                  dst_perm_ptr,
-                                                  src_span_off,
-                                                  dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                                 (float*) R_ExternalPtrAddr( dst_ptr_r ),
                                                 dims,
@@ -972,24 +769,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                                 src_perm_ptr,
                                                 dst_perm_ptr,
                                                 src_span_off,
-                                                dst_span_off );
-        }
+                                                dst_span_off,
+                                                stream_ptr );
         break;
 
       case 'i':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                              dims,
-                                              src_dims,
-                                              dst_dims,
-                                              src_perm_ptr,
-                                              dst_perm_ptr,
-                                              src_span_off,
-                                              dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                             (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                             dims,
@@ -998,24 +782,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
-                                            dst_span_off );
-        }
+                                            dst_span_off,
+                                            stream_ptr );
         break;
 
       case 'l':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                                (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                                dims,
-                                                src_dims,
-                                                dst_dims,
-                                                src_perm_ptr,
-                                                dst_perm_ptr,
-                                                src_span_off,
-                                                dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                               (bool*) R_ExternalPtrAddr( dst_ptr_r ),
                                               dims,
@@ -1024,8 +795,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                               src_perm_ptr,
                                               dst_perm_ptr,
                                               src_span_off,
-                                              dst_span_off );
-        }
+                                              dst_span_off,
+                                              stream_ptr );
         break;
 
       default:
@@ -1095,19 +866,6 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 0:
       switch( type ){
       case 'n':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                                   REAL( dst_ptr_r ),
-                                                   dims,
-                                                   src_dims,
-                                                   dst_dims,
-                                                   src_perm_ptr,
-                                                   dst_perm_ptr,
-                                                   src_span_off,
-                                                   dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                                  REAL( dst_ptr_r ),
                                                  dims,
@@ -1116,24 +874,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                                  src_perm_ptr,
                                                  dst_perm_ptr,
                                                  src_span_off,
-                                                 dst_span_off );
-        }
+                                                 dst_span_off,
+                                                 stream_ptr );
         break;
 
       case 'i':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                              INTEGER( dst_ptr_r ),
-                                              dims,
-                                              src_dims,
-                                              dst_dims,
-                                              src_perm_ptr,
-                                              dst_perm_ptr,
-                                              src_span_off,
-                                              dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                             INTEGER( dst_ptr_r ),
                                             dims,
@@ -1142,24 +887,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
-                                            dst_span_off );
-        }
+                                            dst_span_off,
+                                            stream_ptr );
         break;
 
       case 'l':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                               LOGICAL( dst_ptr_r ),
-                                               dims,
-                                               src_dims,
-                                               dst_dims,
-                                               src_perm_ptr,
-                                               dst_perm_ptr,
-                                               src_span_off,
-                                               dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                              LOGICAL( dst_ptr_r ),
                                              dims,
@@ -1168,8 +900,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                              src_perm_ptr,
                                              dst_perm_ptr,
                                              src_span_off,
-                                             dst_span_off );
-        }
+                                             dst_span_off,
+                                             stream_ptr );
         break;
 
       default:
@@ -1181,19 +913,6 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 1:
       switch( type ){
       case 'n':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                                  (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                                  dims,
-                                                  src_dims,
-                                                  dst_dims,
-                                                  src_perm_ptr,
-                                                  dst_perm_ptr,
-                                                  src_span_off,
-                                                  dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                                 (float*) R_ExternalPtrAddr( dst_ptr_r ),
                                                 dims,
@@ -1202,24 +921,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                                 src_perm_ptr,
                                                 dst_perm_ptr,
                                                 src_span_off,
-                                                dst_span_off );
-        }
+                                                dst_span_off,
+                                                stream_ptr );
         break;
 
       case 'i':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                              dims,
-                                              src_dims,
-                                              dst_dims,
-                                              src_perm_ptr,
-                                              dst_perm_ptr,
-                                              src_span_off,
-                                              dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                             (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                             dims,
@@ -1228,24 +934,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
-                                            dst_span_off );
-        }
+                                            dst_span_off,
+                                            stream_ptr );
         break;
 
       case 'l':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                                (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                                dims,
-                                                src_dims,
-                                                dst_dims,
-                                                src_perm_ptr,
-                                                dst_perm_ptr,
-                                                src_span_off,
-                                                dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                               (bool*) R_ExternalPtrAddr( dst_ptr_r ),
                                               dims,
@@ -1254,8 +947,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                               src_perm_ptr,
                                               dst_perm_ptr,
                                               src_span_off,
-                                              dst_span_off );
-        }
+                                              dst_span_off,
+                                              stream_ptr );
         break;
 
       default:
@@ -1267,19 +960,6 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 2:
       switch( type ){
       case 'n':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                                  (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                                  dims,
-                                                  src_dims,
-                                                  dst_dims,
-                                                  src_perm_ptr,
-                                                  dst_perm_ptr,
-                                                  src_span_off,
-                                                  dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
                                                 (float*) R_ExternalPtrAddr( dst_ptr_r ),
                                                 dims,
@@ -1288,24 +968,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                                 src_perm_ptr,
                                                 dst_perm_ptr,
                                                 src_span_off,
-                                                dst_span_off );
-        }
+                                                dst_span_off,
+                                                stream_ptr );
         break;
 
       case 'i':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                              dims,
-                                              src_dims,
-                                              dst_dims,
-                                              src_perm_ptr,
-                                              dst_perm_ptr,
-                                              src_span_off,
-                                              dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
                                             (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                             dims,
@@ -1314,24 +981,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                             src_perm_ptr,
                                             dst_perm_ptr,
                                             src_span_off,
-                                            dst_span_off );
-        }
+                                            dst_span_off,
+                                            stream_ptr );
         break;
 
       case 'l':
-        if( queue_ptr ){
-          queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                                (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                                dims,
-                                                src_dims,
-                                                dst_dims,
-                                                src_perm_ptr,
-                                                dst_perm_ptr,
-                                                src_span_off,
-                                                dst_span_off );
-          });
-        }else{
           cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
                                               (bool*) R_ExternalPtrAddr( dst_ptr_r ),
                                               dims,
@@ -1340,8 +994,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                               src_perm_ptr,
                                               dst_perm_ptr,
                                               src_span_off,
-                                              dst_span_off );
-        }
+                                              dst_span_off,
+                                              stream_ptr );
         break;
 
       default:

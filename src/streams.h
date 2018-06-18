@@ -17,6 +17,8 @@ public:
   // Dispatch and move
   void dispatch( fp_t&& op );
 
+  void sync();
+
   // Deleted operations
   sd_queue( const sd_queue& rhs ) = delete;
   sd_queue& operator=( const sd_queue& rhs ) = delete;
@@ -26,10 +28,16 @@ public:
 private:
   // std::string name_;
   std::mutex lock_;
+  std::mutex sync_lock_;
+
   std::thread thread_;
   std::queue<fp_t> q_;
+
   std::condition_variable cv_;
+  std::condition_variable sync_cv_;
+
   bool quit_ = false;
+  bool sync_ = false;
 
   void dispatch_thread_handler(void);
 };

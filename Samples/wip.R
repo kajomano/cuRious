@@ -1,17 +1,24 @@
 library( cuRious )
 library( microbenchmark )
 
-stream1  <- stream$new()
-stream1$destroy()
+stream <- stream$new()
+stream$sync()
 
-tensor1 <- tensor$new( 1.0 )
-tensor2 <- tensor$new()
+src <- tensor$new( rnorm( 10^6 ), 2L )
+dst <- tensor$new( src, 3L, copy = FALSE )
 
-transfer( tensor1, tensor2, stream = stream1 )
+# pip.sync  <- pipe$new( src, dst )
+pip.async <- pipe$new( src, dst, stream = stream )
 
-tensor1$pull()
-tensor2$pull()
+# print( microbenchmark( pip.sync$run(),  times = 100 ) )
+# print( microbenchmark( pip.async$run(), times = 100 ) )
 
+for( i in 1:10 ){
+  pip.async$run()
+}
+stream$sync()
+
+clean()
 
 # context <- fusion.context$new( )
 #

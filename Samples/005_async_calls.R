@@ -18,8 +18,8 @@ library( microbenchmark )
 stream <- stream$new()
 
 # A synchronous and an asynchronous transfer:
-src <- tensor$new( rnorm( 10^6 ), 0L )
-dst <- tensor$new( src, 0L, copy = FALSE )
+src <- tensor$new( rnorm( 10^6 ), 2L )
+dst <- tensor$new( src, 3L, copy = FALSE )
 
 pip.sync  <- pipe$new( src, dst )
 pip.async <- pipe$new( src, dst, stream = stream )
@@ -35,12 +35,10 @@ print( microbenchmark( pip.async$run(), times = 100 ) )
 
 # An example of syncing:
 pip.synced.run <- function(){
-  for( i in 1:100 ){
-    pip.async$run()
-  }
+  pip.async$run()
   stream$sync()
 }
 
-print( microbenchmark( pip.synced.run(), times = 10 ) )
+print( microbenchmark( pip.synced.run(), times = 100 ) )
 
 clean()

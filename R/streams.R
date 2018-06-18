@@ -64,8 +64,8 @@ stream <- R6Class(
     destroy = function(){
       if( !is.null( private$.ptrs ) ){
         private$.destroy( expression( {
-          .Call( "cuR_cuda_stream_destroy", private$.ptrs$stream )
           .Call( "cuR_stream_queue_destroy", private$.ptrs$queue )
+          .Call( "cuR_cuda_stream_destroy", private$.ptrs$stream )
         } ) )
       }
 
@@ -73,15 +73,14 @@ stream <- R6Class(
     },
 
     sync = function(){
-      stop( "Implement stream queue join" )
-#
-#       if( !is.null( private$.ptrs ) ){
-#         .Call( "cuR_cuda_stream_sync", private$.ptrs$stream )
-#
-#         invisible( TRUE )
-#       }else{
-#         stop( "Stream is destroyed" )
-#       }
+      if( is.null( private$.ptrs ) ){
+        stop( "Stream is destroyed" )
+      }
+
+      .Call( "cuR_stream_queue_sync", private$.ptrs$queue )
+      .Call( "cuR_cuda_stream_sync", private$.ptrs$stream )
+
+      invisible( TRUE )
     }
   )
 )

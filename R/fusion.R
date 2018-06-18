@@ -82,10 +82,6 @@ fusion <- R6Class(
         ptrs.names <- paste0( ep.name, ".", names( private$.eps[[ ep.name ]]$ptrs ) )
         private$.params[ ptrs.names ] <- private$.eps[[ ep.name ]]$ptrs
       } )
-
-      # ptrs <-  as.list( unlist( lapply( private$.eps[ names ], `[[`, "ptrs" ) ) )
-      # private$.params[ names( ptrs ) ] <- ptrs
-
     }
   ),
 
@@ -163,18 +159,6 @@ fusion.context <- R6Class(
   private = list(
     .stream = NULL,
 
-    .deploy = function(){
-      # super$.deploy( expression( list( test = 1 ) ) )
-      stop( "Deploying is not implemented" )
-      # Should call super$.deploy()
-    },
-
-    .destroy = function(){
-      # super$.destroy( expression( NULL ) )
-      stop( "Destroying is not implemented" )
-      # Should call super$.destroy()
-    },
-
     .attach.stream = function( stream ){
       if( !is.null( private$.stream ) ){
         private$.unsubscribe( private$.stream, "stream" )
@@ -214,11 +198,70 @@ contexted.fusion <- R6Class(
   inherit = fusion,
   public = list(
     initialize = function( context ){
-      if( class( self )[[1]] != sub( "\\.context$", "", class( context )[[1]] ) ){
-        stop( "Context does not match this fusion" )
+      if( !is.null( context ) ){
+        if( sub( "\\.[[:alpha:]]*$", "", class( self )[[1]] ) !=
+            sub( "\\.[[:alpha:]]*$", "", class( context )[[1]] ) ){
+          stop( "Context does not match this fusion" )
+        }
       }
 
+      private$.add.ep( context, "context" )
       private$.add.ep( context$stream, "stream" )
+    }
+  ),
+
+  private = list(
+    .update.context = function( ... ){
+      tensors <- sapply( private$.eps, is.tensor )
+      tensors <- private$.eps[ tensors ]
+
+      if( !all( sapply( tensors, `[[`, "level" ) == 0L ) &&
+          !all( sapply( tensors, `[[`, "level" ) == 3L ) ){
+        stop( "Not all tensors are on L0 or L3" )
+      }
+
+      under  <- ( tensors[[1]]$level == 3L )
+      device <- tensors[[1]]$device
+
+      if( under ){
+        if( !all( sapply( tensors, `[[`, "device" ) == device ) ){
+          stop( "Not all tensors are on the same device" )
+        }
+      }
+
+      if( under ){
+        context <- private$.eps$context
+
+        if( is.null( context ) ){
+          stop( "Subroutine requires an active context" )
+        }else{
+          if( context$is.destroyed ){
+            stop( "Subroutine requires an active context" )
+          }
+
+          if( context$device != device ){
+            stop( "Context is not on the correct context" )
+          }
+        }
+      }
+
+      stream <- private$.eps$stream
+
+      if( !is.null( stream ) ){
+        if( !stream$is.destroyed ){
+          if( !under ){
+            stop( "An active stream is given to a synchronous subroutine" )
+          }
+        }
+      }
+
+      private$.device <- device
+
+      if( under ){
+        private$.fun <- private$.L3.call
+      }else{
+        private$.fun <- private$.L0.call
+      }
     }
   )
 )

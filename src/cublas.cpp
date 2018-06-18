@@ -1,6 +1,7 @@
 #include "common_R.h"
 #include "common_cuda.h"
 #include "common_debug.h"
+#include "streams.h"
 
 #ifndef CUDA_EXCLUDE
 
@@ -45,6 +46,9 @@ SEXP cuR_cublas_handle_create(){
   return handle_r;
 }
 
+// TODO ====
+// cublasSetStream could be called when deploying the handle
+
 // This returns a cublasStatus
 cublasStatus_t cuR_cublas_recover_stream( cudaStream_t* stream, cublasHandle_t* handle ){
   // If a stream is given, set it before the calculation
@@ -71,10 +75,15 @@ SEXP cuR_cublas_sgemv( SEXP A_ptr_r,
                        SEXP alpha_r,
                        SEXP beta_r,
                        SEXP handle_ptr_r,
-                       SEXP stream_ptr_r ){
+                       SEXP queue_ptr_r,     // Optional
+                       SEXP stream_ptr_r ){  // Optional
 
-  // Recover handle
+  // Recover handle, queue and stream
   cublasHandle_t* handle_ptr = (cublasHandle_t*)R_ExternalPtrAddr( handle_ptr_r );
+
+  sd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
+    (sd_queue*) R_ExternalPtrAddr( queue_ptr_r );
+
   cudaStream_t* stream_ptr   = ( R_NilValue == stream_ptr_r ) ? NULL :
     (cudaStream_t*)R_ExternalPtrAddr( stream_ptr_r );
 
@@ -115,13 +124,13 @@ SEXP cuR_cublas_sgemv( SEXP A_ptr_r,
   // Handle stream
   cublasTry( cuR_cublas_recover_stream( stream_ptr, handle_ptr ) );
 
-  // Do the op
-  cublasTry( cublasSgemv( *handle_ptr, op_A, m, n, &alpha, A_ptr, A_dims[0], x_ptr, 1, &beta, y_ptr, 1 ) );
-
-  if( stream_ptr ){
-    // Flush for WDDM
-    cudaStreamQuery(0);
+  if( queue_ptr ){
+    queue_ptr -> dispatch( [=]{
+      cublasSgemv( *handle_ptr, op_A, m, n, &alpha, A_ptr, A_dims[0], x_ptr, 1, &beta, y_ptr, 1 );
+      cudaStreamQuery(0);
+    });
   }else{
+    cublasTry( cublasSgemv( *handle_ptr, op_A, m, n, &alpha, A_ptr, A_dims[0], x_ptr, 1, &beta, y_ptr, 1 ) );
     cudaTry( cudaDeviceSynchronize() );
   }
 

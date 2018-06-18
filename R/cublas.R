@@ -6,99 +6,29 @@
 # cublas calls (through the whole session) is advisable.
 
 # cuBLAS handle class ====
-cublas.handle <- R6Class(
-  "cuR.cublas.handle",
-  inherit = context,
+cublas.context <- R6Class(
+  "cuR.cublas.context",
+  inherit = fusion.context,
   private = list(
-    .activate = function(){
-      .Call( "cuR_cublas_handle_create" )
+    .deploy = function(){
+      super$.deploy(
+        expression(
+          list( handle = .Call( "cuR_cublas_handle_create" ) )
+        )
+      )
     },
 
-    .deactivate = function(){
-      .Call( "cuR_cublas_handle_destroy", private$.ptr )
+    .destroy = function(){
+      super$.destroy(
+        expression(
+          .Call( "cuR_cublas_handle_destroy", private$.ptrs$handle )
+        )
+      )
     }
   )
 )
 
 # cuBLAS linear algebra operations ====
-# Parent fusion ====
-.cublas.fusion <- R6Class(
-  "cuR.cublas.fusion",
-  inherit = fusion,
-  public = list(
-    initialize = function( handle, stream ){
-      if( !is.null( handle ) ){
-        check.cublas.handle( handle )
-      }
-      private$.add.ep( handle, "handle" )
-
-      if( !is.null( stream ) ){
-        check.cuda.stream( stream )
-      }
-      private$.add.ep( stream, "stream" )
-    }
-  ),
-
-  private = list(
-    .update.context = function( ... ){
-      tensors <- sapply( private$.eps, is.tensor )
-      tensors <- private$.eps[ tensors ]
-
-      if( !all( sapply( tensors, `[[`, "level" ) == 0L ) &&
-          !all( sapply( tensors, `[[`, "level" ) == 3L ) ){
-        stop( "Not all tensors are on L0 or L3" )
-      }
-
-      under  <- ( tensors[[1]]$level == 3L )
-      device <- tensors[[1]]$device
-
-      if( under ){
-        if( !all( sapply( tensors, `[[`, "device" ) == device ) ){
-          stop( "Not all tensors are on the same device" )
-        }
-      }
-
-      if( under ){
-        handle <- private$.eps$handle
-
-        if( is.null( handle ) ){
-          stop( "Subroutine requires an active cublas handle" )
-        }else{
-          if( !handle$is.active ){
-            stop( "Subroutine requires an active cublas handle" )
-          }
-
-          if( handle$device != device ){
-            stop( "Cublas handle is not on the correct device" )
-          }
-        }
-      }
-
-      stream <- private$.eps$stream
-
-      if( !is.null( stream ) ){
-        if( stream$is.active ){
-          if( !under ){
-            stop( "An active stream is given to a synchronous cublas call" )
-          }else{
-            if( stream$device != device ){
-              stop( "Stream is not on the correct device" )
-            }
-          }
-        }
-      }
-
-      private$.device <- device
-
-      if( under ){
-        private$.fun <- private$.L3.call
-      }else{
-        private$.fun <- private$.L0.call
-      }
-    }
-  )
-)
-
 # TODO ====
 # Add sswap from cuBLAS!
 
@@ -119,19 +49,18 @@ cublas.handle <- R6Class(
 # tp = transpose
 cublas.sgemv <- R6Class(
   "cuR.cublas.sgemv",
-  inherit = .cublas.fusion,
+  inherit = contexted.fusion,
   public = list(
     initialize = function( A,
                            x,
                            y,
-                           A.span = NULL,
-                           x.span = NULL,
-                           y.span = NULL,
-                           A.tp   = FALSE,
-                           alpha  = 1,
-                           beta   = 1,
-                           handle = NULL,
-                           stream = NULL  ){
+                           A.span  = NULL,
+                           x.span  = NULL,
+                           y.span  = NULL,
+                           A.tp    = FALSE,
+                           alpha   = 1,
+                           beta    = 1,
+                           context = NULL ){
       # Sanity checks
       check.tensor( A )
       check.tensor( x )
@@ -182,14 +111,14 @@ cublas.sgemv <- R6Class(
       private$.params$alpha <- as.numeric( alpha )
       private$.params$beta  <- as.numeric( beta )
 
-      super$initialize( handle, stream )
+      super$initialize( context )
     }
   ),
 
   private = list(
-    .L3.call = function( A.ptr,
-                         x.ptr,
-                         y.ptr,
+    .L3.call = function( A.tensor,
+                         x.tensor,
+                         y.tensor,
                          A.dims,
                          A.span.off = NULL,
                          x.span.off = NULL,
@@ -197,13 +126,14 @@ cublas.sgemv <- R6Class(
                          A.tp,
                          alpha,
                          beta,
-                         handle.ptr,
-                         stream.ptr = NULL ){
+                         context.handle,
+                         stream.queue  = NULL,
+                         stream.stream = NULL ){
 
       .Call( "cuR_cublas_sgemv",
-             A.ptr,
-             x.ptr,
-             y.ptr,
+             A.tensor,
+             x.tensor,
+             y.tensor,
              A.dims,
              A.span.off,
              x.span.off,
@@ -211,15 +141,16 @@ cublas.sgemv <- R6Class(
              A.tp,
              alpha,
              beta,
-             handle.ptr,
-             stream.ptr )
+             context.handle,
+             stream.queue,
+             stream.stream )
 
       invisible( TRUE )
     },
 
-    .L0.call = function( A.ptr,
-                         x.ptr,
-                         y.ptr,
+    .L0.call = function( A.tensor,
+                         x.tensor,
+                         y.tensor,
                          A.dims,
                          A.span.off = NULL,
                          x.span.off = NULL,
@@ -227,30 +158,31 @@ cublas.sgemv <- R6Class(
                          A.tp,
                          alpha,
                          beta,
-                         handle.ptr = NULL,
-                         stream.ptr = NULL ){
+                         context.handle = NULL,
+                         stream.queue   = NULL,
+                         stream.stream  = NULL ){
 
       if( !is.null( A.span.off ) ){
-        A.ptr <- A.ptr[, A.span.off:( A.span.off + A.dims[[2]] - 1 ) ]
+        A.tensor <- A.tensor[, A.span.off:( A.span.off + A.dims[[2]] - 1 ) ]
       }
 
       if( A.tp ){
-        A.ptr  <- t( A.ptr )
+        A.tensor <- t( A.tensor )
         A.dims <- rev( A.dims )
       }
 
       if( !is.null( x.span.off ) ){
-        x.ptr <- x.ptr[ x.span.off:( x.span.off + A.dims[[2]] - 1 ) ]
+        x.tensor <- x.tensor[ x.span.off:( x.span.off + A.dims[[2]] - 1 ) ]
       }
 
       if( is.null( y.span.off ) ){
         y.range <- 1:A.dims[[1]]
       }else{
         y.range <- y.span.off:( y.span.off + A.dims[[1]] - 1 )
-        y.ptr <- y.ptr[ y.range ]
+        y.tensor <- y.tensor[ y.range ]
       }
 
-      res <- ( alpha * A.ptr ) %*% x.ptr + ( beta * y.ptr )
+      res <- ( alpha * A.tensor ) %*% x.tensor + ( beta * y.tensor )
       private$.eps.out$y$obj[ y.range ] <- res
 
       invisible( TRUE )

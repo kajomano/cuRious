@@ -1,4 +1,6 @@
-# Source this script to build the package
+# Source this script to build the package:
+# shift + ctrl + f10
+# shift + ctrl + s
 
 # Build options
 clean.build  <- FALSE

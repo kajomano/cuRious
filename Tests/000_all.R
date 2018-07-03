@@ -1,0 +1,55 @@
+library( cuRious )
+library( microbenchmark )
+
+test.files <- dir( "./Tests", "^[0-9]", full.names = TRUE )
+test.files <- test.files[ test.files != "./Tests/000_all.R" ]
+
+lapply( test.files, function( test.file ){
+  print( test.file )
+
+  # ----------------------------------------------------------------------------
+  mult <- 10
+  source( test.files[[1]], local = TRUE )
+  # source( test.file, local = TRUE )
+
+  # Test call overhead
+  bench.unit <- microbenchmark( unit$run() )
+  call.oh <- min( bench.unit$time )
+
+  if( call.oh > 50000 ){
+    stop( "Excessive call overhead" )
+  }
+
+  # Test L0 call
+  L0$run()
+
+  # Test L3 call - sync
+  L3$run()
+
+  # Test equality
+  if( !test() ){
+    stop( "Non-identical results across levels" )
+  }
+
+  # Test L3 call - async
+  # ----------------------------------------------------------------------------
+  mult <- 100
+  source( test.files[[1]], local = TRUE )
+
+  stream$deploy()
+  context$deploy()
+
+  bench.L3 <- microbenchmark( L3$run() )
+
+  if( min( bench.L3$time ) > 1.2 * call.oh ){
+    stop( "Suspected blocking on async calls" )
+  }
+
+  stream$sync()
+
+  print( "PASSED" )
+
+  # Cleanup
+  rm( list = ls() )
+  gc()
+})

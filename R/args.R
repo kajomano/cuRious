@@ -71,23 +71,14 @@ check.level <- function( level ){
   invisible( as.integer( level ) )
 }
 
-is.stream <- function( stream ){
-  "cuR.stream" %in% class( stream )
+is.cuda.stream <- function( stream ){
+  "cuR.cuda.stream" %in% class( stream )
 }
 
-check.stream <- function( stream ){
-  if( !is.stream( stream ) ) stop( "Invalid stream" )
+check.cuda.stream <- function( stream ){
+  if( !is.cuda.stream( stream ) ) stop( "Invalid stream" )
   invisible( stream )
 }
-
-# is.cublas.handle <- function( handle ){
-#   "cuR.cublas.handle" %in% class( handle )
-# }
-#
-# check.cublas.handle <- function( handle ){
-#   if( !is.cublas.handle( handle ) ) stop( "Invalid cuBLAS handle" )
-#   invisible( handle )
-# }
 
 is.device <- function( device ){
   if( !is.numeric( device ) || length( device ) != 1 ){

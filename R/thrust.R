@@ -6,112 +6,42 @@
 # a separate one needs to be created for use with each cuda stream and device.
 
 # Thrust allocator class ====
-thrust.allocator <- R6Class(
-  "cuR.thrust.allocator",
-  inherit = context,
+thrust.context <- R6Class(
+  "cuR.thrust.context",
+  inherit = fusion.context,
   private = list(
-    .activate = function(){
-      .Call( "cuR_thrust_allocator_create" )
+    .deploy = function(){
+      super$.deploy(
+        expression(
+          list( allocator = .Call( "cuR_thrust_allocator_create" ) )
+        )
+      )
     },
 
-    .deactivate = function(){
-      .Call( "cuR_thrust_allocator_destroy", private$.ptr )
+    .destroy = function(){
+      super$.destroy(
+        expression(
+          .Call( "cuR_thrust_allocator_destroy", private$.ptrs$allocator )
+        )
+      )
     }
   )
 )
 
 # Thrust operations ====
-# Parent fusion ====
-.thrust.fusion <- R6Class(
-  "cuR.thrust.fusion",
-  inherit = fusion,
-  public = list(
-    initialize = function( allocator, stream ){
-      if( !is.null( allocator ) ){
-        check.thrust.allocator( allocator )
-      }
-      private$.add.ep( allocator, "allocator" )
-
-      if( !is.null( stream ) ){
-        check.cuda.stream( stream )
-      }
-      private$.add.ep( stream, "stream" )
-    }
-  ),
-
-  private = list(
-    .update.context = function( ... ){
-      tensors <- sapply( private$.eps, is.tensor )
-      tensors <- private$.eps[ tensors ]
-
-      if( !all( sapply( tensors, `[[`, "level" ) == 0L ) &&
-          !all( sapply( tensors, `[[`, "level" ) == 3L ) ){
-        stop( "Not all tensors are on L0 or L3" )
-      }
-
-      under  <- ( tensors[[1]]$level == 3L )
-      device <- tensors[[1]]$device
-
-      if( under ){
-        if( !all( sapply( tensors, `[[`, "device" ) == device ) ){
-          stop( "Not all tensors are on the same device" )
-        }
-      }
-
-      if( under ){
-        allocator <- private$.eps$allocator
-
-        if( is.null( allocator ) ){
-          stop( "Subroutine requires an active thrust allocator" )
-        }else{
-          if( !allocator$is.active ){
-            stop( "Subroutine requires an active thrust allocator" )
-          }
-
-          if( allocator$device != device ){
-            stop( "Thrust allocator is not on the correct device" )
-          }
-        }
-      }
-
-      stream <- private$.eps$stream
-
-      if( !is.null( stream ) ){
-        if( stream$is.active ){
-          if( !under ){
-            stop( "An active stream is given to a synchronous thrust call" )
-          }else{
-            if( stream$device != device ){
-              stop( "Stream is not on the correct device" )
-            }
-          }
-        }
-      }
-
-      private$.device <- device
-
-      if( under ){
-        private$.fun <- private$.L3.call
-      }else{
-        private$.fun <- private$.L0.call
-      }
-    }
-  )
-)
 
 # pow ====
 # B <- A^pow
 thrust.pow <- R6Class(
   "cuR.thrust.pow",
-  inherit = .thrust.fusion,
+  inherit = contexted.fusion,
   public = list(
     initialize = function( A,
                            B,
-                           A.span    = NULL,
-                           B.span    = NULL,
-                           pow       = 2,
-                           allocator = NULL,
-                           stream    = NULL  ){
+                           A.span  = NULL,
+                           B.span  = NULL,
+                           pow     = 2,
+                           context = NULL ){
       # Sanity checks
       check.tensor( A )
       check.tensor( B )
@@ -146,29 +76,31 @@ thrust.pow <- R6Class(
 
       private$.params$pow <- as.numeric( pow )
 
-      super$initialize( allocator, stream )
+      super$initialize( context )
     }
   ),
 
   private = list(
-    .L3.call = function( A.ptr,
-                         B.ptr,
+    .L3.call = function( A.tensor,
+                         B.tensor,
                          A.dims,
                          A.span.off    = NULL,
                          B.span.off    = NULL,
                          pow,
-                         allocator.ptr = NULL,
-                         stream.ptr    = NULL ){
+                         context.allocator,
+                         stream.queue  = NULL,
+                         stream.stream = NULL ){
 
       .Call( "cuR_thrust_pow",
-             A.ptr,
-             B.ptr,
+             A.tensor,
+             B.tensor,
              A.dims,
              A.span.off,
              B.span.off,
              pow,
-             allocator.ptr,
-             stream.ptr )
+             context.allocator,
+             stream.queue,
+             stream.stream )
 
       invisible( TRUE )
     },

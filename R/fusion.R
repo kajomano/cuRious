@@ -102,7 +102,7 @@ fusion.context <- R6Class(
   public = list(
     initialize = function( stream = NULL, deployed = TRUE, device = NULL ){
       if( !is.null( stream ) ){
-        check.stream( stream )
+        check.cuda.stream( stream )
 
         if( !is.null( device ) ){
           if( stream$device != device ){
@@ -183,7 +183,7 @@ fusion.context <- R6Class(
         if( is.null( val ) ){
           private$.attach.stream( NULL )
         }else{
-          check.stream( val )
+          check.cuda.stream( val )
           private$.attach.stream( val )
         }
       }

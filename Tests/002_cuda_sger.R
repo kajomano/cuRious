@@ -3,7 +3,7 @@ library( microbenchmark )
 
 # A = a*x %*% tp(y) + A
 # Create matrix tensors and store them in GPU memory
-mult <- 100
+# mult <- 100
 
 cols <- 10 * mult
 rows <- 6 * mult
@@ -21,19 +21,18 @@ tens.A.0 <- tensor$new( mat.A, 0 )
 tens.x.0 <- tensor$new( vect.x, 0 )
 tens.y.0 <- tensor$new( vect.y, 0 )
 
-stream1 <- stream$new()
-context <- cublas.context$new( stream1 )
+unit.A.3 <- tensor$new( 1.0, 3 )
+unit.x.3 <- tensor$new( 1.0, 3 )
+unit.y.3 <- tensor$new( 1.0, 3 )
 
-L3.sger <- cublas.sger$new( tens.x.3, tens.y.3, tens.A.3, subs, subs, subs, context = context )
-L0.sger <- cublas.sger$new( tens.x.0, tens.y.0, tens.A.0, subs, subs, subs )
+# Mandatory variables
+stream  <- cuda.stream$new( FALSE )
+context <- cublas.context$new( stream )
 
-microbenchmark( L3.sger$run() )
-microbenchmark( L0.sger$run() )
+unit <- cublas.sger$new( unit.x.3, unit.y.3, unit.A.3, context = context )
+L3   <- cublas.sger$new( tens.x.3, tens.y.3, tens.A.3, subs, subs, subs, context = context )
+L0   <- cublas.sger$new( tens.x.0, tens.y.0, tens.A.0, subs, subs, subs )
 
-# L3.sger$run()
-# L0.sger$run()
-#
-# print( tens.A.3$pull() )
-# print( tens.A.0$pull() )
-
-clean()
+test <- function(){
+  identical( tens.A.3$pull(), tens.A.0$pull() )
+}

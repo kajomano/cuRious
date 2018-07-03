@@ -28,18 +28,9 @@ cuda.device.default.set <- function( device ){
   assign( "cuda.device.default", device, envir = .cuRious.env )
 }
 
-# Deprecated
-# cuda.device.sync <- function( device = cuda.device.default.get() ){
-#   device <- check.device( device )
-#   .cuda.device.set( device )
-#   .Call( "cuR_device_sync" )
-#
-#   invisible( TRUE )
-# }
-
 # CUDA and thread streams ====
-stream <- R6Class(
-  "cuR.stream",
+cuda.stream <- R6Class(
+  "cuR.cuda.stream",
   inherit = .alert.send,
   public = list(
     initialize = function( deployed = TRUE, device = cuda.device.default.get() ){

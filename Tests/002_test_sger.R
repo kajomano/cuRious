@@ -2,9 +2,8 @@ library( cuRious )
 library( microbenchmark )
 
 # A = a*x %*% tp(y) + A
-
 # Create matrix tensors and store them in GPU memory
-mult <- 1000
+mult <- 100
 
 cols <- 10 * mult
 rows <- 6 * mult

@@ -321,20 +321,19 @@ cublas.sger <- R6Class(
 # tp = transpose
 cublas.sgemm <- R6Class(
   "cuR.cublas.sgemm",
-  inherit = .cublas.fusion,
+  inherit = contexted.fusion,
   public = list(
     initialize = function( A,
                            B,
                            C,
-                           A.span = NULL,
-                           B.span = NULL,
-                           C.span = NULL,
-                           A.tp   = FALSE,
-                           B.tp   = FALSE,
-                           alpha  = 1,
-                           beta   = 1,
-                           handle = NULL,
-                           stream = NULL  ){
+                           A.span  = NULL,
+                           B.span  = NULL,
+                           C.span  = NULL,
+                           A.tp    = FALSE,
+                           B.tp    = FALSE,
+                           alpha   = 1,
+                           beta    = 1,
+                           context = NULL ){
       # Sanity checks
       check.tensor( A )
       check.tensor( B )
@@ -393,14 +392,14 @@ cublas.sgemm <- R6Class(
       private$.params$alpha <- as.numeric( alpha )
       private$.params$beta  <- as.numeric( beta )
 
-      super$initialize( handle, stream )
+      super$initialize( context )
     }
   ),
 
   private = list(
-    .L3.call = function( A.ptr,
-                         B.ptr,
-                         C.ptr,
+    .L3.call = function( A.tensor,
+                         B.tensor,
+                         C.tensor,
                          A.dims,
                          B.dims,
                          A.span.off = NULL,
@@ -410,13 +409,14 @@ cublas.sgemm <- R6Class(
                          B.tp,
                          alpha,
                          beta,
-                         handle.ptr,
-                         stream.ptr = NULL ){
+                         context.handle,
+                         stream.queue  = NULL,
+                         stream.stream = NULL ){
 
       .Call( "cuR_cublas_sgemm",
-             A.ptr,
-             B.ptr,
-             C.ptr,
+             A.tensor,
+             B.tensor,
+             C.tensor,
              A.dims,
              B.dims,
              A.span.off,
@@ -426,15 +426,16 @@ cublas.sgemm <- R6Class(
              B.tp,
              alpha,
              beta,
-             handle.ptr,
-             stream.ptr )
+             context.handle,
+             stream.queue,
+             stream.stream )
 
       invisible( TRUE )
     },
 
-    .L0.call = function( A.ptr,
-                         B.ptr,
-                         C.ptr,
+    .L0.call = function( A.tensor,
+                         B.tensor,
+                         C.tensor,
                          A.dims,
                          B.dims,
                          A.span.off = NULL,
@@ -444,35 +445,36 @@ cublas.sgemm <- R6Class(
                          B.tp,
                          alpha,
                          beta,
-                         handle.ptr = NULL,
-                         stream.ptr = NULL ){
+                         context.handle = NULL,
+                         stream.queue   = NULL,
+                         stream.stream  = NULL ){
 
       if( !is.null( A.span.off ) ){
-        A.ptr <- A.ptr[, A.span.off:( A.span.off + A.dims[[2]] - 1 ) ]
+        A.tensor <- A.tensor[, A.span.off:( A.span.off + A.dims[[2]] - 1 ) ]
       }
 
       if( A.tp ){
-        A.ptr  <- t( A.ptr )
+        A.tensor <- t( A.tensor )
       }
 
       if( !is.null( B.span.off ) ){
-        B.ptr <- B.ptr[, B.span.off:( B.span.off + B.dims[[2]] - 1 ) ]
+        B.tensor <- B.tensor[, B.span.off:( B.span.off + B.dims[[2]] - 1 ) ]
       }
 
       if( B.tp ){
-        B.ptr  <- t( B.ptr )
-        B.dims <- rev( B.dims )
+        B.tensor <- t( B.tensor )
+        B.dims   <- rev( B.dims )
       }
 
       if( is.null( C.span.off ) ){
         C.range <- 1:B.dims[[2]]
       }else{
-        C.range <- C.span.off:( C.span.off + B.dims[[2]] - 1 )
-        C.ptr   <- C.ptr[, C.range ]
+        C.range  <- C.span.off:( C.span.off + B.dims[[2]] - 1 )
+        C.tensor <- C.tensor[, C.range ]
       }
 
       # Operation
-      res <- ( alpha * A.ptr ) %*% B.ptr + ( beta * C.ptr )
+      res <- ( alpha * A.tensor ) %*% B.tensor + ( beta * C.tensor )
       private$.eps.out$C$obj[, C.range ] <- res
 
       invisible( TRUE )

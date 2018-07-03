@@ -27,10 +27,6 @@ context <- cublas.context$new( stream1 )
 L3.sgemv <- cublas.sgemv$new( tens.A.3, tens.x.3, tens.y.3, subs, subs, subs, TRUE, context = context )
 L0.sgemv <- cublas.sgemv$new( tens.A.0, tens.x.0, tens.y.0, subs, subs, subs, TRUE )
 
-# TODO ====
-# Check this, this kills the cublas execution
-stream1$destroy()
-
 microbenchmark( L3.sgemv$run() )
 microbenchmark( L0.sgemv$run() )
 

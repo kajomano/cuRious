@@ -150,7 +150,6 @@ fusion.context <- R6Class(
     },
 
     alert.context = function( name ){
-      print( "alerted" )
       self$destroy()
       super$alert.context( name )
     }

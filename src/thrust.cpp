@@ -1,29 +1,6 @@
 #include "common_R.h"
 #include "common_debug.h"
 #include "thrust.h"
-// #include "threads.h"
-
-// #include <thread>
-// #include <mutex>
-
-// Common mutex for spwned thrust threads
-// Number of still spawned and finished thrust threads
-
-// TODO ====
-// Enforce queueing order in the spawned threads
-
-// TODO ====
-// Write function to check if every spawn finished
-
-// TODO ====
-// Check function should be called by every destroy, so it should be in a common
-// header, together with all threading
-
-// std::mutex thrust_mutex;
-// int thrust_threads_spawned = 0;
-// int thrust_threads_finished = 0;
-
-// thread_dispatch_queue q;
 
 void cuR_thrust_allocator_fin( SEXP allocator_r ){
   void* allocator = R_ExternalPtrAddr( allocator_r );
@@ -58,14 +35,6 @@ SEXP cuR_thrust_allocator_create(){
   Rf_unprotect(1);
   return allocator_r;
 }
-
-// -----------------------------------------------------------------------------
-
-// // As async thrust calls spawn detached child threads
-// extern "C"
-// SEXP cuR_thrust_threads_sync(){
-//
-// }
 
 // -----------------------------------------------------------------------------
 

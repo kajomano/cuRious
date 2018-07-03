@@ -6,8 +6,8 @@
   unsubscribe.flag = FALSE,
 
   alert = function( name ){
-    private$.add.content.changed( name )
-    private$.add.context.changed( name )
+    self$alert.context( name )
+    self$alert.content( name )
   },
 
   alert.context = function( name ){
@@ -111,12 +111,12 @@
 
   .deploy = function( expr ){
     super$.deploy( expr )
-    private$.alert.content()
+    private$.alert()
   },
 
   .destroy = function( expr ){
     super$.destroy( expr )
-    private$.alert.content()
+    private$.alert()
   },
 
   .alert = function(){

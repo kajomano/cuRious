@@ -84,7 +84,7 @@ SEXP cuR_cublas_sgemv( SEXP A_ptr_r,
   sd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
     (sd_queue*) R_ExternalPtrAddr( queue_ptr_r );
 
-  cudaStream_t* stream_ptr   = ( R_NilValue == stream_ptr_r ) ? NULL :
+  cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
     (cudaStream_t*)R_ExternalPtrAddr( stream_ptr_r );
 
   // Recover tensors, the A_dims and the scalars

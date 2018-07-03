@@ -195,17 +195,16 @@ cublas.sgemv <- R6Class(
 # tp = transpose
 cublas.sger <- R6Class(
   "cuR.cublas.sger",
-  inherit = .cublas.fusion,
+  inherit = contexted.fusion,
   public = list(
     initialize = function( x,
                            y,
                            A,
-                           x.span = NULL,
-                           y.span = NULL,
-                           A.span = NULL,
-                           alpha  = 1,
-                           handle = NULL,
-                           stream = NULL  ){
+                           x.span  = NULL,
+                           y.span  = NULL,
+                           A.span  = NULL,
+                           alpha   = 1,
+                           context = NULL ){
       # Sanity checks
       check.tensor( x )
       check.tensor( y )
@@ -249,64 +248,67 @@ cublas.sger <- R6Class(
 
       private$.params$alpha <- as.numeric( alpha )
 
-      super$initialize( handle, stream )
+      super$initialize( context )
     }
   ),
 
   private = list(
-    .L3.call = function( x.ptr,
-                         y.ptr,
-                         A.ptr,
+    .L3.call = function( x.tensor,
+                         y.tensor,
+                         A.tensor,
                          A.dims,
                          x.span.off = NULL,
                          y.span.off = NULL,
                          A.span.off = NULL,
                          alpha,
-                         handle.ptr,
-                         stream.ptr = NULL ){
+                         context.handle,
+                         stream.queue  = NULL,
+                         stream.stream = NULL ){
 
       .Call( "cuR_cublas_sger",
-             x.ptr,
-             y.ptr,
-             A.ptr,
+             x.tensor,
+             y.tensor,
+             A.tensor,
              A.dims,
              x.span.off,
              y.span.off,
              A.span.off,
              alpha,
-             handle.ptr,
-             stream.ptr )
+             context.handle,
+             stream.queue,
+             stream.stream )
 
       invisible( TRUE )
     },
 
-    .L0.call = function( x.ptr,
-                         y.ptr,
-                         A.ptr,
+    .L0.call = function( x.tensor,
+                         y.tensor,
+                         A.tensor,
                          A.dims,
                          x.span.off = NULL,
                          y.span.off = NULL,
                          A.span.off = NULL,
                          alpha,
-                         handle.ptr = NULL,
-                         stream.ptr = NULL ){
+                         context.handle = NULL,
+                         stream.queue   = NULL,
+                         stream.stream  = NULL ){
 
       if( !is.null( x.span.off ) ){
-        x.ptr <- x.ptr[ x.span.off:( x.span.off + A.dims[[1]] - 1 ) ]
+        x.tensor <- x.tensor[ x.span.off:( x.span.off + A.dims[[1]] - 1 ) ]
       }
 
       if( !is.null( y.span.off ) ){
-        y.ptr <- y.ptr[ y.span.off:( y.span.off + A.dims[[2]] - 1 ) ]
+        y.tensor <- y.tensor[ y.span.off:( y.span.off + A.dims[[2]] - 1 ) ]
       }
 
       if( is.null( A.span.off ) ){
         A.range <- 1:A.dims[[2]]
       }else{
         A.range <- A.span.off:( A.span.off + A.dims[[2]] - 1 )
-        A.ptr <- A.ptr[, A.range ]
+        A.tensor <- A.tensor[, A.range ]
       }
 
-      res <- ( alpha * x.ptr ) %*% t( y.ptr ) + A.ptr
+      res <- ( alpha * x.tensor ) %*% t( y.tensor ) + A.tensor
       private$.eps.out$A$obj[, A.range ] <- res
 
       invisible( TRUE )

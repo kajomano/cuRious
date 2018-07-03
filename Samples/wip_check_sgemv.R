@@ -3,7 +3,7 @@ library( microbenchmark )
 
 # gemv
 # y.span(y) = alpha*A.tp(A.span(A)) %*% x.span(x) + beta*y.span(y)
-mult <- 100
+mult <- 1000
 
 cols <- 10 * mult
 rows <- 6 * mult

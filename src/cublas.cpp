@@ -147,11 +147,16 @@ SEXP cuR_cublas_sger( SEXP x_ptr_r,
                       SEXP A_span_off_r,
                       SEXP alpha_r,
                       SEXP handle_ptr_r,
+                      SEXP queue_ptr_r,     // Optional
                       SEXP stream_ptr_r ){
 
-  // Recover handle
+  // Recover handle, queue and stream
   cublasHandle_t* handle_ptr = (cublasHandle_t*)R_ExternalPtrAddr( handle_ptr_r );
-  cudaStream_t* stream_ptr   = ( R_NilValue == stream_ptr_r ) ? NULL :
+
+  sd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
+    (sd_queue*) R_ExternalPtrAddr( queue_ptr_r );
+
+  cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
     (cudaStream_t*)R_ExternalPtrAddr( stream_ptr_r );
 
   // Recover tensors, the dims and the scalars
@@ -180,13 +185,13 @@ SEXP cuR_cublas_sger( SEXP x_ptr_r,
   // Handle stream
   cublasTry( cuR_cublas_recover_stream( stream_ptr, handle_ptr ) );
 
-  // Do the op
-  cublasTry( cublasSger( *handle_ptr, m, n, &alpha, x_ptr, 1, y_ptr, 1, A_ptr, m ) );
-
-  if( stream_ptr ){
-    // Flush for WDDM
-    cudaStreamQuery(0);
+  if( queue_ptr ){
+    queue_ptr -> dispatch( [=]{
+      cublasSger( *handle_ptr, m, n, &alpha, x_ptr, 1, y_ptr, 1, A_ptr, m );
+      cudaStreamQuery(0);
+    });
   }else{
+    cublasTry( cublasSger( *handle_ptr, m, n, &alpha, x_ptr, 1, y_ptr, 1, A_ptr, m ) );
     cudaTry( cudaDeviceSynchronize() );
   }
 

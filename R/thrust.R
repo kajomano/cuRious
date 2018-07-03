@@ -105,22 +105,23 @@ thrust.pow <- R6Class(
       invisible( TRUE )
     },
 
-    .L0.call = function( A.ptr,
-                         B.ptr,
+    .L0.call = function( A.tensor,
+                         B.tensor,
                          A.dims,
                          A.span.off    = NULL,
                          B.span.off    = NULL,
                          pow,
-                         allocator.ptr = NULL,
-                         stream.ptr    = NULL ){
+                         context.allocator = NULL,
+                         stream.queue      = NULL,
+                         stream.stream     = NULL ){
 
       if( !is.null( A.span.off ) ){
         A.range <- A.span.off:( A.span.off + A.dims[[2]] - 1 )
 
         if( A.dims[[1]] == 1L ){
-          A.ptr <- A.ptr[ A.range ]
+          A.tensor <- A.tensor[ A.range ]
         }else{
-          A.ptr <- A.ptr[, A.range ]
+          A.tensor <- A.tensor[, A.range ]
         }
       }
 
@@ -130,7 +131,7 @@ thrust.pow <- R6Class(
         B.range <- 1:A.dims[[2]]
       }
 
-      res <- A.ptr ^ pow
+      res <- A.tensor ^ pow
 
       if( A.dims[[1]] == 1L ){
         private$.eps.out$B$obj[ B.range ] <- res
@@ -144,17 +145,16 @@ thrust.pow <- R6Class(
 )
 
 # cmin pos ====
-# Tells which position is the smallest in every column
+# Tells which row contains the smallest number for every column
 thrust.cmin.pos <- R6Class(
   "cuR.thrust.cmin.pos",
   inherit = .thrust.fusion,
   public = list(
     initialize = function( A,
                            x,
-                           A.span    = NULL,
-                           x.span    = NULL,
-                           allocator = NULL,
-                           stream    = NULL  ){
+                           A.span  = NULL,
+                           x.span  = NULL,
+                           context = NULL  ){
       # Sanity checks
       check.tensor( A )
       check.tensor( x )
@@ -189,46 +189,49 @@ thrust.cmin.pos <- R6Class(
       private$.params$A.span.off <- A.dims$span.off
       private$.params$x.span.off <- x.dims$span.off
 
-      super$initialize( allocator, stream )
+      super$initialize( context )
     }
   ),
 
   private = list(
-    .L3.call = function( A.ptr,
-                         x.ptr,
+    .L3.call = function( A.tensor,
+                         x.tensor,
                          A.dims,
                          A.span.off    = NULL,
                          x.span.off    = NULL,
-                         allocator.ptr = NULL,
-                         stream.ptr    = NULL ){
+                         context.allocator,
+                         stream.queue  = NULL,
+                         stream.stream = NULL ){
 
       .Call( "cuR_thrust_cmin_pos",
-             A.ptr,
-             x.ptr,
+             A.tensor,
+             x.tensor,
              A.dims,
              A.span.off,
              x.span.off,
-             allocator.ptr,
-             stream.ptr )
+             context.allocator,
+             stream.queue,
+             stream.stream )
 
       invisible( TRUE )
     },
 
-    .L0.call = function( A.ptr,
-                         x.ptr,
+    .L0.call = function( A.tensor,
+                         x.tensor,
                          A.dims,
-                         A.span.off    = NULL,
-                         x.span.off    = NULL,
-                         allocator.ptr = NULL,
-                         stream.ptr    = NULL ){
+                         A.span.off        = NULL,
+                         x.span.off        = NULL,
+                         context.allocator = NULL,
+                         stream.queue      = NULL,
+                         stream.stream     = NULL  ){
 
       if( !is.null( A.span.off ) ){
         A.range <- A.span.off:( A.span.off + A.dims[[2]] - 1 )
 
         if( A.dims[[1]] == 1L ){
-          A.ptr <- A.ptr[ A.range ]
+          A.tensor <- A.tensor[ A.range ]
         }else{
-          A.ptr <- A.ptr[, A.range ]
+          A.tensor <- A.tensor[, A.range ]
         }
       }
 
@@ -238,9 +241,8 @@ thrust.cmin.pos <- R6Class(
         x.range <- 1:A.dims[[2]]
       }
 
-      res <- apply( A.ptr, 2, which.min )
+      res <- apply( A.tensor, 2, which.min )
       private$.eps.out$x$obj[ x.range ] <- res
-
 
       invisible( TRUE )
     }

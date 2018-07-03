@@ -1,6 +1,8 @@
 library( cuRious )
 library( microbenchmark )
 
+verbose <- TRUE
+
 test.files <- dir( "./Tests", "^[0-9]", full.names = TRUE )
 test.files <- test.files[ test.files != "./Tests/000_all.R" ]
 
@@ -8,9 +10,8 @@ lapply( test.files, function( test.file ){
   print( test.file )
 
   # ----------------------------------------------------------------------------
-  mult <- 10
-  source( test.files[[1]], local = TRUE )
-  # source( test.file, local = TRUE )
+  mult <- 1
+  source( test.file, local = TRUE )
 
   # Test call overhead
   bench.unit <- microbenchmark( unit$run() )
@@ -27,7 +28,7 @@ lapply( test.files, function( test.file ){
   L3$run()
 
   # Test equality
-  if( !test() ){
+  if( !test( verbose ) ){
     stop( "Non-identical results across levels" )
   }
 
@@ -47,9 +48,9 @@ lapply( test.files, function( test.file ){
 
   stream$sync()
 
-  print( "PASSED" )
-
   # Cleanup
   rm( list = ls() )
   gc()
 })
+
+clean()

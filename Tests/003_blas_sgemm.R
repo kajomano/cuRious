@@ -1,5 +1,5 @@
-library( cuRious )
-library( microbenchmark )
+require( cuRious )
+require( microbenchmark )
 
 # Create matrix tensors and store them in GPU memory
 # GEMM: C = A( m, k ) %*% B( k, n ) + C( m, n )
@@ -36,6 +36,11 @@ unit <- cublas.sgemm$new( unit.A.3, unit.B.3, unit.C.3, context = context )
 L3   <- cublas.sgemm$new( tens.A.3, tens.B.3, tens.C.3, subs, subs, subs, FALSE, TRUE, context = context )
 L0   <- cublas.sgemm$new( tens.A.0, tens.B.0, tens.C.0, subs, subs, subs, FALSE, TRUE )
 
-test <- function(){
+test <- function( verbose = FALSE ){
+  if( verbose ){
+    print( tens.C.3$pull() )
+    print( tens.C.0$pull() )
+  }
+
   identical( tens.C.3$pull(), tens.C.0$pull() )
 }

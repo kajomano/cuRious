@@ -309,7 +309,12 @@ cublas.sger <- R6Class(
       }
 
       res <- ( alpha * x.tensor ) %*% t( y.tensor ) + A.tensor
-      private$.eps.out$A$obj[, A.range ] <- res
+
+      if( A.dims[[1]] == 1L ){
+        private$.eps.out$A$obj[ A.range ] <- res
+      }else{
+        private$.eps.out$A$obj[, A.range ] <- res
+      }
 
       invisible( TRUE )
     }
@@ -455,6 +460,7 @@ cublas.sgemm <- R6Class(
 
       if( A.tp ){
         A.tensor <- t( A.tensor )
+        A.dims   <- rev( A.dims )
       }
 
       if( !is.null( B.span.off ) ){
@@ -475,7 +481,12 @@ cublas.sgemm <- R6Class(
 
       # Operation
       res <- ( alpha * A.tensor ) %*% B.tensor + ( beta * C.tensor )
-      private$.eps.out$C$obj[, C.range ] <- res
+
+      if( A.dims[[1]] == 1L ){
+        private$.eps.out$C$obj[ C.range ] <- res
+      }else{
+        private$.eps.out$C$obj[, C.range ] <- res
+      }
 
       invisible( TRUE )
     }

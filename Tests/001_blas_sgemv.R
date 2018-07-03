@@ -33,6 +33,11 @@ unit <- cublas.sgemv$new( unit.A.3, unit.x.3, unit.y.3, context = context )
 L3   <- cublas.sgemv$new( tens.A.3, tens.x.3, tens.y.3, subs, subs, subs, TRUE, context = context )
 L0   <- cublas.sgemv$new( tens.A.0, tens.x.0, tens.y.0, subs, subs, subs, TRUE )
 
-test <- function(){
+test <- function( verbose = FALSE ){
+  if( verbose ){
+    print( tens.y.3$pull() )
+    print( tens.y.0$pull() )
+  }
+
   identical( tens.y.3$pull(), tens.y.0$pull() )
 }

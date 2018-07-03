@@ -1,5 +1,5 @@
-library( cuRious )
-library( microbenchmark )
+require( cuRious )
+require( microbenchmark )
 
 # A = a*x %*% tp(y) + A
 # Create matrix tensors and store them in GPU memory
@@ -33,6 +33,11 @@ unit <- cublas.sger$new( unit.x.3, unit.y.3, unit.A.3, context = context )
 L3   <- cublas.sger$new( tens.x.3, tens.y.3, tens.A.3, subs, subs, subs, context = context )
 L0   <- cublas.sger$new( tens.x.0, tens.y.0, tens.A.0, subs, subs, subs )
 
-test <- function(){
+test <- function( verbose = FALSE ){
+  if( verbose ){
+    print( tens.A.3$pull() )
+    print( tens.A.0$pull() )
+  }
+
   identical( tens.A.3$pull(), tens.A.0$pull() )
 }

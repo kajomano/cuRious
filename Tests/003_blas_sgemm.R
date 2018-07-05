@@ -25,9 +25,6 @@ unit.A.3 <- tensor$new( 1.0, 3 )
 unit.B.3 <- tensor$new( 1.0, 3 )
 unit.C.3 <- tensor$new( 1.0, 3 )
 
-L3.sgemm <- cublas.sgemm$new( tens.A.3, tens.B.3, tens.C.3, subs, subs, subs, FALSE, TRUE, context = context )
-L0.sgemm <- cublas.sgemm$new( tens.A.0, tens.B.0, tens.C.0, subs, subs, subs, FALSE, TRUE )
-
 # Mandatory variables
 stream  <- cuda.stream$new( FALSE )
 context <- cublas.context$new( stream )
@@ -42,5 +39,5 @@ test <- function( verbose = FALSE ){
     print( tens.C.0$pull() )
   }
 
-  identical( tens.C.3$pull(), tens.C.0$pull() )
+  test.thr.equality( tens.C.3$pull(), tens.C.0$pull() )
 }

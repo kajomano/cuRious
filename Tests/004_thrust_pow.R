@@ -32,5 +32,5 @@ test <- function( verbose = FALSE ){
     print( tens.B.0$pull() )
   }
 
-  identical( tens.B.3$pull(), tens.B.0$pull() )
+  test.thr.equality( tens.B.3$pull(), tens.B.0$pull() )
 }

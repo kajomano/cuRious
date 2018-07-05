@@ -148,7 +148,7 @@ thrust.pow <- R6Class(
 # Tells which row contains the smallest number for every column
 thrust.cmin.pos <- R6Class(
   "cuR.thrust.cmin.pos",
-  inherit = .thrust.fusion,
+  inherit = contexted.fusion,
   public = list(
     initialize = function( A,
                            x,

@@ -1,5 +1,6 @@
 library( cuRious )
 library( microbenchmark )
+source( "./Tests/test_utils.R" )
 
 verbose <- TRUE
 
@@ -18,7 +19,7 @@ lapply( test.files, function( test.file ){
   call.oh <- min( bench.unit$time )
 
   if( call.oh > 50000 ){
-    stop( "Excessive call overhead" )
+    stop( paste0( "Excessive call overhead: ", call.oh ) )
   }
 
   # Test L0 call

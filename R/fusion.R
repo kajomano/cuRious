@@ -198,8 +198,8 @@ contexted.fusion <- R6Class(
   public = list(
     initialize = function( context ){
       if( !is.null( context ) ){
-        if( sub( "\\.[[:alpha:]]*$", "", class( self )[[1]] ) !=
-            sub( "\\.[[:alpha:]]*$", "", class( context )[[1]] ) ){
+        if( sub( "^(cuR\\.[^\\.]*).*", "\\1", class( self )[[1]] ) !=
+            sub( "^(cuR\\.[^\\.]*).*", "\\1", class( context )[[1]] ) ){
           stop( "Context does not match this fusion" )
         }
       }

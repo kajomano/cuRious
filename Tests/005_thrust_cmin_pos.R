@@ -17,15 +17,15 @@ tens.A.0 <- tensor$new( mat.A, 0 )
 tens.x.0 <- tensor$new( vect.x, 0 )
 
 unit.A.3 <- tensor$new( 1.0, 3 )
-unit.x.3 <- tensor$new( 1.0, 3 )
+unit.x.3 <- tensor$new( as.integer( 1 ), 3 )
 
 # Mandatory variables
 stream  <- cuda.stream$new( FALSE )
 context <- thrust.context$new( stream )
 
-unit <- thrust.pow$new( unit.A.3, unit.x.3, context = context )
-L3   <- thrust.pow$new( tens.A.3, tens.x.3, subs, subs, context = context )
-L0   <- thrust.pow$new( tens.A.0, tens.x.0, subs, subs )
+unit <- thrust.cmin.pos$new( unit.A.3, unit.x.3, context = context )
+L3   <- thrust.cmin.pos$new( tens.A.3, tens.x.3, subs, subs, context = context )
+L0   <- thrust.cmin.pos$new( tens.A.0, tens.x.0, subs, subs )
 
 test <- function( verbose = FALSE ){
   if( verbose ){
@@ -33,5 +33,5 @@ test <- function( verbose = FALSE ){
     print( tens.x.0$pull() )
   }
 
-  identical( tens.x.3$pull(), tens.x.0$pull() )
+  test.thr.equality( tens.x.3$pull(), tens.x.0$pull() )
 }

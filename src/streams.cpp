@@ -3,8 +3,6 @@
 #include "common_debug.h"
 #include "streams.h"
 
-#include <cstdio>
-
 #ifndef CUDA_EXCLUDE
 
 // Device selection and query ==================================================

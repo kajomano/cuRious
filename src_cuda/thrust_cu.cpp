@@ -1,5 +1,4 @@
 #include "common_debug.h"
-#include <cstdio>
 
 #include <thrust/system/cuda/vector.h>
 #include <thrust/system/cuda/execution_policy.h>
@@ -20,14 +19,10 @@
 // TODO ====
 // Error returns somehow
 
-// TODO ====
-// Make this even more clever: if there are free blocks as large as the
-// request, return the smallest block. Now it is only returned on exact matches.
-
 class cached_allocator{
 public:
-  // // just allocate bytes
-  // typedef char value_type;
+  // just allocate bytes
+  typedef char value_type;
 
   cached_allocator(){}
 
@@ -36,8 +31,6 @@ public:
   }
 
   void deallocate_all(){
-    printf("clean\n");
-
     // deallocate all outstanding blocks in both lists
     for ( free_blocks_type::iterator i = free_blocks.begin();
           i != free_blocks.end();
@@ -58,11 +51,9 @@ public:
     char* result = 0;
 
     // search the cache for a free block
-    free_blocks_type::iterator free_block = free_blocks.find( num_bytes );
+    free_blocks_type::iterator free_block = free_blocks.lower_bound( num_bytes );
 
     if( free_block != free_blocks.end() ){
-      printf("hit\n");
-
       // get the pointer
       result = free_block->second;
 
@@ -72,7 +63,6 @@ public:
     else{
       // no allocation of the right size exists
       // create a new one with cuda::malloc
-      printf("nohit\n");
 
       // allocate memory and convert cuda::pointer to raw pointer
       result = thrust::cuda::malloc<char>(num_bytes).get();
@@ -172,10 +162,6 @@ __declspec( dllexport )
     thrust::device_ptr<float> t_A_ptr( A_ptr );
     thrust::device_ptr<float> t_B_ptr( B_ptr );
 
-    // // Temporary storages
-    // thrust::device_vector<float> t_tmp_cent( dims[0]*dims[1] );
-    // thrust::device_vector<float> t_tmp_ones( dims[0], 1.0 );
-
     // cent ^ 2
     if( stream_ptr ){
       thrust::transform(
@@ -207,30 +193,26 @@ __declspec( dllexport )
     thrust::device_ptr<float> t_A_ptr( A_ptr );
     thrust::device_ptr<int>   t_x_ptr( x_ptr );
 
-    // No arrayed host-side args!
-    int dims_0 = dims[0];
-    int dims_1 = dims[1];
-
     if( stream_ptr ){
       thrust::reduce_by_key(
         thrust::cuda::par( *allocator ).on( *stream_ptr ),
 
         thrust::make_transform_iterator(
           thrust::counting_iterator<int>( 0 ),
-          linear_index_to_col_index( dims_0 )
+          linear_index_to_col_index( dims[0] )
         ),
 
         thrust::make_transform_iterator(
           thrust::counting_iterator<int>( 0 ),
-          linear_index_to_col_index( dims_0 )
-        ) + ( dims_0 * dims_1 ),
+          linear_index_to_col_index( dims[0] )
+        ) + ( dims[0] * dims[1] ),
 
         thrust::make_zip_iterator(
           thrust::make_tuple(
             t_A_ptr,
             thrust::make_transform_iterator(
               thrust::counting_iterator<int>( 0 ),
-              linear_index_to_row_index( dims_0 )
+              linear_index_to_row_index( dims[0] )
             )
           )
         ),
@@ -254,20 +236,20 @@ __declspec( dllexport )
 
         thrust::make_transform_iterator(
           thrust::counting_iterator<int>( 0 ),
-          linear_index_to_col_index( dims_0 )
+          linear_index_to_col_index( dims[0] )
         ),
 
         thrust::make_transform_iterator(
           thrust::counting_iterator<int>( 0 ),
-          linear_index_to_col_index( dims_0 )
-        ) + ( dims_0 * dims_1 ),
+          linear_index_to_col_index( dims[0] )
+        ) + ( dims[0] * dims[1] ),
 
         thrust::make_zip_iterator(
           thrust::make_tuple(
             t_A_ptr,
             thrust::make_transform_iterator(
               thrust::counting_iterator<int>( 0 ),
-              linear_index_to_row_index( dims_0 )
+              linear_index_to_row_index( dims[0] )
             )
           )
         ),

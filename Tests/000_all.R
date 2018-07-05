@@ -18,10 +18,6 @@ lapply( test.files, function( test.file ){
   bench.unit <- microbenchmark( unit$run() )
   call.oh <- min( bench.unit$time )
 
-  if( call.oh > 50000 ){
-    stop( paste0( "Excessive call overhead: ", call.oh ) )
-  }
-
   # Test L0 call
   L0$run()
 

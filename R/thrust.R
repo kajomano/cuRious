@@ -374,8 +374,9 @@ thrust.table <- R6Class(
       private$.eps.out$s$obj[ s.range ] <- s.tensor
 
       # Weight dims check
-      if( s.tensor[[ length( s.tensor ) ]] > w.dims[[2]] ){
-        stop( "Out of bounds entry in weights" )
+      if( s.tensor[[ 1  ]] < 1 ||
+          s.tensor[[ length( s.tensor ) ]] > w.dims[[2]] ){
+        stop( "Invalid key" )
       }
 
       w.tensor <- as.data.frame( table( s.tensor, dnn = "Var" ),

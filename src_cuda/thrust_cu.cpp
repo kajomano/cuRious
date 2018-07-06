@@ -1,4 +1,5 @@
-#include "common_debug.h"
+// #include "../src/common_debug.h"
+// #include <cstdio>
 
 #include <thrust/system/cuda/vector.h>
 #include <thrust/system/cuda/execution_policy.h>
@@ -57,20 +58,29 @@ public:
     if( free_block != free_blocks.end() ){
       // get the pointer
       result = free_block->second;
+      // debugPrint( printf( "<%p> Cached allocator hit\n", (void*)result ) );
 
       // erase from the free_blocks map
       free_blocks.erase( free_block );
-    }
-    else{
+    }else{
       // no allocation of the right size exists
       // create a new one with cuda::malloc
 
       // allocate memory and convert cuda::pointer to raw pointer
       result = thrust::cuda::malloc<char>(num_bytes).get();
+      // debugPrint( printf( "<%p> Cached allocator miss\n", (void*)result ) );
     }
 
     // insert the allocated pointer into the allocated_blocks map
     allocated_blocks.insert( std::make_pair( result, num_bytes ) );
+
+    // debugPrint(
+    //   printf(
+    //     "Cached allocator blocks: %ul free | %ul used\n",
+    //     free_blocks.size(),
+    //     allocated_blocks.size()
+    //   )
+    // );
 
     return result;
   }
@@ -111,6 +121,16 @@ __declspec( dllexport )
   }
 
 // -----------------------------------------------------------------------------
+
+// Non-zero predicate
+struct is_non_zero
+{
+  __host__ __device__
+  bool operator()(const int& x)
+  {
+    return x != 1;
+  }
+};
 
 // Functor for pow
 class power_functor{
@@ -288,7 +308,11 @@ void cuR_thrust_table_cu( int* x_ptr, int* p_ptr, int* w_ptr, int* s_ptr,
   thrust::device_ptr<int> t_s_ptr( s_ptr );
 
   // Ask the allocator for a temporary allocation
-  int* tmp_ptr = (int*) allocator -> allocate( sizeof( int ) * w_dims[1] );
+  int* tmp_k_ptr = (int*)allocator -> allocate( sizeof( int ) * w_dims[1] );
+  int* tmp_w_ptr = (int*)allocator -> allocate( sizeof( int ) * w_dims[1] );
+
+  thrust::device_ptr<int> t_tmp_k_ptr( tmp_k_ptr );
+  thrust::device_ptr<int> t_tmp_w_ptr( tmp_w_ptr );
 
   if( stream_ptr ){
     // // Initialize perm
@@ -357,23 +381,45 @@ void cuR_thrust_table_cu( int* x_ptr, int* p_ptr, int* w_ptr, int* s_ptr,
     // TODO ====
     // Check if there is enough space in weights
 
+    // Fill temp with 0-s
+    thrust::fill_n(
+      thrust::cuda::par( *allocator ),
+      t_tmp_k_ptr,
+      w_dims[1],
+      0
+    );
+
     // Count occurences
     thrust::reduce_by_key(
       thrust::cuda::par( *allocator ),
       t_s_ptr,
       ( t_s_ptr + x_dims[1] ),
       thrust::make_constant_iterator( (int) 1 ),
-      thrust::make_discard_iterator(),
-      t_w_ptr,
+      // thrust::make_discard_iterator(),
+      t_tmp_k_ptr,
+      t_tmp_w_ptr,
       thrust::equal_to<int>(),
       thrust::plus<int>()
     );
 
-    // Count unique keys with count_if
+    // Count unique keys with count_if != 0
+    int k_count = thrust::count_if(
+      thrust::cuda::par( *allocator ),
+      t_tmp_k_ptr,
+      ( t_tmp_k_ptr + w_dims[1] ),
+      is_non_zero()
+    );
 
     // Permutate-copy to correct places
+    thrust::scatter(
+        thrust::cuda::par( *allocator ),
+        t_tmp_w_ptr,
+        t_tmp_w_ptr + k_count,
+        t_tmp_k_ptr,
+        t_w_ptr - 1 // Risky
+    );
 
-    allocator -> deallocate( (char*)tmp_ptr, 0 );
-
+    allocator -> deallocate( (char*)tmp_k_ptr, 0 );
+    allocator -> deallocate( (char*)tmp_w_ptr, 0 );
   }
 }

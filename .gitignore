@@ -3,6 +3,8 @@
 .RData
 .Ruserdata
 
+src/Makevars
+
 src/*.dll
 src/*.o
 src/*.so

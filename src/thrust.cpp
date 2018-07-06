@@ -3,8 +3,6 @@
 #include "streams.h"
 #include "thrust.h"
 
-#include <cstdio>
-
 #ifndef CUDA_EXCLUDE
 
 void cuR_thrust_allocator_fin( SEXP allocator_r ){
@@ -173,8 +171,6 @@ SEXP cuR_thrust_table( SEXP x_ptr_r,
   int p_span_off = Rf_asInteger( p_span_off_r ) - 1;
   int w_span_off = Rf_asInteger( w_span_off_r ) - 1;
   int s_span_off = Rf_asInteger( s_span_off_r ) - 1;
-
-  printf( "Offs: %d\n", w_span_off );
 
   // Offsets
   x_ptr = x_ptr + x_span_off;

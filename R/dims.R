@@ -5,7 +5,7 @@
 .tensor.dims <- R6Class(
   "cuR.tensor.dims",
   public = list(
-    span.off  = NULL,
+    span.off  = 1L,
     dims.orig = NULL,
     dims.perm = NULL,
     dims      = NULL,
@@ -34,6 +34,7 @@
 
     check.span = function( span ){
       if( is.null( span ) ){
+        self$span.off <- 1L
         return()
       }
 
@@ -44,12 +45,13 @@
       }
 
       if( any( !is.obj( span ),
-               !is.numeric( span ),
-               !length( span ) == 2,
-               as.logical( span %% 1 ),
-               span[[2]] > dims[[2]],
-               span[[2]] < span[[1]],
-               span[[1]] < 1 ) ){
+               !is.numeric( span ) ) ){
+        stop( "Invalid tensor span" )
+      }else if( any( !length( span ) == 2,
+                     as.logical( span %% 1 ),
+                     span[[2]] > dims[[2]],
+                     span[[2]] < span[[1]],
+                     span[[1]] < 1 ) ){
         stop( "Invalid tensor span" )
       }
 

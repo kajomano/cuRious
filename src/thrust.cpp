@@ -3,6 +3,8 @@
 #include "streams.h"
 #include "thrust.h"
 
+#include <cstdio>
+
 #ifndef CUDA_EXCLUDE
 
 void cuR_thrust_allocator_fin( SEXP allocator_r ){
@@ -135,22 +137,62 @@ SEXP cuR_thrust_cmin_pos( SEXP A_ptr_r,
   return R_NilValue;
 }
 
-// extern "C"
-// SEXP cuB_thrust_table( SEXP quant_r, SEXP perm_r, SEXP temp_quant_r, SEXP dims_r, SEXP weights_r, SEXP dims_weights_r ) {
-//   int* quant        = (int*)R_ExternalPtrAddr( quant_r );
-//   int* perm         = (int*)R_ExternalPtrAddr( perm_r );
-//   int* temp_quant   = (int*)R_ExternalPtrAddr( temp_quant_r );
-//   int* dims         = INTEGER( dims_r );
-//
-//   int* weights      = (int*)R_ExternalPtrAddr( weights_r );
-//   int* dims_weights = INTEGER( dims_weights_r );
-//
-//   cuB_thrust_table_cu( quant, perm, temp_quant, dims, weights, dims_weights );
-//
-//   // Return something that is not null
-//   SEXP ret_r = Rf_protect( Rf_ScalarLogical( 1 ) );
-//   Rf_unprotect(1);
-//   return ret_r;
-// }
+extern "C"
+SEXP cuR_thrust_table( SEXP x_ptr_r,
+                       SEXP p_ptr_r,
+                       SEXP w_ptr_r,
+                       SEXP s_ptr_r,
+                       SEXP x_dims_r,
+                       SEXP w_dims_r,
+                       SEXP x_span_off_r,
+                       SEXP p_span_off_r,
+                       SEXP w_span_off_r,
+                       SEXP s_span_off_r,
+                       SEXP allocator_ptr_r,
+                       SEXP queue_ptr_r,    // Optional
+                       SEXP stream_ptr_r ){ // Optional
+
+  // Recover allocator, queue and stream
+  void* allocator_ptr = R_ExternalPtrAddr( allocator_ptr_r );
+
+  sd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
+    (sd_queue*) R_ExternalPtrAddr( queue_ptr_r );
+
+  cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
+    (cudaStream_t*)R_ExternalPtrAddr( stream_ptr_r );
+
+  int* x_ptr     = (int*)R_ExternalPtrAddr( x_ptr_r );
+  int* p_ptr     = (int*)R_ExternalPtrAddr( p_ptr_r );
+  int* w_ptr     = (int*)R_ExternalPtrAddr( w_ptr_r );
+  int* s_ptr     = (int*)R_ExternalPtrAddr( s_ptr_r );
+
+  int* x_dims    = INTEGER( x_dims_r );
+  int* w_dims    = INTEGER( w_dims_r );
+
+  int x_span_off = Rf_asInteger( x_span_off_r ) - 1;
+  int p_span_off = Rf_asInteger( p_span_off_r ) - 1;
+  int w_span_off = Rf_asInteger( w_span_off_r ) - 1;
+  int s_span_off = Rf_asInteger( s_span_off_r ) - 1;
+
+  printf( "Offs: %d\n", w_span_off );
+
+  // Offsets
+  x_ptr = x_ptr + x_span_off;
+  p_ptr = p_ptr + p_span_off;
+  w_ptr = w_ptr + w_span_off;
+  s_ptr = s_ptr + s_span_off;
+
+  if( queue_ptr ){
+    queue_ptr -> dispatch( [=]{
+      cuR_thrust_table_cu( x_ptr, p_ptr, w_ptr, s_ptr, x_dims, w_dims, x_span_off, allocator_ptr, stream_ptr );
+      cudaStreamQuery(0);
+    });
+  }else{
+    cuR_thrust_table_cu( x_ptr, p_ptr, w_ptr, s_ptr, x_dims, w_dims, x_span_off, allocator_ptr, stream_ptr );
+    cudaTry( cudaDeviceSynchronize() );
+  }
+
+  return R_NilValue;
+}
 
 #endif

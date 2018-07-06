@@ -81,7 +81,7 @@ fusion <- R6Class(
       lapply( names, function( ep.name ){
         ptrs.names <- paste0( ep.name, ".", names( private$.eps[[ ep.name ]]$ptrs ) )
         private$.params[ ptrs.names ] <- private$.eps[[ ep.name ]]$ptrs
-      } )
+      })
     }
   ),
 

@@ -51,6 +51,7 @@ public:
     char* result = 0;
 
     // search the cache for a free block
+    // Or exact match with find()
     free_blocks_type::iterator free_block = free_blocks.lower_bound( num_bytes );
 
     if( free_block != free_blocks.end() ){
@@ -270,34 +271,109 @@ __declspec( dllexport )
     }
   }
 
+extern "C"
+#ifdef _WIN32
+__declspec( dllexport )
+#endif
+void cuR_thrust_table_cu( int* x_ptr, int* p_ptr, int* w_ptr, int* s_ptr,
+                          int* x_dims, int* w_dims, int x_span_off,
+                          void* allocator_ptr, cudaStream_t* stream_ptr ){
 
+  cached_allocator* allocator = ( cached_allocator* ) allocator_ptr;
 
-// extern "C"
-// void cuR_thrust_table_cu( int* quant, int* perm, int* temp_quant, int* dims, int* weights, int* dims_weights ){
-//   // Thrust pointers
-//   thrust::device_ptr<int> t_ptr_quant( quant );
-//   thrust::device_ptr<int> t_ptr_perm( perm );
-//   thrust::device_ptr<int> t_ptr_temp_quant( temp_quant );
-//   thrust::device_ptr<int> t_ptr_weights( weights );
-//
-//   // Initialize perm, copy quant to temp_quant
-//   thrust::sequence( t_ptr_perm, t_ptr_perm + dims[0], 1 );
-//   thrust::copy( t_ptr_quant, t_ptr_quant + dims[0], t_ptr_temp_quant );
-//
-//   // Stable sort temp_quant together with perm
-//   thrust::stable_sort_by_key( t_ptr_temp_quant,
-//                               t_ptr_temp_quant + dims[0],
-//                               t_ptr_perm );
-//
-//   // Count occurences
-//   thrust::reduce_by_key(
-//     t_ptr_temp_quant,
-//     t_ptr_temp_quant + dims[0],
-//     thrust::make_constant_iterator( (int) 1 ),
-//     thrust::make_discard_iterator(),
-//     t_ptr_weights,
-//     thrust::equal_to<int>(),
-//     thrust::plus<int>()
-//   );
-// };
+  // Thrust pointers
+  thrust::device_ptr<int> t_x_ptr( x_ptr );
+  thrust::device_ptr<int> t_p_ptr( p_ptr );
+  thrust::device_ptr<int> t_w_ptr( w_ptr );
+  thrust::device_ptr<int> t_s_ptr( s_ptr );
 
+  // Ask the allocator for a temporary allocation
+  int* tmp_ptr = (int*) allocator -> allocate( sizeof( int ) * w_dims[1] );
+
+  if( stream_ptr ){
+    // // Initialize perm
+    // thrust::sequence(
+    //   thrust::cuda::par( *allocator ).on( *stream_ptr ),
+    //   t_p_ptr,
+    //   ( t_p_ptr + x_dims[1] ),
+    //   1 + x_span_off
+    // );
+    //
+    // // Copy x to s
+    // thrust::copy(
+    //   thrust::cuda::par( *allocator ).on( *stream_ptr ),
+    //   t_x_ptr,
+    //   ( t_x_ptr + x_dims[1] ),
+    //   t_s_ptr
+    // );
+    //
+    // // Stable sort s together with perm
+    // thrust::stable_sort_by_key(
+    //   thrust::cuda::par( *allocator ).on( *stream_ptr ),
+    //   t_s_ptr,
+    //   ( t_s_ptr + x_dims[1] ),
+    //   t_p_ptr
+    // );
+    //
+    // // TODO ====
+    // // Check if there is enough space in weights
+    //
+    // // Count occurences
+    // thrust::reduce_by_key(
+    //   thrust::cuda::par( *allocator ).on( *stream_ptr ),
+    //   t_s_ptr,
+    //   ( t_s_ptr + x_dims[1] ),
+    //   thrust::make_constant_iterator( (int) 1 ),
+    //   thrust::make_discard_iterator(),
+    //   t_w_ptr,
+    //   thrust::equal_to<int>(),
+    //   thrust::plus<int>()
+    // );
+  }else{
+    // Initialize perm
+    thrust::sequence(
+      thrust::cuda::par( *allocator ),
+      t_p_ptr,
+      ( t_p_ptr + x_dims[1] ),
+      1 + x_span_off
+    );
+
+    // Copy x to s
+    thrust::copy(
+      thrust::cuda::par( *allocator ),
+      t_x_ptr,
+      ( t_x_ptr + x_dims[1] ),
+      t_s_ptr
+    );
+
+    // Stable sort s together with perm
+    thrust::stable_sort_by_key(
+      thrust::cuda::par( *allocator ),
+      t_s_ptr,
+      ( t_s_ptr + x_dims[1] ),
+      t_p_ptr
+    );
+
+    // TODO ====
+    // Check if there is enough space in weights
+
+    // Count occurences
+    thrust::reduce_by_key(
+      thrust::cuda::par( *allocator ),
+      t_s_ptr,
+      ( t_s_ptr + x_dims[1] ),
+      thrust::make_constant_iterator( (int) 1 ),
+      thrust::make_discard_iterator(),
+      t_w_ptr,
+      thrust::equal_to<int>(),
+      thrust::plus<int>()
+    );
+
+    // Count unique keys with count_if
+
+    // Permutate-copy to correct places
+
+    allocator -> deallocate( (char*)tmp_ptr, 0 );
+
+  }
+}

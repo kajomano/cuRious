@@ -1,28 +1,38 @@
 library( cuRious )
 library( microbenchmark )
 
-cols.l <- 1000
-rows.l <- 1000
+mult <- 1
 
-cols.s <- 900
-rows.s <- 900
+cols <- 10 * mult
+subs <- c( 1 * mult + 1 , 7 * mult )
 
-mat.l  <- matrix( rnorm( cols.l*rows.l ), ncol = cols.l )
-mat.s  <- matrix( rnorm( cols.s*rows.s ), ncol = cols.s )
+vect.x <- as.integer( rep( c( 1, 3 ), times = cols / 2 ) )
 
-tens.mat.l <- tensor$new( mat.l, 3 )
-tens.mat.s <- tensor$new( mat.s, 3 )
+tens.x.0 <- tensor$new( vect.x, 0 )
+tens.p.0 <- tensor$new( vect.x, 0, copy = FALSE )
+tens.w.0 <- tensor$new( NULL, 0, c( 1, 4 ), "i" )
+tens.s.0 <- tensor$new( NULL, 0, c( 1, subs[[2]] - subs[[1]] + 1 ), "i" )
 
-tens.vect.l <- tensor$new( NULL, 3, dims = c( 1, cols.l ), "i" )
-tens.vect.s <- tensor$new( NULL, 3, dims = c( 1, cols.s ), "i" )
+tens.x.3 <- tensor$new( tens.x.0, 3 )
+tens.p.3 <- tensor$new( tens.p.0, 3 )
+tens.w.3 <- tensor$new( tens.w.0, 3 )
+tens.s.3 <- tensor$new( tens.s.0, 3 )
 
-stream  <- cuda.stream$new( TRUE )
+# Mandatory variables
+stream  <- cuda.stream$new( FALSE )
 context <- thrust.context$new( stream )
 
-cmin.l <- thrust.cmin.pos$new( tens.mat.l, tens.vect.l, context = context )
-cmin.s <- thrust.cmin.pos$new( tens.mat.s, tens.vect.s, context = context )
+L0 <- thrust.table$new( tens.x.0, tens.p.0, tens.w.0, tens.s.0, subs, subs, c( 2, 4 ), context = context )
+L3 <- thrust.table$new( tens.x.3, tens.p.3, tens.w.3, tens.s.3, subs, subs, c( 2, 4 ), context = context )
 
-microbenchmark( cmin.l$run(), times = 10 )
-microbenchmark( cmin.s$run(), times = 1 )
+L0$run()
+L3$run()
 
-clean()
+tens.p.0$pull()
+tens.p.3$pull()
+
+tens.w.0$pull()
+tens.w.3$pull()
+
+tens.s.3$pull()
+

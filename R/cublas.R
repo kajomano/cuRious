@@ -84,7 +84,7 @@ cublas.sgemv <- R6Class(
 
       if( x.dims$dims[[2]] != A.dims$check.trans( A.tp )[[2]] ||
           y.dims$dims[[2]] != A.dims$check.trans( A.tp )[[1]] ){
-        stop( "Not all tensors have matching dimensions" )
+        stop( "Tensor dimension mismatch" )
       }
 
       if( !is.numeric( alpha ) || !( length( alpha ) == 1L ) ){
@@ -228,7 +228,7 @@ cublas.sger <- R6Class(
 
       if( x.dims$dims[[2]] != A.dims$dims[[1]] ||
           y.dims$dims[[2]] != A.dims$dims[[2]] ){
-        stop( "Not all tensors have matching dimensions" )
+        stop( "Tensor dimension mismatch" )
       }
 
       if( !is.numeric( alpha ) || !( length( alpha ) == 1L ) ){
@@ -368,7 +368,7 @@ cublas.sgemm <- R6Class(
       if( A.dims$check.trans( A.tp )[[2]] != B.dims$check.trans( B.tp )[[1]] ||
           B.dims$check.trans( B.tp )[[2]] != C.dims$dims[[2]] ||
           A.dims$check.trans( A.tp )[[1]] != C.dims$dims[[1]] ){
-        stop( "Not all tensors have matching dimensions" )
+        stop( "Tensor dimension mismatch" )
       }
 
       if( !is.numeric( alpha ) || !( length( alpha ) == 1L ) ){

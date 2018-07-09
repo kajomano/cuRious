@@ -1,6 +1,3 @@
-// #include "../src/common_debug.h"
-// #include <cstdio>
-
 #include <thrust/system/cuda/vector.h>
 #include <thrust/system/cuda/execution_policy.h>
 #include <map>
@@ -16,6 +13,8 @@
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/iterator/transform_iterator.h>
 #include <thrust/iterator/constant_iterator.h>
+
+#include <cstdio>
 
 // TODO ====
 // Error returns somehow
@@ -52,13 +51,13 @@ public:
     char* result = 0;
 
     // search the cache for a free block
-    // Or exact match with find()
-    free_blocks_type::iterator free_block = free_blocks.lower_bound( num_bytes );
+    // free_blocks_type::iterator free_block = free_blocks.lower_bound( num_bytes );
+    free_blocks_type::iterator free_block = free_blocks.find( num_bytes );
 
     if( free_block != free_blocks.end() ){
       // get the pointer
       result = free_block->second;
-      // debugPrint( printf( "<%p> Cached allocator hit\n", (void*)result ) );
+      // printf( "<%p> Cached allocator hit\n", (void*)result );
 
       // erase from the free_blocks map
       free_blocks.erase( free_block );
@@ -68,18 +67,16 @@ public:
 
       // allocate memory and convert cuda::pointer to raw pointer
       result = thrust::cuda::malloc<char>(num_bytes).get();
-      // debugPrint( printf( "<%p> Cached allocator miss\n", (void*)result ) );
+      // printf( "<%p> Cached allocator miss\n", (void*)result );
     }
 
     // insert the allocated pointer into the allocated_blocks map
     allocated_blocks.insert( std::make_pair( result, num_bytes ) );
 
-    // debugPrint(
-    //   printf(
-    //     "Cached allocator blocks: %ul free | %ul used\n",
-    //     free_blocks.size(),
-    //     allocated_blocks.size()
-    //   )
+    // printf(
+    //   "Cached allocator blocks: %lu free | %lu used\n",
+    //   free_blocks.size(),
+    //   allocated_blocks.size()
     // );
 
     return result;
@@ -128,7 +125,7 @@ struct is_non_zero
   __host__ __device__
   bool operator()(const int& x)
   {
-    return x != 1;
+    return x != 0;
   }
 };
 

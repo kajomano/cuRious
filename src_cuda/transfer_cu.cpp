@@ -29,7 +29,7 @@ void cuR_transfer_device_device_cu_kern( t* src_ptr,
       if( src_perm_ind > src_dims_1 ){
         // TODO ====
         // Some sort of error message that does not break things
-        return;
+        continue;
       }
 
       int dst_perm_ind = dst_perm_ptr[ i / dims_0 ];
@@ -39,7 +39,7 @@ void cuR_transfer_device_device_cu_kern( t* src_ptr,
       if( dst_perm_ind > dst_dims_1 ){
         // TODO ====
         // Some sort of error message that does not break things
-        return;
+        continue;
       }
 
       dst_ptr[ dst_perm_off + dst_off ] = src_ptr[ src_perm_off + src_off ];
@@ -54,7 +54,7 @@ void cuR_transfer_device_device_cu_kern( t* src_ptr,
       if( dst_perm_ind > dst_dims_1 ){
         // TODO ====
         // Some sort of error message that does not break things
-        return;
+        continue;
       }
 
       dst_ptr[ dst_perm_off + dst_off ] = src_ptr[ i ];
@@ -69,7 +69,7 @@ void cuR_transfer_device_device_cu_kern( t* src_ptr,
       if( src_perm_ind > src_dims_1 ){
         // TODO ====
         // Some sort of error message that does not break things
-        return;
+        continue;
       }
 
       dst_ptr[ i ] = src_ptr[ src_perm_off + src_off ];

@@ -1,5 +1,3 @@
-library( cuRious )
-library( microbenchmark )
 source( "./Tests/test_utils.R" )
 
 verbose <- TRUE

@@ -5,16 +5,15 @@
 #include "omp.h"
 
 template <typename s, typename d>
-void cuR_transfer_host_host( s* src_ptr,
-                             d* dst_ptr,
-                             int* dims,
-                             int* src_dims,
-                             int* dst_dims,
-                             int* src_perm_ptr,
-                             int* dst_perm_ptr,
-                             int src_span_off,
-                             int dst_span_off,
-                             cudaStream_t* stream_ptr ){
+void cuR_transfer_host_host_sync( s* src_ptr,
+                                  d* dst_ptr,
+                                  int* dims,
+                                  int* src_dims,
+                                  int* dst_dims,
+                                  int* src_perm_ptr,
+                                  int* dst_perm_ptr,
+                                  int src_span_off,
+                                  int dst_span_off ){
 
   int src_dims_1;
   if( src_dims ){
@@ -73,7 +72,6 @@ void cuR_transfer_host_host( s* src_ptr,
   // Copy
   if( !src_perm_ptr && !dst_perm_ptr ){
     // No subsetting
-
 #pragma omp parallel for private( src_pos, dst_pos) firstprivate( dims_0 )
     for( int i = 0; i < dims_1; i++ ){
       dst_pos = i * dims_0;
@@ -89,11 +87,11 @@ void cuR_transfer_host_host( s* src_ptr,
 #pragma omp parallel for private( src_pos, dst_pos) firstprivate( src_dims_1, dst_dims_1, dims_0 )
     for( int i = 0; i < dims_1; i ++ ){
       if( src_perm_ptr[i] > src_dims_1 ){
-        Rf_error( "Out-of-bounds transfer call on source tensor" );
+        continue;
       }
 
       if( dst_perm_ptr[i] > dst_dims_1 ){
-        Rf_error( "Out-of-bounds transfer call on destination tensor" );
+        continue;
       }
 
       src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
@@ -109,7 +107,7 @@ void cuR_transfer_host_host( s* src_ptr,
 #pragma omp parallel for private( src_pos, dst_pos) firstprivate( dst_dims_1, dims_0 )
     for( int i = 0; i < dims_1; i ++ ){
       if( dst_perm_ptr[i] > dst_dims_1 ){
-        Rf_error( "Out-of-bounds transfer call on destination tensor" );
+        continue;
       }
 
       src_pos = i * dims_0;
@@ -125,7 +123,7 @@ void cuR_transfer_host_host( s* src_ptr,
 #pragma omp parallel for private( src_pos, dst_pos) firstprivate( src_dims_1, dims_0 )
     for( int i = 0; i < dims_1; i ++ ){
       if( src_perm_ptr[i] > src_dims_1 ){
-        Rf_error( "Out-of-bounds transfer call on source tensor" );
+        continue;
       }
 
       src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
@@ -137,25 +135,137 @@ void cuR_transfer_host_host( s* src_ptr,
       }
     }
   }
+}
 
-  if( stream_ptr ){
-    Rf_warning( "Active stream given to a synchronous call" );
+template <typename s, typename d>
+void cuR_transfer_host_host_async( s* src_ptr,
+                                   d* dst_ptr,
+                                   int* dims,
+                                   int* src_dims,
+                                   int* dst_dims,
+                                   int* src_perm_ptr,
+                                   int* dst_perm_ptr,
+                                   int src_span_off,
+                                   int dst_span_off ){
+
+  int src_dims_1;
+  if( src_dims ){
+    src_dims_1 = src_dims[1];
+  }else{
+    src_dims_1 = 0;
+  }
+
+  int dst_dims_1;
+  if( dst_dims ){
+    dst_dims_1 = dst_dims[1];
+  }else{
+    dst_dims_1 = 0;
+  }
+
+  int dims_0 = dims[0];
+  int dims_1 = dims[1];
+
+  // Offsets with permutations offset the permutation vector itself
+  if( src_span_off ){
+    if( src_perm_ptr ){
+      src_perm_ptr = src_perm_ptr + src_span_off;
+    }else{
+      src_ptr = src_ptr + ( src_span_off * dims_0 );
+    }
+  }
+
+  if( dst_span_off ){
+    if( dst_perm_ptr ){
+      dst_perm_ptr = dst_perm_ptr + dst_span_off;
+    }else{
+      dst_ptr = dst_ptr + ( dst_span_off * dims_0 );
+    }
+  }
+
+  int dst_pos;
+  int src_pos;
+
+  // Out-of-bounds checks only check for permutation content
+  // Span checks are done in R
+
+  // Copy
+  if( !src_perm_ptr && !dst_perm_ptr ){
+    // No subsetting
+
+    for( int i = 0; i < dims_1; i++ ){
+      dst_pos = i * dims_0;
+      src_pos = i * dims_0;
+
+      // #pragma omp simd
+      for( int j = 0; j < dims_0; j++ ){
+        dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+      }
+    }
+  }else if( src_perm_ptr && dst_perm_ptr ){
+    // Both subsetted
+    for( int i = 0; i < dims_1; i ++ ){
+      if( src_perm_ptr[i] > src_dims_1 ){
+        continue;
+      }
+
+      if( dst_perm_ptr[i] > dst_dims_1 ){
+        continue;
+      }
+
+      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
+      // #pragma omp simd
+      for( int j = 0; j < dims_0; j++ ){
+        dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+      }
+    }
+  }else if( dst_perm_ptr ){
+    // Destination subsetted
+    for( int i = 0; i < dims_1; i ++ ){
+      if( dst_perm_ptr[i] > dst_dims_1 ){
+        continue;
+      }
+
+      src_pos = i * dims_0;
+      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
+      // #pragma omp simd
+      for( int j = 0; j < dims_0; j++ ){
+        dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+      }
+    }
+  }else{
+    // Source subsetted
+    for( int i = 0; i < dims_1; i ++ ){
+      if( src_perm_ptr[i] > src_dims_1 ){
+        continue;
+      }
+
+      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+      dst_pos = i * dims_0;
+
+      // #pragma omp simd
+      for( int j = 0; j < dims_0; j++ ){
+        dst_ptr[dst_pos+j] = (d)src_ptr[src_pos+j];
+      }
+    }
   }
 }
 
 #ifndef CUDA_EXCLUDE
 
 template <typename t>
-void cuR_transfer_host_device( t* src_ptr,
-                               t* dst_ptr,
-                               int* dims,
-                               int* src_dims,
-                               int* dst_dims,
-                               int* src_perm_ptr,
-                               int* dst_perm_ptr,
-                               int src_span_off,
-                               int dst_span_off,
-                               cudaStream_t* stream_ptr ){
+void cuR_transfer_host_device_sync( t* src_ptr,
+                                    t* dst_ptr,
+                                    int* dims,
+                                    int* src_dims,
+                                    int* dst_dims,
+                                    int* src_perm_ptr,
+                                    int* dst_perm_ptr,
+                                    int src_span_off,
+                                    int dst_span_off,
+                                    cudaStream_t* stream_ptr ){
 
   int src_dims_1;
   if( src_dims ){
@@ -216,11 +326,11 @@ void cuR_transfer_host_device( t* src_ptr,
 #pragma omp parallel for private( src_pos, dst_pos) firstprivate( src_dims_1, dst_dims_1, dims_0 )
     for( int i = 0; i < dims_1; i ++ ){
       if( src_perm_ptr[i] > src_dims_1 ){
-        Rf_error( "Out-of-bounds transfer call on source tensor" );
+        continue;
       }
 
       if( dst_perm_ptr[i] > dst_dims_1 ){
-        Rf_error( "Out-of-bounds transfer call on destination tensor" );
+        continue;
       }
 
       src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
@@ -243,7 +353,7 @@ void cuR_transfer_host_device( t* src_ptr,
 #pragma omp parallel for private( src_pos, dst_pos) firstprivate( dst_dims_1, dims_0 )
     for( int i = 0; i < dims_1; i ++ ){
       if( dst_perm_ptr[i] > dst_dims_1 ){
-        Rf_error( "Out-of-bounds transfer call on destination tensor" );
+        continue;
       }
 
       src_pos = i * dims_0;
@@ -266,7 +376,7 @@ void cuR_transfer_host_device( t* src_ptr,
 #pragma omp parallel for private( src_pos, dst_pos) firstprivate( src_dims_1, dims_0 )
     for( int i = 0; i < dims_1; i ++ ){
       if( src_perm_ptr[i] > src_dims_1 ){
-        Rf_error( "Out-of-bounds transfer call on source tensor" );
+        continue;
       }
 
       src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
@@ -296,16 +406,160 @@ void cuR_transfer_host_device( t* src_ptr,
 }
 
 template <typename t>
-void cuR_transfer_device_host( t* src_ptr,
-                               t* dst_ptr,
-                               int* dims,
-                               int* src_dims,
-                               int* dst_dims,
-                               int* src_perm_ptr,
-                               int* dst_perm_ptr,
-                               int src_span_off,
-                               int dst_span_off,
-                               cudaStream_t* stream_ptr ){
+void cuR_transfer_host_device_async( t* src_ptr,
+                                    t* dst_ptr,
+                                    int* dims,
+                                    int* src_dims,
+                                    int* dst_dims,
+                                    int* src_perm_ptr,
+                                    int* dst_perm_ptr,
+                                    int src_span_off,
+                                    int dst_span_off,
+                                    cudaStream_t* stream_ptr ){
+
+  int src_dims_1;
+  if( src_dims ){
+    src_dims_1 = src_dims[1];
+  }else{
+    src_dims_1 = 0;
+  }
+
+  int dst_dims_1;
+  if( dst_dims ){
+    dst_dims_1 = dst_dims[1];
+  }else{
+    dst_dims_1 = 0;
+  }
+
+  int dims_0 = dims[0];
+  int dims_1 = dims[1];
+
+  // Offsets with permutations offset the permutation vector itself
+  if( src_span_off ){
+    if( src_perm_ptr ){
+      src_perm_ptr = src_perm_ptr + src_span_off;
+    }else{
+      src_ptr = src_ptr + ( src_span_off * dims_0 );
+    }
+  }
+
+  if( dst_span_off ){
+    if( dst_perm_ptr ){
+      dst_perm_ptr = dst_perm_ptr + dst_span_off;
+    }else{
+      dst_ptr = dst_ptr + ( dst_span_off * dims_0 );
+    }
+  }
+
+  int dst_pos;
+  int src_pos;
+
+  // Copy
+  if( !src_perm_ptr && !dst_perm_ptr ){
+    // No subsetting
+    if( stream_ptr ){
+      cudaTry( cudaMemcpyAsync( dst_ptr,
+                                src_ptr,
+                                sizeof(t) * dims_0 * dims_1,
+                                cudaMemcpyHostToDevice,
+                                *stream_ptr ) );
+    }else{
+      cudaTry( cudaMemcpyAsync( dst_ptr,
+                                src_ptr,
+                                sizeof(t) * dims_0 * dims_1,
+                                cudaMemcpyHostToDevice ) );
+    }
+  }else if( src_perm_ptr && dst_perm_ptr ){
+    for( int i = 0; i < dims_1; i ++ ){
+      if( src_perm_ptr[i] > src_dims_1 ){
+        continue;
+      }
+
+      if( dst_perm_ptr[i] > dst_dims_1 ){
+        continue;
+      }
+
+      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
+      if( stream_ptr ){
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyHostToDevice,
+                                  *stream_ptr ) );
+      }else{
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyHostToDevice ) );
+      }
+    }
+  }else if( dst_perm_ptr ){
+    for( int i = 0; i < dims_1; i ++ ){
+      if( dst_perm_ptr[i] > dst_dims_1 ){
+        continue;
+      }
+
+      src_pos = i * dims_0;
+      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
+      if( stream_ptr ){
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyHostToDevice,
+                                  *stream_ptr ) );
+      }else{
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyHostToDevice ) );
+      }
+    }
+  }else{
+    for( int i = 0; i < dims_1; i ++ ){
+      if( src_perm_ptr[i] > src_dims_1 ){
+        continue;
+      }
+
+      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+      dst_pos = i * dims_0;
+
+      if( stream_ptr ){
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyHostToDevice,
+                                  *stream_ptr ) );
+      }else{
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyHostToDevice ) );
+      }
+    }
+  }
+
+  if( stream_ptr ){
+    // Flush for WDDM
+    cudaStreamQuery(0);
+  }else{
+    cudaDeviceSynchronize();
+  }
+}
+
+template <typename t>
+void cuR_transfer_device_host_sync( t* src_ptr,
+                                    t* dst_ptr,
+                                    int* dims,
+                                    int* src_dims,
+                                    int* dst_dims,
+                                    int* src_perm_ptr,
+                                    int* dst_perm_ptr,
+                                    int src_span_off,
+                                    int dst_span_off,
+                                    cudaStream_t* stream_ptr ){
 
   int src_dims_1;
   if( src_dims ){
@@ -366,25 +620,25 @@ void cuR_transfer_device_host( t* src_ptr,
 #pragma omp parallel for private( src_pos, dst_pos) firstprivate( src_dims_1, dst_dims_1, dims_0 )
     for( int i = 0; i < dims_1; i ++ ){
       if( src_perm_ptr[i] > src_dims_1 ){
-        Rf_error( "Out-of-bounds transfer call on source tensor" );
+        continue;
       }
 
       if( dst_perm_ptr[i] > dst_dims_1 ){
-        Rf_error( "Out-of-bounds transfer call on destination tensor" );
+        continue;
       }
 
       src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
       dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
 
       if( stream_ptr ){
+        // This copy is not async to the host if dst is unpinned, or just takes
+        // a very long time.
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
                                   dims_0 * sizeof(t),
                                   cudaMemcpyDeviceToHost,
                                   *stream_ptr ) );
       }else{
-        // This copy is not async to the host if dst is unpinned, or just takes
-        // a very long time.
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
                                   dims_0 * sizeof(t),
@@ -395,7 +649,7 @@ void cuR_transfer_device_host( t* src_ptr,
 #pragma omp parallel for private( src_pos, dst_pos) firstprivate( dst_dims_1, dims_0 )
     for( int i = 0; i < dims_1; i ++ ){
       if( dst_perm_ptr[i] > dst_dims_1 ){
-        Rf_error( "Out-of-bounds transfer call on destination tensor" );
+        continue;
       }
 
       src_pos = i * dims_0;
@@ -418,7 +672,153 @@ void cuR_transfer_device_host( t* src_ptr,
 #pragma omp parallel for private( src_pos, dst_pos) firstprivate( src_dims_1, dims_0 )
     for( int i = 0; i < dims_1; i ++ ){
       if( src_perm_ptr[i] > src_dims_1 ){
-        Rf_error( "Out-of-bounds transfer call on source tensor" );
+        continue;
+      }
+
+      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+      dst_pos = i * dims_0;
+
+      if( stream_ptr ){
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyDeviceToHost,
+                                  *stream_ptr ) );
+      }else{
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyDeviceToHost ) );
+      }
+    }
+  }
+
+  if( stream_ptr ){
+    // Flush for WDDM
+    cudaStreamQuery(0);
+  }else{
+    cudaDeviceSynchronize();
+  }
+}
+
+template <typename t>
+void cuR_transfer_device_host_async( t* src_ptr,
+                                     t* dst_ptr,
+                                     int* dims,
+                                     int* src_dims,
+                                     int* dst_dims,
+                                     int* src_perm_ptr,
+                                     int* dst_perm_ptr,
+                                     int src_span_off,
+                                     int dst_span_off,
+                                     cudaStream_t* stream_ptr ){
+
+  int src_dims_1;
+  if( src_dims ){
+    src_dims_1 = src_dims[1];
+  }else{
+    src_dims_1 = 0;
+  }
+
+  int dst_dims_1;
+  if( dst_dims ){
+    dst_dims_1 = dst_dims[1];
+  }else{
+    dst_dims_1 = 0;
+  }
+
+  int dims_0 = dims[0];
+  int dims_1 = dims[1];
+
+  // Offsets with permutations offset the permutation vector itself
+  if( src_span_off ){
+    if( src_perm_ptr ){
+      src_perm_ptr = src_perm_ptr + src_span_off;
+    }else{
+      src_ptr = src_ptr + ( src_span_off * dims_0 );
+    }
+  }
+
+  if( dst_span_off ){
+    if( dst_perm_ptr ){
+      dst_perm_ptr = dst_perm_ptr + dst_span_off;
+    }else{
+      dst_ptr = dst_ptr + ( dst_span_off * dims_0 );
+    }
+  }
+
+  int dst_pos;
+  int src_pos;
+
+  // Copy
+  if( !src_perm_ptr && !dst_perm_ptr ){
+    // No subsetting
+    if( stream_ptr ){
+      cudaTry( cudaMemcpyAsync( dst_ptr,
+                                src_ptr,
+                                sizeof(t) * dims_0 * dims_1,
+                                cudaMemcpyDeviceToHost,
+                                *stream_ptr ) );
+    }else{
+      cudaTry( cudaMemcpyAsync( dst_ptr,
+                                src_ptr,
+                                sizeof(t) * dims_0 * dims_1,
+                                cudaMemcpyDeviceToHost ) );
+    }
+  }else if( src_perm_ptr && dst_perm_ptr ){
+    for( int i = 0; i < dims_1; i ++ ){
+      if( src_perm_ptr[i] > src_dims_1 ){
+        continue;
+      }
+
+      if( dst_perm_ptr[i] > dst_dims_1 ){
+        continue;
+      }
+
+      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
+      if( stream_ptr ){
+        // This copy is not async to the host if dst is unpinned, or just takes
+        // a very long time.
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyDeviceToHost,
+                                  *stream_ptr ) );
+      }else{
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyDeviceToHost ) );
+      }
+    }
+  }else if( dst_perm_ptr ){
+    for( int i = 0; i < dims_1; i ++ ){
+      if( dst_perm_ptr[i] > dst_dims_1 ){
+        continue;
+      }
+
+      src_pos = i * dims_0;
+      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
+      if( stream_ptr ){
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyDeviceToHost,
+                                  *stream_ptr ) );
+      }else{
+        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                  src_ptr + src_pos,
+                                  dims_0 * sizeof(t),
+                                  cudaMemcpyDeviceToHost ) );
+      }
+    }
+  }else{
+    for( int i = 0; i < dims_1; i ++ ){
+      if( src_perm_ptr[i] > src_dims_1 ){
+        continue;
       }
 
       src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
@@ -459,10 +859,10 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                    SEXP dst_level_r,
                    SEXP type_r,
                    SEXP dims_r,
-                   SEXP src_dims_r,      // Optional
-                   SEXP dst_dims_r,      // Optional
-                   SEXP src_perm_ptr_r,  // Optional
-                   SEXP dst_perm_ptr_r,  // Optional
+                   SEXP src_dims_r,      // Optional*
+                   SEXP dst_dims_r,      // Optional**
+                   SEXP src_perm_ptr_r,  // Optional*
+                   SEXP dst_perm_ptr_r,  // Optional**
                    SEXP src_span_off_r,  // Optional
                    SEXP dst_span_off_r,  // Optional
                    SEXP queue_ptr_r,     // Optional
@@ -485,11 +885,10 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     ( TYPEOF( dst_perm_ptr_r ) == EXTPTRSXP ? (int*) R_ExternalPtrAddr( dst_perm_ptr_r ) :
         INTEGER( dst_perm_ptr_r ) );
 
-  int src_span_off  = ( R_NilValue == src_span_off_r ) ? 0:
-    ( Rf_asInteger( src_span_off_r ) - 1 );
-
-  int dst_span_off  = ( R_NilValue == dst_span_off_r ) ? 0:
-    ( Rf_asInteger( dst_span_off_r ) - 1 );
+  int src_span_off  = ( R_NilValue == src_span_off_r ) ? 0 :
+    Rf_asInteger( src_span_off_r ) - 1;
+  int dst_span_off  = ( R_NilValue == dst_span_off_r ) ? 0 :
+    Rf_asInteger( dst_span_off_r ) - 1;
 
   cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
     (cudaStream_t*) R_ExternalPtrAddr( stream_ptr_r );
@@ -513,42 +912,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 0:
       switch( type ){
       case 'n':
-          cuR_transfer_host_host<double, double>( REAL( src_ptr_r ),
-                                                  REAL( dst_ptr_r ),
-                                                  dims,
-                                                  src_dims,
-                                                  dst_dims,
-                                                  src_perm_ptr,
-                                                  dst_perm_ptr,
-                                                  src_span_off,
-                                                  dst_span_off,
-                                                  stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<double, double>( REAL( src_ptr_r ),
+                                                          REAL( dst_ptr_r ),
+                                                          dims,
+                                                          src_dims,
+                                                          dst_dims,
+                                                          src_perm_ptr,
+                                                          dst_perm_ptr,
+                                                          src_span_off,
+                                                          dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<double, double>( REAL( src_ptr_r ),
+                                                       REAL( dst_ptr_r ),
+                                                       dims,
+                                                       src_dims,
+                                                       dst_dims,
+                                                       src_perm_ptr,
+                                                       dst_perm_ptr,
+                                                       src_span_off,
+                                                       dst_span_off );
+        }
         break;
 
       case 'i':
-          cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
-                                            INTEGER( dst_ptr_r ),
-                                            dims,
-                                            src_dims,
-                                            dst_dims,
-                                            src_perm_ptr,
-                                            dst_perm_ptr,
-                                            src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<int, int>( INTEGER( src_ptr_r ),
+                                                    INTEGER( dst_ptr_r ),
+                                                    dims,
+                                                    src_dims,
+                                                    dst_dims,
+                                                    src_perm_ptr,
+                                                    dst_perm_ptr,
+                                                    src_span_off,
+                                                    dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<int, int>( INTEGER( src_ptr_r ),
+                                                 INTEGER( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off );
+        }
         break;
 
       case 'l':
-          cuR_transfer_host_host<int, int>( LOGICAL( src_ptr_r ),
-                                            LOGICAL( dst_ptr_r ),
-                                            dims,
-                                            src_dims,
-                                            dst_dims,
-                                            src_perm_ptr,
-                                            dst_perm_ptr,
-                                            src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<int, int>( LOGICAL( src_ptr_r ),
+                                                    LOGICAL( dst_ptr_r ),
+                                                    dims,
+                                                    src_dims,
+                                                    dst_dims,
+                                                    src_perm_ptr,
+                                                    dst_perm_ptr,
+                                                    src_span_off,
+                                                    dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<int, int>( LOGICAL( src_ptr_r ),
+                                                 LOGICAL( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off );
+        }
         break;
 
       default:
@@ -560,42 +998,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 1:
       switch( type ){
       case 'n':
-          cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
-                                                 (float*) R_ExternalPtrAddr( dst_ptr_r ),
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<double, float>( REAL( src_ptr_r ),
+                                                         (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                         dims,
+                                                         src_dims,
+                                                         dst_dims,
+                                                         src_perm_ptr,
+                                                         dst_perm_ptr,
+                                                         src_span_off,
+                                                         dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<double, float>( REAL( src_ptr_r ),
+                                                      (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                      dims,
+                                                      src_dims,
+                                                      dst_dims,
+                                                      src_perm_ptr,
+                                                      dst_perm_ptr,
+                                                      src_span_off,
+                                                      dst_span_off );
+        }
+        break;
+
+      case 'i':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<int, int>( INTEGER( src_ptr_r ),
+                                                    (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                    dims,
+                                                    src_dims,
+                                                    dst_dims,
+                                                    src_perm_ptr,
+                                                    dst_perm_ptr,
+                                                    src_span_off,
+                                                    dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<int, int>( INTEGER( src_ptr_r ),
+                                                 (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                                  dims,
                                                  src_dims,
                                                  dst_dims,
                                                  src_perm_ptr,
                                                  dst_perm_ptr,
                                                  src_span_off,
-                                                 dst_span_off,
-                                                 stream_ptr );
-        break;
-
-      case 'i':
-          cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
-                                            (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                            dims,
-                                            src_dims,
-                                            dst_dims,
-                                            src_perm_ptr,
-                                            dst_perm_ptr,
-                                            src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+                                                 dst_span_off );
+        }
         break;
 
       case 'l':
-          cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
-                                             (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                             dims,
-                                             src_dims,
-                                             dst_dims,
-                                             src_perm_ptr,
-                                             dst_perm_ptr,
-                                             src_span_off,
-                                             dst_span_off,
-                                             stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<int, bool>( LOGICAL( src_ptr_r ),
+                                                     (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                     dims,
+                                                     src_dims,
+                                                     dst_dims,
+                                                     src_perm_ptr,
+                                                     dst_perm_ptr,
+                                                     src_span_off,
+                                                     dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<int, bool>( LOGICAL( src_ptr_r ),
+                                                  (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                  dims,
+                                                  src_dims,
+                                                  dst_dims,
+                                                  src_perm_ptr,
+                                                  dst_perm_ptr,
+                                                  src_span_off,
+                                                  dst_span_off );
+        }
         break;
 
       default:
@@ -609,42 +1086,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 2:
       switch( type ){
       case 'n':
-          cuR_transfer_host_host<double, float>( REAL( src_ptr_r ),
-                                                 (float*) R_ExternalPtrAddr( dst_ptr_r ),
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<double, float>( REAL( src_ptr_r ),
+                                                         (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                         dims,
+                                                         src_dims,
+                                                         dst_dims,
+                                                         src_perm_ptr,
+                                                         dst_perm_ptr,
+                                                         src_span_off,
+                                                         dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<double, float>( REAL( src_ptr_r ),
+                                                      (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                      dims,
+                                                      src_dims,
+                                                      dst_dims,
+                                                      src_perm_ptr,
+                                                      dst_perm_ptr,
+                                                      src_span_off,
+                                                      dst_span_off );
+        }
+        break;
+
+      case 'i':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<int, int>( INTEGER( src_ptr_r ),
+                                                    (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                    dims,
+                                                    src_dims,
+                                                    dst_dims,
+                                                    src_perm_ptr,
+                                                    dst_perm_ptr,
+                                                    src_span_off,
+                                                    dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<int, int>( INTEGER( src_ptr_r ),
+                                                 (int*) R_ExternalPtrAddr( dst_ptr_r ),
                                                  dims,
                                                  src_dims,
                                                  dst_dims,
                                                  src_perm_ptr,
                                                  dst_perm_ptr,
                                                  src_span_off,
-                                                 dst_span_off,
-                                                 stream_ptr );
-        break;
-
-      case 'i':
-          cuR_transfer_host_host<int, int>( INTEGER( src_ptr_r ),
-                                            (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                            dims,
-                                            src_dims,
-                                            dst_dims,
-                                            src_perm_ptr,
-                                            dst_perm_ptr,
-                                            src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+                                                 dst_span_off );
+        }
         break;
 
       case 'l':
-          cuR_transfer_host_host<int, bool>( LOGICAL( src_ptr_r ),
-                                             (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                             dims,
-                                             src_dims,
-                                             dst_dims,
-                                             src_perm_ptr,
-                                             dst_perm_ptr,
-                                             src_span_off,
-                                             dst_span_off,
-                                             stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<int, bool>( LOGICAL( src_ptr_r ),
+                                                     (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                     dims,
+                                                     src_dims,
+                                                     dst_dims,
+                                                     src_perm_ptr,
+                                                     dst_perm_ptr,
+                                                     src_span_off,
+                                                     dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<int, bool>( LOGICAL( src_ptr_r ),
+                                                  (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                  dims,
+                                                  src_dims,
+                                                  dst_dims,
+                                                  src_perm_ptr,
+                                                  dst_perm_ptr,
+                                                  src_span_off,
+                                                  dst_span_off );
+        }
         break;
 
       default:
@@ -665,42 +1181,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 0:
       switch( type ){
       case 'n':
-          cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                                 REAL( dst_ptr_r ),
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                         REAL( dst_ptr_r ),
+                                                         dims,
+                                                         src_dims,
+                                                         dst_dims,
+                                                         src_perm_ptr,
+                                                         dst_perm_ptr,
+                                                         src_span_off,
+                                                         dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                      REAL( dst_ptr_r ),
+                                                      dims,
+                                                      src_dims,
+                                                      dst_dims,
+                                                      src_perm_ptr,
+                                                      dst_perm_ptr,
+                                                      src_span_off,
+                                                      dst_span_off );
+        }
+        break;
+
+      case 'i':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                    INTEGER( dst_ptr_r ),
+                                                    dims,
+                                                    src_dims,
+                                                    dst_dims,
+                                                    src_perm_ptr,
+                                                    dst_perm_ptr,
+                                                    src_span_off,
+                                                    dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                 INTEGER( dst_ptr_r ),
                                                  dims,
                                                  src_dims,
                                                  dst_dims,
                                                  src_perm_ptr,
                                                  dst_perm_ptr,
                                                  src_span_off,
-                                                 dst_span_off,
-                                                 stream_ptr );
-        break;
-
-      case 'i':
-          cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                            INTEGER( dst_ptr_r ),
-                                            dims,
-                                            src_dims,
-                                            dst_dims,
-                                            src_perm_ptr,
-                                            dst_perm_ptr,
-                                            src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+                                                 dst_span_off );
+        }
         break;
 
       case 'l':
-          cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                             LOGICAL( dst_ptr_r ),
-                                             dims,
-                                             src_dims,
-                                             dst_dims,
-                                             src_perm_ptr,
-                                             dst_perm_ptr,
-                                             src_span_off,
-                                             dst_span_off,
-                                             stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                     LOGICAL( dst_ptr_r ),
+                                                     dims,
+                                                     src_dims,
+                                                     dst_dims,
+                                                     src_perm_ptr,
+                                                     dst_perm_ptr,
+                                                     src_span_off,
+                                                     dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                  LOGICAL( dst_ptr_r ),
+                                                  dims,
+                                                  src_dims,
+                                                  dst_dims,
+                                                  src_perm_ptr,
+                                                  dst_perm_ptr,
+                                                  src_span_off,
+                                                  dst_span_off );
+        }
         break;
 
       default:
@@ -712,42 +1267,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 1:
       switch( type ){
       case 'n':
-          cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                                (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                                dims,
-                                                src_dims,
-                                                dst_dims,
-                                                src_perm_ptr,
-                                                dst_perm_ptr,
-                                                src_span_off,
-                                                dst_span_off,
-                                                stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                        (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                        dims,
+                                                        src_dims,
+                                                        dst_dims,
+                                                        src_perm_ptr,
+                                                        dst_perm_ptr,
+                                                        src_span_off,
+                                                        dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                     (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                     dims,
+                                                     src_dims,
+                                                     dst_dims,
+                                                     src_perm_ptr,
+                                                     dst_perm_ptr,
+                                                     src_span_off,
+                                                     dst_span_off );
+        }
         break;
 
       case 'i':
-          cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                            (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                            dims,
-                                            src_dims,
-                                            dst_dims,
-                                            src_perm_ptr,
-                                            dst_perm_ptr,
-                                            src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                    (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                    dims,
+                                                    src_dims,
+                                                    dst_dims,
+                                                    src_perm_ptr,
+                                                    dst_perm_ptr,
+                                                    src_span_off,
+                                                    dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                 (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off );
+        }
         break;
 
       case 'l':
-          cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                              (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                              dims,
-                                              src_dims,
-                                              dst_dims,
-                                              src_perm_ptr,
-                                              dst_perm_ptr,
-                                              src_span_off,
-                                              dst_span_off,
-                                              stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                      (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                      dims,
+                                                      src_dims,
+                                                      dst_dims,
+                                                      src_perm_ptr,
+                                                      dst_perm_ptr,
+                                                      src_span_off,
+                                                      dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                   (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                   dims,
+                                                   src_dims,
+                                                   dst_dims,
+                                                   src_perm_ptr,
+                                                   dst_perm_ptr,
+                                                   src_span_off,
+                                                   dst_span_off );
+        }
         break;
 
       default:
@@ -761,42 +1355,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 2:
       switch( type ){
       case 'n':
-          cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                                (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                                dims,
-                                                src_dims,
-                                                dst_dims,
-                                                src_perm_ptr,
-                                                dst_perm_ptr,
-                                                src_span_off,
-                                                dst_span_off,
-                                                stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                        (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                        dims,
+                                                        src_dims,
+                                                        dst_dims,
+                                                        src_perm_ptr,
+                                                        dst_perm_ptr,
+                                                        src_span_off,
+                                                        dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                     (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                     dims,
+                                                     src_dims,
+                                                     dst_dims,
+                                                     src_perm_ptr,
+                                                     dst_perm_ptr,
+                                                     src_span_off,
+                                                     dst_span_off );
+        }
         break;
 
       case 'i':
-          cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                            (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                            dims,
-                                            src_dims,
-                                            dst_dims,
-                                            src_perm_ptr,
-                                            dst_perm_ptr,
-                                            src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                    (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                    dims,
+                                                    src_dims,
+                                                    dst_dims,
+                                                    src_perm_ptr,
+                                                    dst_perm_ptr,
+                                                    src_span_off,
+                                                    dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                 (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off );
+        }
         break;
 
       case 'l':
-          cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                              (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                              dims,
-                                              src_dims,
-                                              dst_dims,
-                                              src_perm_ptr,
-                                              dst_perm_ptr,
-                                              src_span_off,
-                                              dst_span_off,
-                                              stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                      (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                      dims,
+                                                      src_dims,
+                                                      dst_dims,
+                                                      src_perm_ptr,
+                                                      dst_perm_ptr,
+                                                      src_span_off,
+                                                      dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                   (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                   dims,
+                                                   src_dims,
+                                                   dst_dims,
+                                                   src_perm_ptr,
+                                                   dst_perm_ptr,
+                                                   src_span_off,
+                                                   dst_span_off );
+        }
         break;
 
       default:
@@ -808,42 +1441,87 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 3:
       switch( type ){
       case 'n':
-        cuR_transfer_host_device<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                         (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                         dims,
-                                         src_dims,
-                                         dst_dims,
-                                         src_perm_ptr,
-                                         dst_perm_ptr,
-                                         src_span_off,
-                                         dst_span_off,
-                                         NULL );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_device_async<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                   (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                   dims,
+                                                   src_dims,
+                                                   dst_dims,
+                                                   src_perm_ptr,
+                                                   dst_perm_ptr,
+                                                   src_span_off,
+                                                   dst_span_off,
+                                                   NULL );
+          });
+        }else{
+          cuR_transfer_host_device_sync<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                dims,
+                                                src_dims,
+                                                dst_dims,
+                                                src_perm_ptr,
+                                                dst_perm_ptr,
+                                                src_span_off,
+                                                dst_span_off,
+                                                NULL );
+        }
         break;
 
       case 'i':
-        cuR_transfer_host_device<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                       (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                       dims,
-                                       src_dims,
-                                       dst_dims,
-                                       src_perm_ptr,
-                                       dst_perm_ptr,
-                                       src_span_off,
-                                       dst_span_off,
-                                       NULL );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_device_async<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                 (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off,
+                                                 NULL );
+          });
+        }else{
+          cuR_transfer_host_device_sync<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dims,
+                                              src_dims,
+                                              dst_dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off,
+                                              NULL );
+        }
         break;
 
       case 'l':
-        cuR_transfer_host_device<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                        (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                        dims,
-                                        src_dims,
-                                        dst_dims,
-                                        src_perm_ptr,
-                                        dst_perm_ptr,
-                                        src_span_off,
-                                        dst_span_off,
-                                        NULL );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_device_async<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                  (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                  dims,
+                                                  src_dims,
+                                                  dst_dims,
+                                                  src_perm_ptr,
+                                                  dst_perm_ptr,
+                                                  src_span_off,
+                                                  dst_span_off,
+                                                  NULL );
+          });
+        }else{
+          cuR_transfer_host_device_sync<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                               (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                               dims,
+                                               src_dims,
+                                               dst_dims,
+                                               src_perm_ptr,
+                                               dst_perm_ptr,
+                                               src_span_off,
+                                               dst_span_off,
+                                               NULL );
+        }
         break;
 
       default:
@@ -866,42 +1544,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 0:
       switch( type ){
       case 'n':
-          cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                                 REAL( dst_ptr_r ),
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                         REAL( dst_ptr_r ),
+                                                         dims,
+                                                         src_dims,
+                                                         dst_dims,
+                                                         src_perm_ptr,
+                                                         dst_perm_ptr,
+                                                         src_span_off,
+                                                         dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                      REAL( dst_ptr_r ),
+                                                      dims,
+                                                      src_dims,
+                                                      dst_dims,
+                                                      src_perm_ptr,
+                                                      dst_perm_ptr,
+                                                      src_span_off,
+                                                      dst_span_off );
+        }
+        break;
+
+      case 'i':
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                    INTEGER( dst_ptr_r ),
+                                                    dims,
+                                                    src_dims,
+                                                    dst_dims,
+                                                    src_perm_ptr,
+                                                    dst_perm_ptr,
+                                                    src_span_off,
+                                                    dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                 INTEGER( dst_ptr_r ),
                                                  dims,
                                                  src_dims,
                                                  dst_dims,
                                                  src_perm_ptr,
                                                  dst_perm_ptr,
                                                  src_span_off,
-                                                 dst_span_off,
-                                                 stream_ptr );
-        break;
-
-      case 'i':
-          cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                            INTEGER( dst_ptr_r ),
-                                            dims,
-                                            src_dims,
-                                            dst_dims,
-                                            src_perm_ptr,
-                                            dst_perm_ptr,
-                                            src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+                                                 dst_span_off );
+        }
         break;
 
       case 'l':
-          cuR_transfer_host_host<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                             LOGICAL( dst_ptr_r ),
-                                             dims,
-                                             src_dims,
-                                             dst_dims,
-                                             src_perm_ptr,
-                                             dst_perm_ptr,
-                                             src_span_off,
-                                             dst_span_off,
-                                             stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                     LOGICAL( dst_ptr_r ),
+                                                     dims,
+                                                     src_dims,
+                                                     dst_dims,
+                                                     src_perm_ptr,
+                                                     dst_perm_ptr,
+                                                     src_span_off,
+                                                     dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<bool, int>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                  LOGICAL( dst_ptr_r ),
+                                                  dims,
+                                                  src_dims,
+                                                  dst_dims,
+                                                  src_perm_ptr,
+                                                  dst_perm_ptr,
+                                                  src_span_off,
+                                                  dst_span_off );
+        }
         break;
 
       default:
@@ -913,42 +1630,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 1:
       switch( type ){
       case 'n':
-          cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                                (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                                dims,
-                                                src_dims,
-                                                dst_dims,
-                                                src_perm_ptr,
-                                                dst_perm_ptr,
-                                                src_span_off,
-                                                dst_span_off,
-                                                stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                        (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                        dims,
+                                                        src_dims,
+                                                        dst_dims,
+                                                        src_perm_ptr,
+                                                        dst_perm_ptr,
+                                                        src_span_off,
+                                                        dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                     (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                     dims,
+                                                     src_dims,
+                                                     dst_dims,
+                                                     src_perm_ptr,
+                                                     dst_perm_ptr,
+                                                     src_span_off,
+                                                     dst_span_off );
+        }
         break;
 
       case 'i':
-          cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                            (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                            dims,
-                                            src_dims,
-                                            dst_dims,
-                                            src_perm_ptr,
-                                            dst_perm_ptr,
-                                            src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                    (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                    dims,
+                                                    src_dims,
+                                                    dst_dims,
+                                                    src_perm_ptr,
+                                                    dst_perm_ptr,
+                                                    src_span_off,
+                                                    dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                 (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off );
+        }
         break;
 
       case 'l':
-          cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                              (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                              dims,
-                                              src_dims,
-                                              dst_dims,
-                                              src_perm_ptr,
-                                              dst_perm_ptr,
-                                              src_span_off,
-                                              dst_span_off,
-                                              stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                      (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                      dims,
+                                                      src_dims,
+                                                      dst_dims,
+                                                      src_perm_ptr,
+                                                      dst_perm_ptr,
+                                                      src_span_off,
+                                                      dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                   (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                   dims,
+                                                   src_dims,
+                                                   dst_dims,
+                                                   src_perm_ptr,
+                                                   dst_perm_ptr,
+                                                   src_span_off,
+                                                   dst_span_off );
+        }
         break;
 
       default:
@@ -960,42 +1716,81 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 2:
       switch( type ){
       case 'n':
-          cuR_transfer_host_host<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                                (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                                dims,
-                                                src_dims,
-                                                dst_dims,
-                                                src_perm_ptr,
-                                                dst_perm_ptr,
-                                                src_span_off,
-                                                dst_span_off,
-                                                stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                        (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                        dims,
+                                                        src_dims,
+                                                        dst_dims,
+                                                        src_perm_ptr,
+                                                        dst_perm_ptr,
+                                                        src_span_off,
+                                                        dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<float, float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                     (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                     dims,
+                                                     src_dims,
+                                                     dst_dims,
+                                                     src_perm_ptr,
+                                                     dst_perm_ptr,
+                                                     src_span_off,
+                                                     dst_span_off );
+        }
         break;
 
       case 'i':
-          cuR_transfer_host_host<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                            (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                            dims,
-                                            src_dims,
-                                            dst_dims,
-                                            src_perm_ptr,
-                                            dst_perm_ptr,
-                                            src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                    (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                    dims,
+                                                    src_dims,
+                                                    dst_dims,
+                                                    src_perm_ptr,
+                                                    dst_perm_ptr,
+                                                    src_span_off,
+                                                    dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<int, int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                 (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off );
+        }
         break;
 
       case 'l':
-          cuR_transfer_host_host<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                              (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                              dims,
-                                              src_dims,
-                                              dst_dims,
-                                              src_perm_ptr,
-                                              dst_perm_ptr,
-                                              src_span_off,
-                                              dst_span_off,
-                                              stream_ptr );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_host_host_async<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                      (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                      dims,
+                                                      src_dims,
+                                                      dst_dims,
+                                                      src_perm_ptr,
+                                                      dst_perm_ptr,
+                                                      src_span_off,
+                                                      dst_span_off );
+          });
+        }else{
+          cuR_transfer_host_host_sync<bool, bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                   (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                   dims,
+                                                   src_dims,
+                                                   dst_dims,
+                                                   src_perm_ptr,
+                                                   dst_perm_ptr,
+                                                   src_span_off,
+                                                   dst_span_off );
+        }
         break;
 
       default:
@@ -1009,84 +1804,84 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         if( queue_ptr ){
           queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_device<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                             (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                             dims,
-                                             src_dims,
-                                             dst_dims,
-                                             src_perm_ptr,
-                                             dst_perm_ptr,
-                                             src_span_off,
-                                             dst_span_off,
-                                             stream_ptr );
+            cuR_transfer_host_device_async<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                   (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                   dims,
+                                                   src_dims,
+                                                   dst_dims,
+                                                   src_perm_ptr,
+                                                   dst_perm_ptr,
+                                                   src_span_off,
+                                                   dst_span_off,
+                                                   stream_ptr );
           });
         }else{
-          cuR_transfer_host_device<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                           (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                           dims,
-                                           src_dims,
-                                           dst_dims,
-                                           src_perm_ptr,
-                                           dst_perm_ptr,
-                                           src_span_off,
-                                           dst_span_off,
-                                           stream_ptr );
+          cuR_transfer_host_device_sync<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                dims,
+                                                src_dims,
+                                                dst_dims,
+                                                src_perm_ptr,
+                                                dst_perm_ptr,
+                                                src_span_off,
+                                                dst_span_off,
+                                                stream_ptr );
         }
         break;
 
       case 'i':
         if( queue_ptr ){
           queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_device<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                           (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                           dims,
-                                           src_dims,
-                                           dst_dims,
-                                           src_perm_ptr,
-                                           dst_perm_ptr,
-                                           src_span_off,
-                                           dst_span_off,
-                                           stream_ptr );
+            cuR_transfer_host_device_async<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                 (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off,
+                                                 stream_ptr );
           });
         }else{
-          cuR_transfer_host_device<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                         (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                         dims,
-                                         src_dims,
-                                         dst_dims,
-                                         src_perm_ptr,
-                                         dst_perm_ptr,
-                                         src_span_off,
-                                         dst_span_off,
-                                         stream_ptr );
+          cuR_transfer_host_device_sync<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dims,
+                                              src_dims,
+                                              dst_dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off,
+                                              stream_ptr );
         }
         break;
 
       case 'l':
         if( queue_ptr ){
           queue_ptr -> dispatch( [=]{
-            cuR_transfer_host_device<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                            (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                            dims,
-                                            src_dims,
-                                            dst_dims,
-                                            src_perm_ptr,
-                                            dst_perm_ptr,
-                                            src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+            cuR_transfer_host_device_async<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                  (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                  dims,
+                                                  src_dims,
+                                                  dst_dims,
+                                                  src_perm_ptr,
+                                                  dst_perm_ptr,
+                                                  src_span_off,
+                                                  dst_span_off,
+                                                  stream_ptr );
           });
         }else{
-          cuR_transfer_host_device<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                          (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                          dims,
-                                          src_dims,
-                                          dst_dims,
-                                          src_perm_ptr,
-                                          dst_perm_ptr,
-                                          src_span_off,
-                                          dst_span_off,
-                                          stream_ptr );
+          cuR_transfer_host_device_sync<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                               (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                               dims,
+                                               src_dims,
+                                               dst_dims,
+                                               src_perm_ptr,
+                                               dst_perm_ptr,
+                                               src_span_off,
+                                               dst_span_off,
+                                               stream_ptr );
         }
         break;
 
@@ -1106,42 +1901,87 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     case 1:
       switch( type ){
       case 'n':
-        cuR_transfer_device_host<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                         (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                         dims,
-                                         src_dims,
-                                         dst_dims,
-                                         src_perm_ptr,
-                                         dst_perm_ptr,
-                                         src_span_off,
-                                         dst_span_off,
-                                         NULL );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_device_host_async<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                   (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                   dims,
+                                                   src_dims,
+                                                   dst_dims,
+                                                   src_perm_ptr,
+                                                   dst_perm_ptr,
+                                                   src_span_off,
+                                                   dst_span_off,
+                                                   NULL );
+          });
+        }else{
+          cuR_transfer_device_host_sync<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                 (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off,
+                                                 NULL );
+        }
         break;
 
       case 'i':
-        cuR_transfer_device_host<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                       (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                       dims,
-                                       src_dims,
-                                       dst_dims,
-                                       src_perm_ptr,
-                                       dst_perm_ptr,
-                                       src_span_off,
-                                       dst_span_off,
-                                       NULL );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_device_host_async<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                 (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off,
+                                                 NULL );
+          });
+        }else{
+          cuR_transfer_device_host_sync<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dims,
+                                              src_dims,
+                                              dst_dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off,
+                                              NULL );
+        }
         break;
 
       case 'l':
-        cuR_transfer_device_host<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                        (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                        dims,
-                                        src_dims,
-                                        dst_dims,
-                                        src_perm_ptr,
-                                        dst_perm_ptr,
-                                        src_span_off,
-                                        dst_span_off,
-                                        NULL );
+        if( queue_ptr ){
+          queue_ptr -> dispatch( [=]{
+            cuR_transfer_device_host_async<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                  (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                  dims,
+                                                  src_dims,
+                                                  dst_dims,
+                                                  src_perm_ptr,
+                                                  dst_perm_ptr,
+                                                  src_span_off,
+                                                  dst_span_off,
+                                                  NULL );
+          });
+        }else{
+          cuR_transfer_device_host_sync<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                               (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                               dims,
+                                               src_dims,
+                                               dst_dims,
+                                               src_perm_ptr,
+                                               dst_perm_ptr,
+                                               src_span_off,
+                                               dst_span_off,
+                                               NULL );
+        }
         break;
 
       default:
@@ -1155,84 +1995,84 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       case 'n':
         if( queue_ptr ){
           queue_ptr -> dispatch( [=]{
-            cuR_transfer_device_host<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                             (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                             dims,
-                                             src_dims,
-                                             dst_dims,
-                                             src_perm_ptr,
-                                             dst_perm_ptr,
-                                             src_span_off,
-                                             dst_span_off,
-                                             stream_ptr );
+            cuR_transfer_device_host_async<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                   (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                   dims,
+                                                   src_dims,
+                                                   dst_dims,
+                                                   src_perm_ptr,
+                                                   dst_perm_ptr,
+                                                   src_span_off,
+                                                   dst_span_off,
+                                                   stream_ptr );
           });
         }else{
-          cuR_transfer_device_host<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
-                                           (float*) R_ExternalPtrAddr( dst_ptr_r ),
-                                           dims,
-                                           src_dims,
-                                           dst_dims,
-                                           src_perm_ptr,
-                                           dst_perm_ptr,
-                                           src_span_off,
-                                           dst_span_off,
-                                           stream_ptr );
+          cuR_transfer_device_host_sync<float>( (float*) R_ExternalPtrAddr( src_ptr_r ),
+                                                (float*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                dims,
+                                                src_dims,
+                                                dst_dims,
+                                                src_perm_ptr,
+                                                dst_perm_ptr,
+                                                src_span_off,
+                                                dst_span_off,
+                                                stream_ptr );
         }
         break;
 
       case 'i':
         if( queue_ptr ){
           queue_ptr -> dispatch( [=]{
-            cuR_transfer_device_host<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                           (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                           dims,
-                                           src_dims,
-                                           dst_dims,
-                                           src_perm_ptr,
-                                           dst_perm_ptr,
-                                           src_span_off,
-                                           dst_span_off,
-                                           stream_ptr );
+            cuR_transfer_device_host_async<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                                 (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                 dims,
+                                                 src_dims,
+                                                 dst_dims,
+                                                 src_perm_ptr,
+                                                 dst_perm_ptr,
+                                                 src_span_off,
+                                                 dst_span_off,
+                                                 stream_ptr );
           });
         }else{
-          cuR_transfer_device_host<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
-                                         (int*) R_ExternalPtrAddr( dst_ptr_r ),
-                                         dims,
-                                         src_dims,
-                                         dst_dims,
-                                         src_perm_ptr,
-                                         dst_perm_ptr,
-                                         src_span_off,
-                                         dst_span_off,
-                                         stream_ptr );
+          cuR_transfer_device_host_sync<int>( (int*) R_ExternalPtrAddr( src_ptr_r ),
+                                              (int*) R_ExternalPtrAddr( dst_ptr_r ),
+                                              dims,
+                                              src_dims,
+                                              dst_dims,
+                                              src_perm_ptr,
+                                              dst_perm_ptr,
+                                              src_span_off,
+                                              dst_span_off,
+                                              stream_ptr );
         }
         break;
 
       case 'l':
         if( queue_ptr ){
           queue_ptr -> dispatch( [=]{
-            cuR_transfer_device_host<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                            (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                            dims,
-                                            src_dims,
-                                            dst_dims,
-                                            src_perm_ptr,
-                                            dst_perm_ptr,
-                                            src_span_off,
-                                            dst_span_off,
-                                            stream_ptr );
+            cuR_transfer_device_host_async<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                                  (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                                  dims,
+                                                  src_dims,
+                                                  dst_dims,
+                                                  src_perm_ptr,
+                                                  dst_perm_ptr,
+                                                  src_span_off,
+                                                  dst_span_off,
+                                                  stream_ptr );
           });
         }else{
-          cuR_transfer_device_host<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
-                                          (bool*) R_ExternalPtrAddr( dst_ptr_r ),
-                                          dims,
-                                          src_dims,
-                                          dst_dims,
-                                          src_perm_ptr,
-                                          dst_perm_ptr,
-                                          src_span_off,
-                                          dst_span_off,
-                                          stream_ptr );
+          cuR_transfer_device_host_sync<bool>( (bool*) R_ExternalPtrAddr( src_ptr_r ),
+                                               (bool*) R_ExternalPtrAddr( dst_ptr_r ),
+                                               dims,
+                                               src_dims,
+                                               dst_dims,
+                                               src_perm_ptr,
+                                               dst_perm_ptr,
+                                               src_span_off,
+                                               dst_span_off,
+                                               stream_ptr );
         }
         break;
 

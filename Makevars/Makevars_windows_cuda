@@ -44,7 +44,7 @@ all: cuRious.so
 cuRious.so: $(all_objs)
 
 %.o: %.cpp $(h_srcs)
-	$(CXX) -std=c++11 -O3 -fopenmp -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
+	$(CXX) -std=c++11 -O3 -I$(R_INC) -I$(CUDA_INC) $< -o $@ -c
 
 cudaR.dll: $(cu_srcs) $(h_srcs)
 	$(NVCC) -O3 -ccbin=$(VC_BIN) $(NVCC_ARGS) $(cu_srcs) -o cudaR.dll --shared

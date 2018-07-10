@@ -1,5 +1,7 @@
 # Source this script to build the package:
+
 # shift + ctrl + f10
+# shift + ctrl + f11
 # shift + ctrl + s
 
 # Build options

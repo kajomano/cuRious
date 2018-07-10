@@ -185,7 +185,6 @@ tensor <- R6Class(
   ),
 
   private = list(
-    .level   = NULL,
     .dims    = NULL,
     .type    = NULL,
 

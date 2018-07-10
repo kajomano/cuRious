@@ -94,15 +94,14 @@ fusion <- R6Class(
   )
 )
 
-
 # fusion.context ====
 fusion.context <- R6Class(
   "cuR.fusion.context",
   inherit = .alert.send.recv,
   public = list(
-    initialize = function( stream = NULL, deployed = TRUE, device = NULL ){
+    initialize = function( stream = NULL, deployed = 3, device = NULL ){
       if( !is.null( stream ) ){
-        check.cuda.stream( stream )
+        check.stream( stream )
 
         if( !is.null( device ) ){
           if( stream$device != device ){
@@ -120,32 +119,45 @@ fusion.context <- R6Class(
         }
       }
 
-      if( deployed ){
-        self$deploy()
+      if( is.null( deployed ) ){
+        return()
+      }else if( deployed == 1L ){
+        self$deploy.L1()
+      }else if( deployed == 3L ){
+        self$deploy.L3()
+      }else{
+        stop( "Invalid deploy target level" )
       }
     },
 
-    deploy = function(){
-      if( is.null( private$.ptrs ) ){
-        if( length( private$.context.changed ) ){
-          if( private$.device != private$.stream$device ){
-            stop( "Not matching device with stream device" )
-          }
-
-          private$.context.changed <- NULL
+    deploy.L1 = function(){
+      if( length( private$.context.changed ) ){
+        if( private$.device != private$.stream$device ){
+          stop( "Not matching device with stream device" )
         }
 
-        private$.deploy()
+        private$.context.changed <- NULL
       }
 
+      private$.deploy.L1()
+      invisible( TRUE )
+    },
+
+    deploy.L3 = function(){
+      if( length( private$.context.changed ) ){
+        if( private$.device != private$.stream$device ){
+          stop( "Not matching device with stream device" )
+        }
+
+        private$.context.changed <- NULL
+      }
+
+      private$.deploy.L3()
       invisible( TRUE )
     },
 
     destroy = function(){
-      if( !is.null( private$.ptrs ) ){
-        private$.destroy()
-      }
-
+      private$.destroy()
       invisible( TRUE )
     },
 
@@ -183,7 +195,7 @@ fusion.context <- R6Class(
         if( is.null( val ) ){
           private$.attach.stream( NULL )
         }else{
-          check.cuda.stream( val )
+          check.stream( val )
           private$.attach.stream( val )
         }
       }
@@ -211,26 +223,28 @@ contexted.fusion <- R6Class(
 
   private = list(
     .update.context = function( ... ){
+
       tensors <- sapply( private$.eps, is.tensor )
       tensors <- private$.eps[ tensors ]
 
       if( !all( sapply( tensors, `[[`, "level" ) == 0L ) &&
+          !all( sapply( tensors, `[[`, "level" ) == 1L ) &&
           !all( sapply( tensors, `[[`, "level" ) == 3L ) ){
-        stop( "Not all tensors are on L0 or L3" )
+        stop( "Not all tensors are on L0, L1 or L3" )
       }
 
-      under  <- ( tensors[[1]]$level == 3L )
-      device <- tensors[[1]]$device
+      level   <- tensors[[1]]$level
+      device  <- tensors[[1]]$device
+      context <- private$.eps$context
+      stream  <- private$.eps$stream
 
-      if( under ){
+      if( level == 3L ){
         if( !all( sapply( tensors, `[[`, "device" ) == device ) ){
           stop( "Not all tensors are on the same device" )
         }
       }
 
-      if( under ){
-        context <- private$.eps$context
-
+      if( level %in% c( 1L, 3L ) ){
         if( is.null( context ) ){
           stop( "Subroutine requires an active context" )
         }else{
@@ -239,28 +253,43 @@ contexted.fusion <- R6Class(
           }
 
           if( context$device != device ){
-            stop( "Context is not on the correct context" )
+            stop( "Context is not deployed to the correct device" )
+          }
+
+          if( context$level != level ){
+            stop( "Context is not deployed to the correct level" )
           }
         }
       }
 
-      stream <- private$.eps$stream
-
       if( !is.null( stream ) ){
         if( !stream$is.destroyed ){
-          if( !under ){
-            stop( "An active stream is given to a synchronous subroutine" )
+          if( level == 0L ){
+            warning( "An active stream is given to a synchronous subroutine" )
           }
         }
       }
 
       private$.device <- device
 
-      if( under ){
-        private$.fun <- private$.L3.call
-      }else{
-        private$.fun <- private$.L0.call
-      }
+      private$.fun <- switch(
+        as.character( level ),
+        `0`= private$.L0.call,
+        `1`= private$.L1.call,
+        `3`= private$.L3.call
+      )
+    },
+
+    .call.L0 = function( ... ){
+      stop( "L0 call not implemented" )
+    },
+
+    .call.L1 = function( ... ){
+      stop( "L1 call not implemented" )
+    },
+
+    .call.L3 = function( ... ){
+      stop( "L3 call not implemented" )
     }
   )
 )

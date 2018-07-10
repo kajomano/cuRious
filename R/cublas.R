@@ -10,7 +10,11 @@ cublas.context <- R6Class(
   "cuR.cublas.context",
   inherit = fusion.context,
   private = list(
-    .deploy = function(){
+    .deploy.L1 = function(){
+      stop( "Not yet implemented" )
+    },
+
+    .deploy.L3 = function(){
       super$.deploy(
         expression(
           list( handle = .Call( "cuR_cublas_handle_create" ) )
@@ -115,14 +119,19 @@ cublas.sgemv <- R6Class(
     }
   ),
 
+  # ITT ====
+  # Span offseteket nem opcionálisan
+  # C++ forrásokból is kivenni
+  # Csinálni tovább a kontextelős dupladeployt a thrustban is
+
   private = list(
     .L3.call = function( A.tensor,
                          x.tensor,
                          y.tensor,
                          A.dims,
-                         A.span.off = NULL,
-                         x.span.off = NULL,
-                         y.span.off = NULL,
+                         A.span.off,
+                         x.span.off,
+                         y.span.off,
                          A.tp,
                          alpha,
                          beta,

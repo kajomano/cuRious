@@ -3,9 +3,25 @@
 #include "common_debug.h"
 #include "streams.h"
 
-#ifndef CUDA_EXCLUDE
+#ifdef CUDA_EXCLUDE
 
 // Device selection and query ==================================================
+extern "C"
+SEXP cuR_device_count(){
+  SEXP count_r = Rf_protect( Rf_ScalarInteger( -1 ) );
+  Rf_unprotect(1);
+  return count_r;
+}
+
+extern "C"
+SEXP cuR_device_get(){
+  SEXP dev_r = Rf_protect( Rf_ScalarInteger( -1 ) );
+  Rf_unprotect(1);
+  return dev_r;
+}
+
+#else
+
 extern "C"
 SEXP cuR_device_count(){
   int count;

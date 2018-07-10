@@ -29,36 +29,51 @@ cuda.device.default.set <- function( device ){
 }
 
 # CUDA and thread streams ====
-cuda.stream <- R6Class(
-  "cuR.cuda.stream",
+# This class is a variation of the fusion context, but alas not inheriting from
+# it
+stream <- R6Class(
+  "cuR.stream",
   inherit = .alert.send,
   public = list(
-    initialize = function( deployed = TRUE, device = cuda.device.default.get() ){
+    initialize = function( deployed = 3L, device = cuda.device.default.get() ){
       self$device <- device
 
-      if( deployed ){
-        self$deploy()
+      if( is.null( deployed ) ){
+        return()
+      }else if( deployed == 1L ){
+        self$deploy.L1()
+      }else if( deployed == 3L ){
+        self$deploy.L3()
+      }else{
+        stop( "Invalid deploy target level" )
       }
     },
 
-    deploy = function(){
-      if( is.null( private$.ptrs ) ){
-        private$.deploy( expression(
-          list( stream = .Call( "cuR_cuda_stream_create" ),
-                queue  = .Call( "cuR_stream_queue_create" ) )
-        ) )
-      }
+    deploy.L1 = function(){
+      private$.deploy.L1( expression(
+        list( queue  = .Call( "cuR_stream_queue_create" ) )
+      ) )
+
+      invisible( TRUE )
+    },
+
+    deploy.L3 = function(){
+      private$.deploy.L3( expression(
+        list( stream = .Call( "cuR_cuda_stream_create" ),
+              queue  = .Call( "cuR_stream_queue_create" ) )
+      ) )
 
       invisible( TRUE )
     },
 
     destroy = function(){
-      if( !is.null( private$.ptrs ) ){
-        private$.destroy( expression( {
-          .Call( "cuR_stream_queue_destroy", private$.ptrs$queue )
+      private$.destroy( expression( {
+        .Call( "cuR_stream_queue_destroy", private$.ptrs$queue )
+
+        if( !is.null( private$.ptrs$stream ) ){
           .Call( "cuR_cuda_stream_destroy", private$.ptrs$stream )
-        } ) )
-      }
+        }
+      } ) )
 
       invisible( TRUE )
     },
@@ -69,7 +84,10 @@ cuda.stream <- R6Class(
       }
 
       .Call( "cuR_stream_queue_sync", private$.ptrs$queue )
-      .Call( "cuR_cuda_stream_sync", private$.ptrs$stream )
+
+      if( !is.null( private$.ptrs$stream ) ){
+        .Call( "cuR_cuda_stream_sync", private$.ptrs$stream )
+      }
 
       invisible( TRUE )
     }

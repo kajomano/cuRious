@@ -109,8 +109,13 @@
 .alert.send.private <- list(
   .subscribers = list(),
 
-  .deploy = function( expr ){
-    super$.deploy( expr )
+  .deploy.L1 = function( expr ){
+    super$.deploy.L1( expr )
+    private$.alert()
+  },
+
+  .deploy.L3 = function( expr ){
+    super$.deploy.L3( expr )
     private$.alert()
   },
 

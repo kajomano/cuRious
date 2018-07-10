@@ -15,17 +15,45 @@
   private = list(
     .ptrs   = NULL,
     .device = NULL,
+    .level  = NULL,
 
     # Unevaluated expressions
-    .deploy = function( expr ){
+    .deploy.L1 = function( expr ){
+      if( !is.null( private$.ptrs ) ){
+        if( private$.level != 1L ){
+          stop( "Container is deployed to a different level" )
+        }else{
+          return()
+        }
+      }
+
+      private$.ptrs <- eval( expr )
+      private$.level <- 1L
+    },
+
+    .deploy.L3 = function( expr ){
+      if( !is.null( private$.ptrs ) ){
+        if( private$.level != 3L ){
+          stop( "Container is deployed to a different level" )
+        }else{
+          return()
+        }
+      }
+
       .cuda.device.set( private$.device )
       private$.ptrs <- eval( expr )
+      private$.level <- 3L
     },
 
     .destroy = function( expr ){
+      if( is.null( private$.ptrs ) ){
+        return()
+      }
+
       .cuda.device.set( private$.device )
       eval( expr )
-      private$.ptrs <- NULL
+      private$.ptrs  <- NULL
+      private$.level <- NULL
     }
   ),
 
@@ -48,6 +76,14 @@
 
         device <- check.device( device )
         private$.device <- device
+      }
+    },
+
+    level = function( level ){
+      if( missing( level ) ){
+        return( private$.level )
+      }else{
+        stop( "Container level is not directly settable" )
       }
     },
 

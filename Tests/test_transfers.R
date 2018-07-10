@@ -2,7 +2,7 @@ source( "./Tests/test_utils.R" )
 
 verbose <- TRUE
 
-stream <- cuda.stream$new()
+stream <- cuRious::stream$new()
 
 for( type in types ){
   mat.cont <- switch(

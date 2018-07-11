@@ -56,13 +56,15 @@ void cuR_transfer_host_host( s* src_ptr,
   int src_pos;
 
   // Worker thread pool
-  int num_workers = std::min(
-    std::max(
-      (int)std::thread::hardware_concurrency() / 4,
-      1
-    ),
-    dims_1
-  );
+  // int num_workers = std::min(
+  //   std::max(
+  //     (int)std::thread::hardware_concurrency() / 4,
+  //     1
+  //   ),
+  //   dims_1
+  // );
+
+  int num_workers = 6;
 
   std::vector <std::thread> workers( num_workers - 1 );
 
@@ -77,31 +79,31 @@ void cuR_transfer_host_host( s* src_ptr,
     // No subsetting
     for( int worker = 0; worker < num_workers - 1; worker++ ){
       workers[worker] = std::thread( [=] {
-
-        int dst_pos;
-        int src_pos;
-
-        for( int i = rest_workers; i < rest_workers + span_workers; i++ ){
-          dst_pos = i * dims_0;
-          src_pos = i * dims_0;
-
-          for( int j = 0; j < dims_0; j++ ){
-            dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-          }
-        }
+    //
+    //     int dst_pos;
+    //     int src_pos;
+    //
+    //     for( int i = rest_workers; i < rest_workers + span_workers; i++ ){
+    //       dst_pos = i * dims_0;
+    //       src_pos = i * dims_0;
+    //
+    //       for( int j = 0; j < dims_0; j++ ){
+    //         dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+    //       }
+    //     }
       });
 
-      rest_workers += span_workers;
+      // rest_workers += span_workers;
     }
 
-    for( int i = rest_workers; i < dims_1; i++ ){
-      dst_pos = i * dims_0;
-      src_pos = i * dims_0;
-
-      for( int j = 0; j < dims_0; j++ ){
-        dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-      }
-    }
+    // for( int i = rest_workers; i < dims_1; i++ ){
+    //   dst_pos = i * dims_0;
+    //   src_pos = i * dims_0;
+    //
+    //   for( int j = 0; j < dims_0; j++ ){
+    //     dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+    //   }
+    // }
 
     for( auto& w : workers ){
       w.join();

@@ -1,11 +1,11 @@
 #include "common_R.h"
 #include "common_debug.h"
 #include "transfer.h"  // Includes common_cuda.h
-#include "streams.h"
-#include "omp.h"
+#include "workers.h"
+// #include "omp.h"
 
-#include <vector>
-#include <algorithm>
+// #include <vector>
+// #include <algorithm>
 
 template <typename s, typename d>
 void cuR_transfer_host_host( s* src_ptr,
@@ -64,21 +64,38 @@ void cuR_transfer_host_host( s* src_ptr,
   //   dims_1
   // );
 
-  int num_workers = 6;
-
-  std::vector <std::thread> workers( num_workers - 1 );
-
-  int span_workers = dims_1 / num_workers;
-  int rest_workers = 0;
+  // int num_workers = 6;
+  //
+  // std::vector <std::thread> workers( num_workers - 1 );
+  //
+  // int span_workers = dims_1 / num_workers;
+  // int rest_workers = 0;
 
   // Out-of-bounds checks only check for permutation content
   // Span checks are done in R
 
   // Copy
   if( !src_perm_ptr && !dst_perm_ptr ){
+    std::unique_lock<std::mutex> workers_lock( common_workers_mutex );
+
+    for( int i = 0; i < 4; i++ ){
+      common_workers.dispatch( [=]{
+        // int dst_pos = i * dims_0;
+        // int src_pos = i * dims_0;
+        //
+        // for( int j = 0; j < dims_0; j++ ){
+        //   dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+        // }
+      });
+    }
+
+    // ITT ====
+    // Nem tudom h kell-e még itt a lock, vagy hogy hogy mükszik a lock egyáltalán
+    common_workers.sync();
+
     // No subsetting
-    for( int worker = 0; worker < num_workers - 1; worker++ ){
-      workers[worker] = std::thread( [=] {
+    // for( int worker = 0; worker < num_workers - 1; worker++ ){
+    //   workers[worker] = std::thread( [=] {
     //
     //     int dst_pos;
     //     int src_pos;
@@ -91,10 +108,10 @@ void cuR_transfer_host_host( s* src_ptr,
     //         dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
     //       }
     //     }
-      });
-
+      // });
+//
       // rest_workers += span_workers;
-    }
+    // }
 
     // for( int i = rest_workers; i < dims_1; i++ ){
     //   dst_pos = i * dims_0;
@@ -105,144 +122,144 @@ void cuR_transfer_host_host( s* src_ptr,
     //   }
     // }
 
-    for( auto& w : workers ){
-      w.join();
-    }
+    // for( auto& w : workers ){
+    //   w.join();
+    // }
   }
-  else if( src_perm_ptr && dst_perm_ptr ){
-    // Both subsetted
-    for( int worker = 0; worker < num_workers - 1; worker++ ){
-      workers[worker] = std::thread( [=] {
-
-        int dst_pos;
-        int src_pos;
-
-        for( int i = rest_workers; i < rest_workers + span_workers; i++ ){
-          if( src_perm_ptr[i] > src_dims_1 ){
-            continue;
-          }
-
-          if( dst_perm_ptr[i] > dst_dims_1 ){
-            continue;
-          }
-
-          src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
-          dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
-
-          for( int j = 0; j < dims_0; j++ ){
-            dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-          }
-        }
-      });
-
-      rest_workers += span_workers;
-    }
-
-    for( int i = rest_workers; i < dims_1; i++ ){
-      if( src_perm_ptr[i] > src_dims_1 ){
-        continue;
-      }
-
-      if( dst_perm_ptr[i] > dst_dims_1 ){
-        continue;
-      }
-
-      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
-      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
-
-      for( int j = 0; j < dims_0; j++ ){
-        dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-      }
-    }
-
-    for( auto& w : workers ){
-      w.join();
-    }
-  }
-  else if( dst_perm_ptr ){
-    // Destination subsetted
-    for( int worker = 0; worker < num_workers - 1; worker++ ){
-      workers[worker] = std::thread( [=] {
-
-        int dst_pos;
-        int src_pos;
-
-        for( int i = rest_workers; i < rest_workers + span_workers; i++ ){
-          if( dst_perm_ptr[i] > dst_dims_1 ){
-            continue;
-          }
-
-          src_pos = i * dims_0;
-          dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
-
-          for( int j = 0; j < dims_0; j++ ){
-            dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-          }
-        }
-      });
-
-      rest_workers += span_workers;
-    }
-
-    for( int i = rest_workers; i < dims_1; i++ ){
-      if( dst_perm_ptr[i] > dst_dims_1 ){
-        continue;
-      }
-
-      src_pos = i * dims_0;
-      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
-
-      for( int j = 0; j < dims_0; j++ ){
-        dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-      }
-    }
-
-    for( auto& w : workers ){
-      w.join();
-    }
-  }
-  else{
-    // Source subsetted
-    for( int worker = 0; worker < num_workers - 1; worker++ ){
-      workers[worker] = std::thread( [=] {
-
-        int dst_pos;
-        int src_pos;
-
-        for( int i = rest_workers; i < rest_workers + span_workers; i++ ){
-          if( src_perm_ptr[i] > src_dims_1 ){
-            continue;
-          }
-
-          src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
-          dst_pos = i * dims_0;
-
-          for( int j = 0; j < dims_0; j++ ){
-            dst_ptr[dst_pos+j] = (d)src_ptr[src_pos+j];
-          }
-        }
-      });
-
-      rest_workers += span_workers;
-    }
-
-    for( int i = rest_workers; i < dims_1; i++ ){
-      if( src_perm_ptr[i] > src_dims_1 ){
-        continue;
-      }
-
-      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
-      dst_pos = i * dims_0;
-
-      for( int j = 0; j < dims_0; j++ ){
-        dst_ptr[dst_pos+j] = (d)src_ptr[src_pos+j];
-      }
-    }
-
-    for( auto& w : workers ){
-      w.join();
-    }
-  }
+  // else if( src_perm_ptr && dst_perm_ptr ){
+  //   // Both subsetted
+  //   for( int worker = 0; worker < num_workers - 1; worker++ ){
+  //     workers[worker] = std::thread( [=] {
+  //
+  //       int dst_pos;
+  //       int src_pos;
+  //
+  //       for( int i = rest_workers; i < rest_workers + span_workers; i++ ){
+  //         if( src_perm_ptr[i] > src_dims_1 ){
+  //           continue;
+  //         }
+  //
+  //         if( dst_perm_ptr[i] > dst_dims_1 ){
+  //           continue;
+  //         }
+  //
+  //         src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+  //         dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+  //
+  //         for( int j = 0; j < dims_0; j++ ){
+  //           dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+  //         }
+  //       }
+  //     });
+  //
+  //     rest_workers += span_workers;
+  //   }
+  //
+  //   for( int i = rest_workers; i < dims_1; i++ ){
+  //     if( src_perm_ptr[i] > src_dims_1 ){
+  //       continue;
+  //     }
+  //
+  //     if( dst_perm_ptr[i] > dst_dims_1 ){
+  //       continue;
+  //     }
+  //
+  //     src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+  //     dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+  //
+  //     for( int j = 0; j < dims_0; j++ ){
+  //       dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+  //     }
+  //   }
+  //
+  //   for( auto& w : workers ){
+  //     w.join();
+  //   }
+  // }
+  // else if( dst_perm_ptr ){
+  //   // Destination subsetted
+  //   for( int worker = 0; worker < num_workers - 1; worker++ ){
+  //     workers[worker] = std::thread( [=] {
+  //
+  //       int dst_pos;
+  //       int src_pos;
+  //
+  //       for( int i = rest_workers; i < rest_workers + span_workers; i++ ){
+  //         if( dst_perm_ptr[i] > dst_dims_1 ){
+  //           continue;
+  //         }
+  //
+  //         src_pos = i * dims_0;
+  //         dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+  //
+  //         for( int j = 0; j < dims_0; j++ ){
+  //           dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+  //         }
+  //       }
+  //     });
+  //
+  //     rest_workers += span_workers;
+  //   }
+  //
+  //   for( int i = rest_workers; i < dims_1; i++ ){
+  //     if( dst_perm_ptr[i] > dst_dims_1 ){
+  //       continue;
+  //     }
+  //
+  //     src_pos = i * dims_0;
+  //     dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+  //
+  //     for( int j = 0; j < dims_0; j++ ){
+  //       dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+  //     }
+  //   }
+  //
+  //   for( auto& w : workers ){
+  //     w.join();
+  //   }
+  // }
+  // else{
+  //   // Source subsetted
+  //   for( int worker = 0; worker < num_workers - 1; worker++ ){
+  //     workers[worker] = std::thread( [=] {
+  //
+  //       int dst_pos;
+  //       int src_pos;
+  //
+  //       for( int i = rest_workers; i < rest_workers + span_workers; i++ ){
+  //         if( src_perm_ptr[i] > src_dims_1 ){
+  //           continue;
+  //         }
+  //
+  //         src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+  //         dst_pos = i * dims_0;
+  //
+  //         for( int j = 0; j < dims_0; j++ ){
+  //           dst_ptr[dst_pos+j] = (d)src_ptr[src_pos+j];
+  //         }
+  //       }
+  //     });
+  //
+  //     rest_workers += span_workers;
+  //   }
+  //
+  //   for( int i = rest_workers; i < dims_1; i++ ){
+  //     if( src_perm_ptr[i] > src_dims_1 ){
+  //       continue;
+  //     }
+  //
+  //     src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+  //     dst_pos = i * dims_0;
+  //
+  //     for( int j = 0; j < dims_0; j++ ){
+  //       dst_ptr[dst_pos+j] = (d)src_ptr[src_pos+j];
+  //     }
+  //   }
+  //
+  //   for( auto& w : workers ){
+  //     w.join();
+  //   }
+  // }
 }
 
 #ifndef CUDA_EXCLUDE
@@ -583,8 +600,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
   cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
     (cudaStream_t*) R_ExternalPtrAddr( stream_ptr_r );
 
-  sd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
-    (sd_queue*) R_ExternalPtrAddr( queue_ptr_r );
+  wd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
+    (wd_queue*) R_ExternalPtrAddr( queue_ptr_r );
 
   if( src_perm_ptr && !src_dims ){
     Rf_error( "Source dimensions need to be supplied with permutation" );

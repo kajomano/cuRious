@@ -1,6 +1,6 @@
 #include "common_R.h"
 #include "common_debug.h"
-#include "streams.h"
+#include "workers.h"
 #include "thrust.h"
 
 #ifndef CUDA_EXCLUDE
@@ -55,8 +55,8 @@ SEXP cuR_thrust_pow( SEXP A_ptr_r,
   // Recover allocator, queue and stream
   void* allocator_ptr = R_ExternalPtrAddr( allocator_ptr_r );
 
-  sd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
-    (sd_queue*) R_ExternalPtrAddr( queue_ptr_r );
+  wd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
+    (wd_queue*) R_ExternalPtrAddr( queue_ptr_r );
 
   cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
     (cudaStream_t*)R_ExternalPtrAddr( stream_ptr_r );
@@ -102,8 +102,8 @@ SEXP cuR_thrust_cmin_pos( SEXP A_ptr_r,
   // Recover allocator, queue and stream
   void* allocator_ptr = R_ExternalPtrAddr( allocator_ptr_r );
 
-  sd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
-    (sd_queue*) R_ExternalPtrAddr( queue_ptr_r );
+  wd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
+    (wd_queue*) R_ExternalPtrAddr( queue_ptr_r );
 
   cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
     (cudaStream_t*)R_ExternalPtrAddr( stream_ptr_r );
@@ -153,8 +153,8 @@ SEXP cuR_thrust_table( SEXP x_ptr_r,
   // Recover allocator, queue and stream
   void* allocator_ptr = R_ExternalPtrAddr( allocator_ptr_r );
 
-  sd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
-    (sd_queue*) R_ExternalPtrAddr( queue_ptr_r );
+  wd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
+    (wd_queue*) R_ExternalPtrAddr( queue_ptr_r );
 
   cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
     (cudaStream_t*)R_ExternalPtrAddr( stream_ptr_r );

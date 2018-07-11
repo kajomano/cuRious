@@ -1,4 +1,4 @@
-// #define DEBUG_PRINTS 1
+#define DEBUG_PRINTS 1
 
 // Debug print macros
 #ifdef DEBUG_PRINTS

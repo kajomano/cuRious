@@ -6,7 +6,7 @@
 
 # Build options
 clean.build  <- FALSE
-debug.prints <- FALSE
+debug.prints <- TRUE
 cuda.exclude <- FALSE
 
 # ------------------------------------------------------------------------------

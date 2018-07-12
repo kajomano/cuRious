@@ -18,7 +18,7 @@ wd_queue::wd_queue( size_t thread_cnt ) : threads_( thread_cnt ), waiting_( thre
     );
   }
 
-  debugPrint( Rprintf( "Worker queue created, threads: %zu\n", thread_cnt ) );
+  // debugPrint( Rprintf( "Worker queue created, threads: %zu\n", thread_cnt ) );
 }
 
 wd_queue::~wd_queue(){
@@ -33,7 +33,7 @@ wd_queue::~wd_queue(){
     }
   }
 
-  debugPrint( Rprintf( "Worker queue destroyed\n" ) );
+  // debugPrint( Rprintf( "Worker queue destroyed\n" ) );
 }
 
 size_t wd_queue::thread_cnt(){
@@ -49,7 +49,7 @@ void wd_queue::dispatch( const fp_t& op ){
   lock.unlock();
   cv_.notify_all();
 
-  printf( "<%p> Dispatch\n", (void*)this );
+  // printf( "<%p> Dispatch\n", (void*)this );
 }
 
 void wd_queue::dispatch( fp_t&& op ){
@@ -61,12 +61,12 @@ void wd_queue::dispatch( fp_t&& op ){
   lock.unlock();
   cv_.notify_all();
 
-  printf( "<%p> Dispatch\n", (void*)this );
+  // printf( "<%p> Dispatch\n", (void*)this );
 }
 
 void wd_queue::sync(){
   std::unique_lock<std::mutex> lock( lock_ );
-  printf( "<%p> Syncing\n", (void*)this );
+  // printf( "<%p> Syncing\n", (void*)this );
 
   // notify threads that we are waiting for an empty queue
   sync_ = true;
@@ -77,7 +77,7 @@ void wd_queue::sync(){
 
     for( auto const& waiting : waiting_ ){
       if( !waiting ){
-        printf( "Sync wake failed\n" );
+        // printf( "Sync wake failed\n" );
         return false;
       }
     }
@@ -88,7 +88,7 @@ void wd_queue::sync(){
   // turn off syncing
   sync_ = false;
 
-  printf( "Sync wake success\n" );
+  // printf( "Sync wake success\n" );
 
   // std::unique_lock<std::mutex> sync_lock( sync_lock_ );
   //
@@ -115,11 +115,11 @@ void wd_queue::dispatch_thread_handler( int id ){
     // set status to waiting
     waiting_[id] = true;
 
-    printf( "<%p> Worker %d sync %d\n", (void*)this, id, sync_ );
+    // printf( "<%p> Worker %d sync %d\n", (void*)this, id, sync_ );
 
     // if sync_ is underway and we are going into waiting, wake the dispatcher
     if( !q_.size() && sync_ ){
-      printf( "Worker %d going to sleep\n", id );
+      // printf( "Worker %d going to sleep\n", id );
 
       sync_cv_.notify_all();
     }
@@ -137,7 +137,7 @@ void wd_queue::dispatch_thread_handler( int id ){
       auto op = std::move( q_.front() );
       q_.pop();
 
-      printf( "Worker %d pop, queue: %zu\n", id, q_.size() );
+      // printf( "Worker %d pop, queue: %zu\n", id, q_.size() );
 
       //unlock now that we're done messing with the queue
       lock.unlock();
@@ -151,4 +151,4 @@ void wd_queue::dispatch_thread_handler( int id ){
   }while( !( quit_ && !q_.size() ) );
 }
 
-wd_queue common_workers(4);
+wd_queue common_workers(12);

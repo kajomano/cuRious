@@ -1,6 +1,6 @@
 source( "./Tests/test_utils.R" )
 
-verbose <- TRUE
+verbose <- FALSE
 
 stream <- cuRious::stream$new()
 
@@ -34,9 +34,9 @@ for( type in types ){
       pip.async.perm <- pipe$new( src, dst, perm, perm, stream = stream )
 
       pip.sync$run()
-      # if( !test.thr.equality( dst$pull(), mat ) ){
-      #   stop( "Failed check: sync" )
-      # }
+      if( !test.thr.equality( dst$pull(), mat ) ){
+        stop( "Failed check: sync" )
+      }
       #
       # dst$clear()
       #

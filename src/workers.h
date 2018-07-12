@@ -5,9 +5,13 @@
 #include <mutex>
 #include <string>
 #include <condition_variable>
+#include <map>
 
 // Worker dispatch queues
 // https://embeddedartistry.com/blog/2017/2/1/c11-implementing-a-dispatch-queue-using-stdfunction
+
+// Only a single thread should have access to a dispatch queue!
+// Sync does not take into account multi-access
 
 class wd_queue {
   typedef std::function<void(void)> fp_t;
@@ -16,11 +20,14 @@ public:
   wd_queue( size_t thread_cnt = 1 );
   ~wd_queue();
 
+  size_t thread_cnt();
+
   // dispatch and copy
   void dispatch( const fp_t& op );
   // dispatch and move
   void dispatch( fp_t&& op );
 
+  // wait on the dispatching thread until queue is empty
   void sync();
 
   // Deleted operations
@@ -31,9 +38,9 @@ public:
 
 private:
   std::mutex lock_;
-  std::mutex sync_lock_;
 
   std::vector<std::thread> threads_;
+  std::vector<bool> waiting_;
   std::queue<fp_t> q_;
 
   std::condition_variable cv_;
@@ -42,9 +49,7 @@ private:
   bool quit_ = false;
   bool sync_ = false;
 
-  void dispatch_thread_handler(void);
+  void dispatch_thread_handler( int id );
 };
 
-// Package-wide worker threadpool and mutex to use it
-extern std::mutex common_workers_mutex;
 extern wd_queue common_workers;

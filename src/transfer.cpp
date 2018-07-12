@@ -64,67 +64,53 @@ void cuR_transfer_host_host( s* src_ptr,
   //   dims_1
   // );
 
-  // int num_workers = 6;
-  //
+
+
   // std::vector <std::thread> workers( num_workers - 1 );
   //
-  // int span_workers = dims_1 / num_workers;
-  // int rest_workers = 0;
+  int span_workers = 100;
+  int num_workers  = dims_1 / span_workers;
+  int rest_workers = 0;
 
   // Out-of-bounds checks only check for permutation content
   // Span checks are done in R
 
   // Copy
   if( !src_perm_ptr && !dst_perm_ptr ){
-    std::unique_lock<std::mutex> workers_lock( common_workers_mutex );
-
-    for( int i = 0; i < 4; i++ ){
+    // No subsetting
+    for( int worker = 0; worker < num_workers - 1; worker++ ){
       common_workers.dispatch( [=]{
-        // int dst_pos = i * dims_0;
-        // int src_pos = i * dims_0;
-        //
-        // for( int j = 0; j < dims_0; j++ ){
-        //   dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-        // }
+        int dst_pos;
+        int src_pos;
+
+        for( int i = rest_workers; i < rest_workers + span_workers; i++ ){
+          dst_pos = i * dims_0;
+          src_pos = i * dims_0;
+
+          for( int j = 0; j < dims_0; j++ ){
+            dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+          }
+        }
       });
+
+      rest_workers += span_workers;
     }
 
-    // ITT ====
-    // Nem tudom h kell-e még itt a lock, vagy hogy hogy mükszik a lock egyáltalán
+    common_workers.dispatch( [=]{
+      int dst_pos;
+      int src_pos;
+
+      for( int i = rest_workers; i < dims_1; i++ ){
+        dst_pos = i * dims_0;
+        src_pos = i * dims_0;
+
+        for( int j = 0; j < dims_0; j++ ){
+          dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+        }
+      }
+    });
+
     common_workers.sync();
-
-    // No subsetting
-    // for( int worker = 0; worker < num_workers - 1; worker++ ){
-    //   workers[worker] = std::thread( [=] {
-    //
-    //     int dst_pos;
-    //     int src_pos;
-    //
-    //     for( int i = rest_workers; i < rest_workers + span_workers; i++ ){
-    //       dst_pos = i * dims_0;
-    //       src_pos = i * dims_0;
-    //
-    //       for( int j = 0; j < dims_0; j++ ){
-    //         dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-    //       }
-    //     }
-      // });
-//
-      // rest_workers += span_workers;
-    // }
-
-    // for( int i = rest_workers; i < dims_1; i++ ){
-    //   dst_pos = i * dims_0;
-    //   src_pos = i * dims_0;
-    //
-    //   for( int j = 0; j < dims_0; j++ ){
-    //     dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-    //   }
-    // }
-
-    // for( auto& w : workers ){
-    //   w.join();
-    // }
   }
   // else if( src_perm_ptr && dst_perm_ptr ){
   //   // Both subsetted

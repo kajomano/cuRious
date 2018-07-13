@@ -4,51 +4,6 @@
 
 #include "streams.h"
 
-// Device selection and query ==================================================
-extern "C"
-SEXP cuR_device_count(){
-  SEXP count_r = Rf_protect( Rf_ScalarInteger( -1 ) );
-  Rf_unprotect(1);
-  return count_r;
-}
-
-extern "C"
-SEXP cuR_device_get(){
-  SEXP dev_r = Rf_protect( Rf_ScalarInteger( -1 ) );
-  Rf_unprotect(1);
-  return dev_r;
-}
-
-#else
-
-extern "C"
-SEXP cuR_device_count(){
-  int count;
-  cudaTry( cudaGetDeviceCount	(	&count ) );
-
-  SEXP count_r = Rf_protect( Rf_ScalarInteger( count ) );
-  Rf_unprotect(1);
-  return count_r;
-}
-
-extern "C"
-SEXP cuR_device_get(){
-  int dev;
-  cudaTry( cudaGetDevice ( &dev ) );
-
-  SEXP dev_r = Rf_protect( Rf_ScalarInteger( dev ) );
-  Rf_unprotect(1);
-  return dev_r;
-}
-
-extern "C"
-SEXP cuR_device_set( SEXP dev_r ){
-  int dev = Rf_asInteger( dev_r );
-  cudaTry( cudaSetDevice ( dev ) );
-
-  return R_NilValue;
-}
-
 // Stream dispatch queues ======================================================
 sd_queue::sd_queue( size_t thread_cnt, bool cuda_streams ) : threads_( thread_cnt ), waiting_( thread_cnt ), cuda_streams_( cuda_streams ){
 #ifdef CUDA_EXCLUDE
@@ -235,9 +190,9 @@ void sd_queue::dispatch_thread_handler( int id ){
   }while( !( quit_ && !q_.size() ) );
 }
 
+// TODO ====
+// Remove this
 sd_queue common_workers(4);
-
-#ifdef CUDA_EXCLUDE
 
 // Stream dispatch queue wrappers ==============================================
 void cuR_stream_queue_fin( SEXP queue_r ){
@@ -254,8 +209,11 @@ void cuR_stream_queue_fin( SEXP queue_r ){
 }
 
 extern "C"
-SEXP cuR_stream_queue_create(){
-  sd_queue* queue = new sd_queue;
+SEXP cuR_stream_queue_create( SEXP threads_r, SEXP cuda_streams_r ){
+  int threads_count = Rf_asInteger( threads_r );
+  bool cuda_streams = (bool)Rf_asLogical( cuda_streams_r );
+
+  sd_queue* queue = new sd_queue( threads_count, cuda_streams );
   debugPrint( Rprintf( "<%p> Creating queue\n", (void*)queue ) );
 
   // Return to R with an external pointer SEXP
@@ -280,50 +238,3 @@ SEXP cuR_stream_queue_sync( SEXP queue_r ){
 
   return R_NilValue;
 }
-
-// Streams =====================================================================
-void cuR_cuda_stream_fin( SEXP stream_r ){
-  cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
-
-  // Destroy context and free memory!
-  // Clear R object too
-  if( stream ){
-    debugPrint( Rprintf( "<%p> Finalizing stream\n", (void*)stream ) );
-
-    cudaStreamDestroy( *stream );
-    delete stream;
-    R_ClearExternalPtr( stream_r );
-  }
-}
-
-extern "C"
-SEXP cuR_cuda_stream_create(){
-  cudaStream_t* stream = new cudaStream_t;
-  debugPrint( Rprintf( "<%p> Creating stream\n", (void*)stream ) );
-
-  cudaTry( cudaStreamCreate( stream ) );
-
-  // Return to R with an external pointer SEXP
-  SEXP stream_r = Rf_protect( R_MakeExternalPtr( stream, R_NilValue, R_NilValue ) );
-  R_RegisterCFinalizerEx( stream_r, cuR_cuda_stream_fin, TRUE );
-
-  Rf_unprotect(1);
-  return stream_r;
-}
-
-extern "C"
-SEXP cuR_cuda_stream_destroy( SEXP stream_r ){
-  cuR_cuda_stream_fin( stream_r );
-
-  return R_NilValue;
-}
-
-extern "C"
-SEXP cuR_cuda_stream_sync( SEXP stream_r ){
-  cudaStream_t* stream = (cudaStream_t*)R_ExternalPtrAddr( stream_r );
-  cudaTry( cudaStreamSynchronize( *stream ) );
-
-  return R_NilValue;
-}
-
-#endif

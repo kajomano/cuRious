@@ -9,30 +9,33 @@ stream <- R6Class(
   public = list(
     initialize = function( deployed = 3L, device = cuda.device.default.get() ){
       self$device <- device
+      self$deploy
 
       if( is.null( deployed ) ){
         return()
-      }else if( deployed == 1L ){
-        self$deploy.L1()
-      }else if( deployed == 3L ){
-        self$deploy.L3()
-      }else{
-        stop( "Invalid deploy target level" )
       }
+
+      self$deploy( deployed )
     },
 
-    deploy.L1 = function(){
-      private$.deploy.L1( expression(
-        list( queue  = .Call( "cuR_stream_queue_create", 1L, FALSE ) )
-      ) )
+    deploy = function( level ){
+      if( is.null( level ) ){
+        stop( "Invalid deployment target level" )
+      }
 
-      invisible( TRUE )
-    },
+      if( !( level %in% c( 1L, 3L ) ) ){
+        stop( "Invalid deployment target level" )
+      }
 
-    deploy.L3 = function(){
-      private$.deploy.L3( expression(
-        list( queue  = .Call( "cuR_stream_queue_create", 1L, TRUE ) )
-      ) )
+      if( level == 1L ){
+        private$.deploy.L1( expression(
+          list( queue  = .Call( "cuR_stream_queue_create", 1L, FALSE ) )
+        ) )
+      }else{
+        private$.deploy.L3( expression(
+          list( queue  = .Call( "cuR_stream_queue_create", 1L, TRUE ) )
+        ) )
+      }
 
       invisible( TRUE )
     },

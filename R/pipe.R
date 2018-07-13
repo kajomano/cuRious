@@ -2,6 +2,68 @@
 # argument sanity checks at creation, and try to do the rest only when needed at
 # runtime. Overhead reduction is key for smaller tasks.
 
+# cuBLAS handle class ====
+pipe.context <- R6Class(
+  "cuR.pipe.context",
+  inherit = fusion.context,
+  public = list(
+    initialize = function( workers = 4L, ... ){
+      self$workers <- workers
+      super$initialize( ... )
+    }
+  ),
+
+  private = list(
+    .workers = NULL,
+
+    .deploy.L1 = function(){
+      super$.deploy(
+        expression(
+          list( workers  = .Call( "cuR_stream_queue_create", private$.workers, FALSE ) )
+        )
+      )
+    },
+
+    .deploy.L3 = function(){
+      super$.deploy(
+        expression(
+          list( workers  = .Call( "cuR_stream_queue_create", private$.workers, TRUE ) )
+        )
+      )
+    },
+
+    .destroy = function(){
+      super$.destroy(
+        expression(
+          .Call( "cuR_stream_queue_destroy", private$.ptrs$workers )
+        )
+      )
+    }
+  ),
+
+  active = list(
+    workers = function( val ){
+      if( missing( val ) ){
+        private$.workers
+      }else{
+        if( !is.null( private$.ptrs ) ){
+          stop( "Cannot change workers: deployed stream" )
+        }
+
+        if( is.null( val ) ){
+          stop( "Invalid workers parameter" )
+        }
+
+        if( !is.integer( val ) || val < 1 ){
+          stop( "Invalid workers parameter" )
+        }
+
+        private$.workers <- val
+      }
+    }
+  )
+)
+
 pipe <- R6Class(
   "cuR.pipe",
   inherit = fusion,
@@ -12,7 +74,7 @@ pipe <- R6Class(
                            dst.perm = NULL,
                            src.span = NULL,
                            dst.span = NULL,
-                           stream   = NULL ){
+                           context  = NULL ){
       # Sanity checks
       check.tensor( src )
       check.tensor( dst )
@@ -49,7 +111,7 @@ pipe <- R6Class(
       private$.add.ep( src.perm, "src.perm" )
       private$.add.ep( dst.perm, "dst.perm" )
 
-      super$initialize( stream )
+      super$initialize( context )
     }
   ),
 
@@ -120,30 +182,36 @@ pipe <- R6Class(
         }
       }
 
-      if( !is.null( private$.eps$stream ) ){
-        stream <- private$.eps$stream
+      stop( "Continue implementation" )
+      # TODO ====
+      # Both stream and context needs to be at least at the correct level
+      # Contextless 0-0 calls should be done in pure R
+      # Context cannot miss for anything else
 
-        if( !stream$is.destroyed ){
-          if( transfer.deep ){
-            if( stream$device != src.device ){
-              stop( "Stream is not on the correct device" )
-            }
-          }
-        }
-      }
-
-      # This only works because you dont have to set the device correctly
-      # if no kernels are run, and kernels are only run on L3-L3 same device
-      # transfers
-      private$.device <- src.device
-      private$.params$src.level <- src.level
-      private$.params$dst.level <- dst.level
-
-      # Multi or single-step transfer
-      private$.fun <- .transfer.ptr.choose( src.level,
-                                            dst.level,
-                                            src.device ,
-                                            dst.device )
+    #   if( !is.null( private$.eps$stream ) ){
+    #     stream <- private$.eps$stream
+    #
+    #     if( !stream$is.destroyed ){
+    #       if( transfer.deep ){
+    #         if( stream$device != src.device ){
+    #           stop( "Stream is not on the correct device" )
+    #         }
+    #       }
+    #     }
+    #   }
+    #
+    #   # This only works because you dont have to set the device correctly
+    #   # if no kernels are run, and kernels are only run on L3-L3 same device
+    #   # transfers
+    #   private$.device <- src.device
+    #   private$.params$src.level <- src.level
+    #   private$.params$dst.level <- dst.level
+    #
+    #   # Multi or single-step transfer
+    #   private$.fun <- .transfer.ptr.choose( src.level,
+    #                                         dst.level,
+    #                                         src.device ,
+    #                                         dst.device )
     }
   )
 )

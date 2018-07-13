@@ -5,6 +5,9 @@
 #include "transfer.h"
 #include "streams.h"
 
+// TODO ====
+// Divide by the number of threads
+
 // Very simple logic for now
 int cuR_transfer_task_span( int dims_0, int dims_1 ){
   return dims_1 / 4;

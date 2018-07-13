@@ -2,20 +2,11 @@
 #include "common_debug.h"
 #include "workers.h"
 
-#include <cstdio>
+// #include <cstdio>
 
 wd_queue::wd_queue( size_t thread_cnt ) : threads_( thread_cnt ), waiting_( thread_cnt ){
   for( size_t i = 0; i < threads_.size(); i++ ){
-    threads_[i] = std::thread(
-      &wd_queue::dispatch_thread_handler,
-      this,
-      (int) i
-
-    //   [this, i]{
-    //   dispatch_thread_handler( (int) i );
-    // }
-      // std::bind( &wd_queue::dispatch_thread_handler, this )
-    );
+    threads_[i] = std::thread( &wd_queue::dispatch_thread_handler, this, (int) i );
   }
 
   // debugPrint( Rprintf( "Worker queue created, threads: %zu\n", thread_cnt ) );
@@ -88,21 +79,7 @@ void wd_queue::sync(){
   // turn off syncing
   sync_ = false;
 
-  // printf( "Sync wake success\n" );
-
-  // std::unique_lock<std::mutex> sync_lock( sync_lock_ );
-  //
-  // dispatch( [this]{
-  //   std::unique_lock<std::mutex> sync_lock( sync_lock_ );
-  //   sync_ = true;
-  //   sync_lock.unlock();
-  //   sync_cv_.notify_one();
-  // } );
-  //
-
-  //
-
-  // sync_lock.unlock();
+  // lock unlocks when it gets destroyed
 }
 
 void wd_queue::dispatch_thread_handler( int id ){
@@ -145,10 +122,12 @@ void wd_queue::dispatch_thread_handler( int id ){
       op();
 
       lock.lock();
+
+      // printf( "Worker %d done, queue: %zu\n", id, q_.size() );
     }
     // Only quit when we have the signal AND there are no more jobs to do in the
     // queue
   }while( !( quit_ && !q_.size() ) );
 }
 
-wd_queue common_workers(12);
+wd_queue common_workers(4);

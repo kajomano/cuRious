@@ -7,6 +7,11 @@
 // #include <vector>
 // #include <algorithm>
 
+// Very simple logic for now
+int cuR_transfer_task_span( int dims_0, int dims_1 ){
+  return dims_1 / 4;
+}
+
 template <typename s, typename d>
 void cuR_transfer_host_host( s* src_ptr,
                              d* dst_ptr,
@@ -55,22 +60,8 @@ void cuR_transfer_host_host( s* src_ptr,
   int dst_pos;
   int src_pos;
 
-  // Worker thread pool
-  // int num_workers = std::min(
-  //   std::max(
-  //     (int)std::thread::hardware_concurrency() / 4,
-  //     1
-  //   ),
-  //   dims_1
-  // );
-
-
-
-  // std::vector <std::thread> workers( num_workers - 1 );
-  //
-  int span_workers = 100;
-  int num_workers  = dims_1 / span_workers;
-  int rest_workers = 0;
+  int span_task = cuR_transfer_task_span( dims_0, dims_1 );
+  int task = 0;
 
   // Out-of-bounds checks only check for permutation content
   // Span checks are done in R
@@ -78,12 +69,12 @@ void cuR_transfer_host_host( s* src_ptr,
   // Copy
   if( !src_perm_ptr && !dst_perm_ptr ){
     // No subsetting
-    for( int worker = 0; worker < num_workers - 1; worker++ ){
+    for( ; task + span_task < dims_1; task += span_task ){
       common_workers.dispatch( [=]{
         int dst_pos;
         int src_pos;
 
-        for( int i = rest_workers; i < rest_workers + span_workers; i++ ){
+        for( int i = task; i < task + span_task; i++ ){
           dst_pos = i * dims_0;
           src_pos = i * dims_0;
 
@@ -92,15 +83,13 @@ void cuR_transfer_host_host( s* src_ptr,
           }
         }
       });
-
-      rest_workers += span_workers;
     }
 
     common_workers.dispatch( [=]{
       int dst_pos;
       int src_pos;
 
-      for( int i = rest_workers; i < dims_1; i++ ){
+      for( int i = task; i < dims_1; i++ ){
         dst_pos = i * dims_0;
         src_pos = i * dims_0;
 
@@ -112,140 +101,140 @@ void cuR_transfer_host_host( s* src_ptr,
 
     common_workers.sync();
   }
-  // else if( src_perm_ptr && dst_perm_ptr ){
-  //   // Both subsetted
-  //   for( int worker = 0; worker < num_workers - 1; worker++ ){
-  //     workers[worker] = std::thread( [=] {
-  //
-  //       int dst_pos;
-  //       int src_pos;
-  //
-  //       for( int i = rest_workers; i < rest_workers + span_workers; i++ ){
-  //         if( src_perm_ptr[i] > src_dims_1 ){
-  //           continue;
-  //         }
-  //
-  //         if( dst_perm_ptr[i] > dst_dims_1 ){
-  //           continue;
-  //         }
-  //
-  //         src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
-  //         dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
-  //
-  //         for( int j = 0; j < dims_0; j++ ){
-  //           dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-  //         }
-  //       }
-  //     });
-  //
-  //     rest_workers += span_workers;
-  //   }
-  //
-  //   for( int i = rest_workers; i < dims_1; i++ ){
-  //     if( src_perm_ptr[i] > src_dims_1 ){
-  //       continue;
-  //     }
-  //
-  //     if( dst_perm_ptr[i] > dst_dims_1 ){
-  //       continue;
-  //     }
-  //
-  //     src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
-  //     dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
-  //
-  //     for( int j = 0; j < dims_0; j++ ){
-  //       dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-  //     }
-  //   }
-  //
-  //   for( auto& w : workers ){
-  //     w.join();
-  //   }
-  // }
-  // else if( dst_perm_ptr ){
-  //   // Destination subsetted
-  //   for( int worker = 0; worker < num_workers - 1; worker++ ){
-  //     workers[worker] = std::thread( [=] {
-  //
-  //       int dst_pos;
-  //       int src_pos;
-  //
-  //       for( int i = rest_workers; i < rest_workers + span_workers; i++ ){
-  //         if( dst_perm_ptr[i] > dst_dims_1 ){
-  //           continue;
-  //         }
-  //
-  //         src_pos = i * dims_0;
-  //         dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
-  //
-  //         for( int j = 0; j < dims_0; j++ ){
-  //           dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-  //         }
-  //       }
-  //     });
-  //
-  //     rest_workers += span_workers;
-  //   }
-  //
-  //   for( int i = rest_workers; i < dims_1; i++ ){
-  //     if( dst_perm_ptr[i] > dst_dims_1 ){
-  //       continue;
-  //     }
-  //
-  //     src_pos = i * dims_0;
-  //     dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
-  //
-  //     for( int j = 0; j < dims_0; j++ ){
-  //       dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-  //     }
-  //   }
-  //
-  //   for( auto& w : workers ){
-  //     w.join();
-  //   }
-  // }
-  // else{
-  //   // Source subsetted
-  //   for( int worker = 0; worker < num_workers - 1; worker++ ){
-  //     workers[worker] = std::thread( [=] {
-  //
-  //       int dst_pos;
-  //       int src_pos;
-  //
-  //       for( int i = rest_workers; i < rest_workers + span_workers; i++ ){
-  //         if( src_perm_ptr[i] > src_dims_1 ){
-  //           continue;
-  //         }
-  //
-  //         src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
-  //         dst_pos = i * dims_0;
-  //
-  //         for( int j = 0; j < dims_0; j++ ){
-  //           dst_ptr[dst_pos+j] = (d)src_ptr[src_pos+j];
-  //         }
-  //       }
-  //     });
-  //
-  //     rest_workers += span_workers;
-  //   }
-  //
-  //   for( int i = rest_workers; i < dims_1; i++ ){
-  //     if( src_perm_ptr[i] > src_dims_1 ){
-  //       continue;
-  //     }
-  //
-  //     src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
-  //     dst_pos = i * dims_0;
-  //
-  //     for( int j = 0; j < dims_0; j++ ){
-  //       dst_ptr[dst_pos+j] = (d)src_ptr[src_pos+j];
-  //     }
-  //   }
-  //
-  //   for( auto& w : workers ){
-  //     w.join();
-  //   }
-  // }
+  else if( src_perm_ptr && dst_perm_ptr ){
+    // Both subsetted
+    for( ; task + span_task < dims_1; task += span_task ){
+      common_workers.dispatch( [=]{
+        int dst_pos;
+        int src_pos;
+
+        for( int i = task; i < task + span_task; i++ ){
+          if( src_perm_ptr[i] > src_dims_1 ){
+            continue;
+          }
+
+          if( dst_perm_ptr[i] > dst_dims_1 ){
+            continue;
+          }
+
+          src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+          dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
+          for( int j = 0; j < dims_0; j++ ){
+            dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+          }
+        }
+      });
+    }
+
+    common_workers.dispatch( [=]{
+      int dst_pos;
+      int src_pos;
+
+      for( int i = task; i < dims_1; i++ ){
+        if( src_perm_ptr[i] > src_dims_1 ){
+          continue;
+        }
+
+        if( dst_perm_ptr[i] > dst_dims_1 ){
+          continue;
+        }
+
+        src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+        dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
+        for( int j = 0; j < dims_0; j++ ){
+          dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+        }
+      }
+    });
+
+    common_workers.sync();
+  }
+  else if( dst_perm_ptr ){
+    // Destination subsetted
+    for( ; task + span_task < dims_1; task += span_task ){
+      common_workers.dispatch( [=]{
+        int dst_pos;
+        int src_pos;
+
+        for( int i = task; i < task + span_task; i++ ){
+          if( dst_perm_ptr[i] > dst_dims_1 ){
+            continue;
+          }
+
+          src_pos = i * dims_0;
+          dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
+          for( int j = 0; j < dims_0; j++ ){
+            dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+          }
+        }
+      });
+    }
+
+    common_workers.dispatch( [=]{
+      int dst_pos;
+      int src_pos;
+
+      for( int i = task; i < dims_1; i++ ){
+        if( dst_perm_ptr[i] > dst_dims_1 ){
+          continue;
+        }
+
+        src_pos = i * dims_0;
+        dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
+        for( int j = 0; j < dims_0; j++ ){
+          dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
+        }
+      }
+    });
+
+    common_workers.sync();
+  }
+  else{
+    // Source subsetted
+    for( ; task + span_task < dims_1; task += span_task ){
+      common_workers.dispatch( [=]{
+        int dst_pos;
+        int src_pos;
+
+        for( int i = task; i < task + span_task; i++ ){
+          if( src_perm_ptr[i] > src_dims_1 ){
+            continue;
+          }
+
+          src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+          dst_pos = i * dims_0;
+
+          for( int j = 0; j < dims_0; j++ ){
+            dst_ptr[dst_pos+j] = (d)src_ptr[src_pos+j];
+          }
+        }
+      });
+    }
+
+    common_workers.dispatch( [=]{
+      int dst_pos;
+      int src_pos;
+
+      for( int i = task; i < dims_1; i++ ){
+        if( src_perm_ptr[i] > src_dims_1 ){
+          continue;
+        }
+
+        src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+        dst_pos = i * dims_0;
+
+        for( int j = 0; j < dims_0; j++ ){
+          dst_ptr[dst_pos+j] = (d)src_ptr[src_pos+j];
+        }
+      }
+    });
+
+    common_workers.sync();
+  }
 }
 
 #ifndef CUDA_EXCLUDE

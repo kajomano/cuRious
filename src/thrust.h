@@ -1,5 +1,7 @@
 #include "common_cuda.h"
 
+#ifndef CUDA_EXCLUDE
+
 extern "C"
 #ifdef _WIN32
 __declspec( dllexport )
@@ -30,3 +32,4 @@ __declspec( dllimport )
 #endif
   void cuR_thrust_table_cu( int* x_ptr, int* p_ptr, int* w_ptr, int* s_ptr, int* x_dims, int* w_dims, int x_span_off, void* allocator_ptr, cudaStream_t* stream_ptr );
 
+#endif

@@ -4,7 +4,7 @@
 
 #include "streams.h"
 
-// Stream dispatch queues ======================================================
+// Stream dispatch queues
 sd_queue::sd_queue( size_t thread_cnt, bool cuda_streams ) : threads_( thread_cnt ), waiting_( thread_cnt ), cuda_streams_( cuda_streams ){
 #ifdef CUDA_EXCLUDE
   cuda_streams_ = false;
@@ -175,9 +175,13 @@ void sd_queue::dispatch_thread_handler( int id ){
       //unlock now that we're done messing with the queue
       lock.unlock();
 
+#ifndef CUDA_EXCLUDE
       if( cuda_streams_ ){
         op( &streams_[id] );
-      }else{
+      }
+#endif
+
+      if( !cuda_streams_ ){
         op( NULL );
       }
 

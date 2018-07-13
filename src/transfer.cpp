@@ -7,7 +7,6 @@
 
 // TODO ====
 // Divide by the number of threads
-
 // Very simple logic for now
 int cuR_transfer_task_span( int dims_0, int dims_1 ){
   return dims_1 / 4;
@@ -551,7 +550,7 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                    SEXP dst_perm_ptr_r,  // Optional**
                    SEXP src_span_off_r,  // Optional
                    SEXP dst_span_off_r,  // Optional
-                   SEXP queue_ptr_r,     // Optional
+                   SEXP workers_ptr_r,   // Optional
                    SEXP stream_ptr_r ){  // Optional
 
   // Arg conversions (except src_ptr, dst_ptr)
@@ -576,11 +575,23 @@ SEXP cuR_transfer( SEXP src_ptr_r,
   int dst_span_off  = ( R_NilValue == dst_span_off_r ) ? 0 :
     Rf_asInteger( dst_span_off_r ) - 1;
 
-  cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
-    (cudaStream_t*) R_ExternalPtrAddr( stream_ptr_r );
+  sd_queue* workers_ptr = ( R_NilValue == workers_ptr_r ) ? &sd_queue( 4, false ) :
+    (sd_queue*) R_ExternalPtrAddr( workers_ptr_r );
 
-  sd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
-    (sd_queue*) R_ExternalPtrAddr( queue_ptr_r );
+  sd_queue* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
+    (sd_queue*) R_ExternalPtrAddr( stream_ptr_r );
+
+// #ifndef CUDA_EXCLUDE
+//
+//   cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
+//     (cudaStream_t*) R_ExternalPtrAddr( stream_ptr_r );
+//
+// #else
+//
+//   void* stream_ptr;
+//
+// #endif
+//
 
   if( src_perm_ptr && !src_dims ){
     Rf_error( "Source dimensions need to be supplied with permutation" );
@@ -854,12 +865,12 @@ SEXP cuR_transfer( SEXP src_ptr_r,
       }
       break;
 
+#endif
+
     default:
       Rf_error( "Invalid destination level in transfer call" );
     }
     break;
-
-#endif
 
   case 1:
     switch( dst_level ){

@@ -22,4 +22,4 @@ all: cuRious.so
 cuRious.so: $(all_objs)
 
 %.o: %.cpp $(h_srcs)
-	$(CXX) -O3 -I$(R_INC) $< -o $@ -c
+	$(CXX) -std=c++11 -O3 -I$(R_INC) $< -o $@ -c

@@ -1,5 +1,4 @@
 # Source this script to build the package:
-
 # shift + ctrl + f10
 # shift + ctrl + f11
 # shift + ctrl + s
@@ -133,7 +132,7 @@ writeLines( makevars, "./src/Makevars" )
 
 # Build ========================================================================
 build()
-install( args = c( "--no-lock", "--no-multiarch" ) )
+install( args = c( "--no-lock", "--no-multiarch", "--no-test-load" ) )
 
 # Clean ========================================================================
 rm( list = ls( globalenv() ), pos = globalenv() )

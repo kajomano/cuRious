@@ -126,12 +126,11 @@ pipe <- R6Class(
       dst           <- private$.eps$dst
       src.level     <- src$level
       dst.level     <- dst$level
-      src.device    <- src$device
-      dst.device    <- dst$device
 
       src.perm      <- private$.eps$src.perm
       dst.perm      <- private$.eps$dst.perm
 
+      # Deep transfers are L3-L3 transfers
       transfer.deep <- ( src.level == 3L && dst.level == 3L )
 
       if( !is.null( src.perm ) ){
@@ -182,36 +181,60 @@ pipe <- R6Class(
         }
       }
 
-      stop( "Continue implementation" )
-      # TODO ====
-      # Both stream and context needs to be at least at the correct level
-      # Contextless 0-0 calls should be done in pure R
-      # Context cannot miss for anything else
+      # context <- private$.eps$context
+      #
+      # if( src.level != 0L || dst.level != 0L ){
+      #   if( is.null( context ) ){
+      #     stop( "Pipe requires an L1 or L3 context" )
+      #   }
+      #
+      #   if( is.null( context$level ) ){
+      #     stop( "Pipe requires an L1 or L3 context" )
+      #   }
+      #
+      #   if( src.level == 3L || dst.level == 3L ){
+      #     if( context$level != 3L ){
+      #       stop( "Pipe requires an L3 context" )
+      #     }
+      #   }
+      #
+      #   if( src.level == 3L && dst.level != 3L ){
+      #     if( context$device != src.device ){
+      #       stop( "Context is not on the correct device" )
+      #     }
+      #   }
+      #
+      #   if( src.level != 3L && dst.level == 3L ){
+      #     if( context$device != dst.device ){
+      #       stop( "Context is not on the correct device" )
+      #     }
+      #   }
+      # }
+      #
+      # if( !is.null( private$.eps$stream ) ){
+      #   stream <- private$.eps$stream
+      #
+      #   if( !stream$is.destroyed ){
+      #     if( transfer.deep ){
+      #       if( stream$device != src.device ){
+      #         stop( "Stream is not on the correct device" )
+      #       }
+      #     }
+      #   }
+      # }
 
-    #   if( !is.null( private$.eps$stream ) ){
-    #     stream <- private$.eps$stream
-    #
-    #     if( !stream$is.destroyed ){
-    #       if( transfer.deep ){
-    #         if( stream$device != src.device ){
-    #           stop( "Stream is not on the correct device" )
-    #         }
-    #       }
-    #     }
-    #   }
-    #
-    #   # This only works because you dont have to set the device correctly
-    #   # if no kernels are run, and kernels are only run on L3-L3 same device
-    #   # transfers
-    #   private$.device <- src.device
-    #   private$.params$src.level <- src.level
-    #   private$.params$dst.level <- dst.level
-    #
-    #   # Multi or single-step transfer
-    #   private$.fun <- .transfer.ptr.choose( src.level,
-    #                                         dst.level,
-    #                                         src.device ,
-    #                                         dst.device )
+      # This only works because you dont have to set the device correctly
+      # if no kernels are run, and kernels are only run on L3-L3 same device
+      # transfers
+      private$.device <- src.device
+      private$.params$src.level <- src.level
+      private$.params$dst.level <- dst.level
+
+      # Multi or single-step transfer
+      private$.fun <- .transfer.ptr.choose( src.level,
+                                            dst.level,
+                                            src.device ,
+                                            dst.device )
     }
   )
 )

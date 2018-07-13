@@ -17,8 +17,10 @@ for( type in types ){
 
   mat <- matrix( mat.cont, rows, cols )
 
-  for( src.level in 0:3 ){
-    for( dst.level in 0:3 ){
+  # for( src.level in 0:3 ){
+  #   for( dst.level in 0:3 ){
+  for( src.level in 2 ){
+    for( dst.level in 3 ){
       print( paste0( type, " ", src.level, " ", dst.level ) )
 
       src <- tensor$new( mat, src.level )

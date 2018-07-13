@@ -41,13 +41,13 @@ if( clean.build ){
 debug.header <- readLines( "./src/common_debug.h" )
 
 if( debug.prints ){
-  if( debug.header[[1]] != "#define DEBUG_PRINTS 1" ){
-    debug.header[[1]] <- "#define DEBUG_PRINTS 1"
+  if( debug.header[[4]] != "#define DEBUG_PRINTS 1" ){
+    debug.header[[4]] <- "#define DEBUG_PRINTS 1"
     writeLines( debug.header, "./src/common_debug.h" )
   }
 }else{
-  if( debug.header[[1]] != "// #define DEBUG_PRINTS 1" ){
-    debug.header[[1]] <- "// #define DEBUG_PRINTS 1"
+  if( debug.header[[4]] != "// #define DEBUG_PRINTS 1" ){
+    debug.header[[4]] <- "// #define DEBUG_PRINTS 1"
     writeLines( debug.header, "./src/common_debug.h" )
   }
 }
@@ -56,13 +56,13 @@ if( debug.prints ){
 cuda.header <- readLines( "./src/common_cuda.h" )
 
 if( cuda.exclude ){
-  if( cuda.header[[1]] != "#define CUDA_EXCLUDE 1" ){
-    cuda.header[[1]] <- "#define CUDA_EXCLUDE 1"
+  if( cuda.header[[4]] != "#define CUDA_EXCLUDE 1" ){
+    cuda.header[[4]] <- "#define CUDA_EXCLUDE 1"
     writeLines( cuda.header, "./src/common_cuda.h" )
   }
 }else{
-  if( cuda.header[[1]] != "// #define CUDA_EXCLUDE 1" ){
-    cuda.header[[1]] <- "// #define CUDA_EXCLUDE 1"
+  if( cuda.header[[4]] != "// #define CUDA_EXCLUDE 1" ){
+    cuda.header[[4]] <- "// #define CUDA_EXCLUDE 1"
     writeLines( cuda.header, "./src/common_cuda.h" )
   }
 

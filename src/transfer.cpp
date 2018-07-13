@@ -1,11 +1,9 @@
 #include "common_R.h"
 #include "common_debug.h"
-#include "transfer.h"  // Includes common_cuda.h
-#include "workers.h"
-// #include "omp.h"
+#include "common_cuda.h"
 
-// #include <vector>
-// #include <algorithm>
+#include "transfer.h"
+#include "streams.h"
 
 // Very simple logic for now
 int cuR_transfer_task_span( int dims_0, int dims_1 ){
@@ -287,6 +285,9 @@ void cuR_transfer_host_device( t* src_ptr,
 
   int src_pos;
   int dst_pos;
+
+  int span_task = cuR_transfer_task_span( dims_0, dims_1 );
+  int task = 0;
 
   // Copy
   if( !src_perm_ptr && !dst_perm_ptr ){
@@ -575,8 +576,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
   cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
     (cudaStream_t*) R_ExternalPtrAddr( stream_ptr_r );
 
-  wd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
-    (wd_queue*) R_ExternalPtrAddr( queue_ptr_r );
+  sd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
+    (sd_queue*) R_ExternalPtrAddr( queue_ptr_r );
 
   if( src_perm_ptr && !src_dims ){
     Rf_error( "Source dimensions need to be supplied with permutation" );

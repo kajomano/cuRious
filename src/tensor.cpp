@@ -2,7 +2,7 @@
 #include "common_cuda.h"
 #include "common_debug.h"
 
-#include <cstring>
+// #include <cstring>
 
 template <typename t>
 void cuR_tensor_fin_1( SEXP ptr_r ){

@@ -1,3 +1,6 @@
+#ifndef COMMON_CUDA
+#define COMMON_CUDA
+
 // #define CUDA_EXCLUDE 1
 
 // Debug macros for cuda functions
@@ -32,5 +35,7 @@ inline void cudaAssert( cudaError_t code, const char *file, int line){
     Rf_error("CUDA assert: %s %s %d\n", cudaGetErrorString( code ), file, line );
   }
 }
+
+#endif
 
 #endif

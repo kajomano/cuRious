@@ -196,7 +196,7 @@ fusion.context <- R6Class(
           return()
         }
 
-        if( is.destroyed( stream ) ){
+        if( stream$is.destroyed ){
           return()
         }
       }
@@ -205,14 +205,10 @@ fusion.context <- R6Class(
     },
 
     deploy = function( level = NULL ){
-      if( !is.null( level ) || !( level %in% c( 1L, 3L ) ) ){
-        stop( "Invalid deployment target level" )
-      }
-
       if( is.null( level ) ){
-        if( !is.null( stream ) ){
-          if( !is.destroyed( stream ) ){
-            level = stream$level
+        if( !is.null( private$.stream ) ){
+          if( !private$.stream$is.destroyed ){
+            level = private$.stream$level
           }
         }
       }
@@ -221,12 +217,8 @@ fusion.context <- R6Class(
         stop( "No deployment target level" )
       }
 
-      if( length( private$.context.changed ) && level == 3L ){
-        if( private$.device != private$.stream$device ){
-          stop( "Not matching device with stream device" )
-        }
-
-        private$.context.changed <- NULL
+      if( !( level %in% c( 1L, 3L ) ) ){
+        stop( "Invalid deployment target level" )
       }
 
       if( !self$is.destroyed ){
@@ -235,6 +227,14 @@ fusion.context <- R6Class(
         }else{
           return()
         }
+      }
+
+      if( length( private$.context.changed ) && level == 3L ){
+        if( private$.device != private$.stream$device ){
+          stop( "Not matching device with stream device" )
+        }
+
+        private$.context.changed <- NULL
       }
 
       if( level == 1L ){

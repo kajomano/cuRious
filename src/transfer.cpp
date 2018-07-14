@@ -5,11 +5,15 @@
 #include "transfer.h"
 #include "streams.h"
 
-// TODO ====
-// Divide by the number of threads
 // Very simple logic for now
-int cuR_transfer_task_span( int dims_0, int dims_1 ){
-  return dims_1 / 4;
+int cuR_transfer_task_span( int dims_0, int dims_1, sd_queue* worker_q_ptr ){
+  int threads = (int)worker_q_ptr -> thread_cnt();
+
+  if( threads > dims_1 ){
+    return 1;
+  }else{
+    return dims_1 / threads;
+  }
 }
 
 template <typename s, typename d>
@@ -62,14 +66,18 @@ void cuR_transfer_host_host( s* src_ptr,
   int dst_pos;
   int src_pos;
 
-  int span_task = cuR_transfer_task_span( dims_0, dims_1 );
+  int span_task = cuR_transfer_task_span( dims_0, dims_1, worker_q_ptr );
   int task = 0;
 
   // Out-of-bounds checks only check for permutation content
   // Span checks are done in R
 
-  // TODO ====
-  // Stream sync first if given
+#ifndef CUDA_EXCLUDE
+  cudaStream_t* stream_ = (cudaStream_t*) stream_ptr;
+  if( stream_ ){
+    cudaTry( cudaStreamSynchronize( *stream_ ) );
+  }
+#endif
 
   // Copy
   if( !src_perm_ptr && !dst_perm_ptr ){
@@ -294,18 +302,26 @@ void cuR_transfer_host_device( t* src_ptr,
   int src_pos;
   int dst_pos;
 
-  int span_task = cuR_transfer_task_span( dims_0, dims_1 );
+  int span_task = cuR_transfer_task_span( dims_0, dims_1, worker_q_ptr );
   int task = 0;
+
+  cudaStream_t* stream_ = (cudaStream_t*) stream_ptr;
+  if( stream_ ){
+    cudaTry( cudaStreamSynchronize( *stream_ ) );
+  }
+
+  // TODO ====
+  // Dispatch to workers
 
   // Copy
   if( !src_perm_ptr && !dst_perm_ptr ){
     // No subsetting
-    if( stream_ptr ){
+    if( stream_ ){
       cudaTry( cudaMemcpyAsync( dst_ptr,
                                 src_ptr,
                                 sizeof(t) * dims_0 * dims_1,
                                 cudaMemcpyHostToDevice,
-                                *stream_ptr ) );
+                                *stream_ ) );
     }else{
       cudaTry( cudaMemcpyAsync( dst_ptr,
                                 src_ptr,
@@ -325,12 +341,12 @@ void cuR_transfer_host_device( t* src_ptr,
       src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
       dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
 
-      if( stream_ptr ){
+      if( stream_ ){
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
                                   dims_0 * sizeof(t),
                                   cudaMemcpyHostToDevice,
-                                  *stream_ptr ) );
+                                  *stream_ ) );
       }else{
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
@@ -347,12 +363,12 @@ void cuR_transfer_host_device( t* src_ptr,
       src_pos = i * dims_0;
       dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
 
-      if( stream_ptr ){
+      if( stream_ ){
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
                                   dims_0 * sizeof(t),
                                   cudaMemcpyHostToDevice,
-                                  *stream_ptr ) );
+                                  *stream_ ) );
       }else{
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
@@ -369,12 +385,12 @@ void cuR_transfer_host_device( t* src_ptr,
       src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
       dst_pos = i * dims_0;
 
-      if( stream_ptr ){
+      if( stream_ ){
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
                                   dims_0 * sizeof(t),
                                   cudaMemcpyHostToDevice,
-                                  *stream_ptr ) );
+                                  *stream_ ) );
       }else{
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
@@ -422,6 +438,9 @@ void cuR_transfer_device_host( t* src_ptr,
   int dims_0 = dims[0];
   int dims_1 = dims[1];
 
+  int span_task = cuR_transfer_task_span( dims_0, dims_1, worker_q_ptr );
+  int task = 0;
+
   // Offsets with permutations offset the permutation vector itself
   if( src_span_off ){
     if( src_perm_ptr ){
@@ -442,15 +461,20 @@ void cuR_transfer_device_host( t* src_ptr,
   int dst_pos;
   int src_pos;
 
+  cudaStream_t* stream_ = (cudaStream_t*) stream_ptr;
+  if( stream_ ){
+    cudaTry( cudaStreamSynchronize( *stream_ ) );
+  }
+
   // Copy
   if( !src_perm_ptr && !dst_perm_ptr ){
     // No subsetting
-    if( stream_ptr ){
+    if( stream_ ){
       cudaTry( cudaMemcpyAsync( dst_ptr,
                                 src_ptr,
                                 sizeof(t) * dims_0 * dims_1,
                                 cudaMemcpyDeviceToHost,
-                                *stream_ptr ) );
+                                *stream_ ) );
     }else{
       cudaTry( cudaMemcpyAsync( dst_ptr,
                                 src_ptr,
@@ -470,14 +494,14 @@ void cuR_transfer_device_host( t* src_ptr,
       src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
       dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
 
-      if( stream_ptr ){
+      if( stream_ ){
         // This copy is not async to the host if dst is unpinned, or just takes
         // a very long time.
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
                                   dims_0 * sizeof(t),
                                   cudaMemcpyDeviceToHost,
-                                  *stream_ptr ) );
+                                  *stream_ ) );
       }else{
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
@@ -494,12 +518,12 @@ void cuR_transfer_device_host( t* src_ptr,
       src_pos = i * dims_0;
       dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
 
-      if( stream_ptr ){
+      if( stream_ ){
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
                                   dims_0 * sizeof(t),
                                   cudaMemcpyDeviceToHost,
-                                  *stream_ptr ) );
+                                  *stream_ ) );
       }else{
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
@@ -516,12 +540,12 @@ void cuR_transfer_device_host( t* src_ptr,
       src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
       dst_pos = i * dims_0;
 
-      if( stream_ptr ){
+      if( stream_ ){
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
                                   dims_0 * sizeof(t),
                                   cudaMemcpyDeviceToHost,
-                                  *stream_ptr ) );
+                                  *stream_ ) );
       }else{
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
@@ -1891,7 +1915,7 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                          dst_perm_ptr,
                                          src_span_off,
                                          dst_span_off,
-                                         stream_ptr );
+                                         (cudaStream_t*) stream_ptr );
         });
       }else{
         cuR_transfer_device_device_cu( (void*) R_ExternalPtrAddr( src_ptr_r ),
@@ -1919,8 +1943,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
   }
 
   // Delete temporary workers
-  if( R_NilValue == workers_ptr_r ){
-    delete workers;
+  if( R_NilValue == worker_q_ptr_r ){
+    delete worker_q_ptr;
   }
 
   return R_NilValue;

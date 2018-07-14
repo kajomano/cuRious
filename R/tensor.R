@@ -254,28 +254,33 @@ tensor <- R6Class(
         stop( "Invalid data format" )
       }
 
-      .transfer.ptr.choose( level,
-                            private$.level,
-                            device,
-                            private$.device )( ptr,
-                                               private$.ptrs$tensor,
-                                               level,
-                                               private$.level,
-                                               private$.type,
-                                               private$.dims )
+      browser()
+
+      # .transfer.ptr.choose( level,
+      #                       private$.level,
+      #                       device,
+      #                       private$.device )( ptr,
+      #                                          private$.ptrs$tensor,
+      #                                          level,
+      #                                          private$.level,
+      #                                          private$.type,
+      #                                          private$.dims )
     },
 
     .temp = function( level = private$.level, device = private$.device ){
       tmp <- private$.create.ptr( level = level, device = device )
-      .transfer.ptr.choose( private$.level,
-                            level,
-                            private$.device,
-                            device )( private$.ptrs$tensor,
-                                      tmp,
-                                      private$.level,
-                                      level,
-                                      private$.type,
-                                      private$.dims )
+
+      browser()
+
+      # .transfer.ptr.choose( private$.level,
+      #                       level,
+      #                       private$.device,
+      #                       device )( private$.ptrs$tensor,
+      #                                 tmp,
+      #                                 private$.level,
+      #                                 level,
+      #                                 private$.type,
+      #                                 private$.dims )
       tmp
     }
   ),

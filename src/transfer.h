@@ -17,7 +17,7 @@ void cuR_transfer_device_device_cu(
     int* dst_perm_ptr,
     int src_span_off,
     int dst_span_off,
-    cudaStream_t* stream_ptr
+    cudaStream_t* stream_ptr = NULL
 );
 
 #endif

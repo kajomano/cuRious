@@ -41,7 +41,7 @@ transfer <- function( src,
 }
 
 # Single-step transfer calls
-.transfer.ptr = function( src.tensor,
+transfer.ptr = function( src.tensor,
                           dst.tensor,
                           src.level,
                           dst.level,

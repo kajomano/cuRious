@@ -17,7 +17,7 @@ pipe.context <- R6Class(
     .workers = NULL,
 
     .deploy.L1 = function(){
-      super$.deploy(
+      super$.deploy.L1(
         expression(
           list( workers  = .Call( "cuR_stream_queue_create", private$.workers, FALSE ) )
         )
@@ -25,7 +25,7 @@ pipe.context <- R6Class(
     },
 
     .deploy.L3 = function(){
-      super$.deploy(
+      super$.deploy.L3(
         expression(
           list( workers  = .Call( "cuR_stream_queue_create", private$.workers, TRUE ) )
         )
@@ -50,15 +50,16 @@ pipe.context <- R6Class(
           stop( "Cannot change workers: deployed stream" )
         }
 
-        if( is.null( val ) ){
+        if( !is.numeric( val ) || length( val ) != 1 ){
           stop( "Invalid workers parameter" )
         }
 
-        if( !is.integer( val ) || val < 1 ){
+
+        if( as.logical( val %% 1 ) || val < 1 ){
           stop( "Invalid workers parameter" )
         }
 
-        private$.workers <- val
+        private$.workers <- as.integer( val )
       }
     }
   )

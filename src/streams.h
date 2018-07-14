@@ -63,5 +63,3 @@ private:
 
   void dispatch_thread_handler( int id );
 };
-
-extern sd_queue common_workers;

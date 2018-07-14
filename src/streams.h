@@ -17,7 +17,7 @@
 
 class sd_queue {
   typedef std::function<void(void)> fp_t;
-  typedef std::function<void(void* stream)> fp_cuda_t;
+  typedef std::function<void(void* stream_ptr)> fp_cuda_t;
 
 public:
   sd_queue( size_t thread_cnt = 1, bool cuda_streams = false );

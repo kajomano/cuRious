@@ -7,7 +7,7 @@ stream <- R6Class(
   "cuR.stream",
   inherit = .alert.send,
   public = list(
-    initialize = function( deployed = 3L, device = cuda.device.default.get() ){
+    initialize = function( deployed = NULL, device = cuda.device.default.get() ){
       self$device <- device
       self$deploy
 

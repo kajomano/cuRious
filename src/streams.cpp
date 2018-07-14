@@ -4,7 +4,7 @@
 
 #include "streams.h"
 
-// #include <cstdio>
+#include <cstdio>
 
 // Stream dispatch queues
 sd_queue::sd_queue( size_t thread_cnt, bool cuda_streams ) : threads_( thread_cnt ), waiting_( thread_cnt ), cuda_streams_( cuda_streams ){
@@ -24,6 +24,8 @@ sd_queue::sd_queue( size_t thread_cnt, bool cuda_streams ) : threads_( thread_cn
     waiting_[i] = false;
     threads_[i] = std::thread( &sd_queue::dispatch_thread_handler, this, (int) i );
   }
+
+  // printf( "<%p> Queue created, threads: %d\n", (void*)this, threads_.size() );
 }
 
 sd_queue::~sd_queue(){
@@ -46,6 +48,8 @@ sd_queue::~sd_queue(){
     }
   }
 #endif
+
+  // printf( "<%p> Queue destroyed, threads: %d\n", (void*)this, threads_.size() );
 }
 
 size_t sd_queue::thread_cnt(){

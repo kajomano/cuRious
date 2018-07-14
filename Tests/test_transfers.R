@@ -4,12 +4,12 @@ verbose <- TRUE
 
 threads <- 4
 
-cols <- 1000
-rows <- 1000
+cols    <- 1000
+rows    <- 1000
 
-stream        <- cuRious::stream$new( 3 )
-context.sync  <- cuRious::pipe.context$new( threads )
-context.async <- cuRious::pipe.context$new( threads, stream )
+stream        <- cuRious::stream$new( deployed = 3 )
+context.sync  <- cuRious::pipe.context$new( threads, deployed = 3 )
+context.async <- cuRious::pipe.context$new( threads, stream, deployed = 3 )
 
 for( type in types ){
   mat.cont <- switch(
@@ -23,8 +23,13 @@ for( type in types ){
 
   # for( src.level in 0:3 ){
   #   for( dst.level in 0:3 ){
-  for( src.level in 0 ){
-    for( dst.level in 0 ){
+  for( src.level in 2 ){
+    for( dst.level in 3 ){
+      if( ( src.level == 0L && dst.level == 3L ) ||
+          ( src.level == 3L && dst.level == 0L ) ){
+        next
+      }
+
       print( paste0( type, " ", src.level, " ", dst.level ) )
 
       src <- tensor$new( mat, src.level )

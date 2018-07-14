@@ -60,6 +60,10 @@
   active = list(
     ptrs = function( val ){
       if( missing( val ) ){
+        if( is.null( private$.ptrs ) ){
+          warning( "Container accessed without content" )
+        }
+
         return( private$.ptrs )
       }else{
         stop( "Container contents are not directly settable" )

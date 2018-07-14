@@ -44,7 +44,10 @@ SEXP cuR_device_get(){
 extern "C"
 SEXP cuR_device_set( SEXP dev_r ){
   int dev = Rf_asInteger( dev_r );
-  cudaTry( cudaSetDevice ( dev ) );
+
+  if( dev != -1 ){
+    cudaTry( cudaSetDevice ( dev ) );
+  }
 
   return R_NilValue;
 }

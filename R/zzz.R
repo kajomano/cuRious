@@ -3,7 +3,6 @@
 
 .onLoad <- function( libname, pkgname ){
   assign( "cuda.device.current", .cuda.device.get(), envir = .cuRious.env )
-
   if( cuda.device.count() == -1 ){
     default <- -1L
   }else{

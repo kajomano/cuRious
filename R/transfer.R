@@ -54,7 +54,7 @@ transfer <- function( src,
                               src.span.off    = NULL,
                               dst.span.off    = NULL,
                               context.workers = NULL,
-                              stream.queue    = NULL){
+                              stream.queue    = NULL ){
 
   .Call( "cuR_transfer",
          src.tensor,

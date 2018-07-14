@@ -84,18 +84,16 @@ is.device <- function( device ){
   device.count <- cuda.device.count()
 
   if( device.count == -1 ){
-    if( device == -1 ){
-      return( TRUE )
-    }else{
-      return( FALSE )
-    }
+    lower.bound = -1
+  }else{
+    lower.bound = 0
   }
 
   if( !is.numeric( device ) || length( device ) != 1 ){
     return( FALSE )
   }
 
-  if( device < 0 || device >= device.count || as.logical( device %% 1 ) ){
+  if( device < lower.bound || device >= device.count || as.logical( device %% 1 ) ){
     return( FALSE )
   }
 

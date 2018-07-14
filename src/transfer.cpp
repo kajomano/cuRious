@@ -575,8 +575,14 @@ SEXP cuR_transfer( SEXP src_ptr_r,
   int dst_span_off  = ( R_NilValue == dst_span_off_r ) ? 0 :
     Rf_asInteger( dst_span_off_r ) - 1;
 
-  sd_queue* workers_ptr = ( R_NilValue == workers_ptr_r ) ? &sd_queue( 4, false ) :
-    (sd_queue*) R_ExternalPtrAddr( workers_ptr_r );
+  sd_queue* workers_ptr;
+  sd_queue  workers;
+  if( R_NilValue == workers_ptr_r ){
+    workers     = sd_queue( 4, false );
+    workers_ptr = &workers;
+  }else{
+    workers_ptr = (sd_queue*) R_ExternalPtrAddr( workers_ptr_r );
+  }
 
   sd_queue* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
     (sd_queue*) R_ExternalPtrAddr( stream_ptr_r );

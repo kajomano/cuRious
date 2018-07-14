@@ -117,38 +117,59 @@ pipe <- R6Class(
 
   private = list(
     .update.context = function( ... ){
-      # Since levels are the primary dynamically changing attribute of tensors,
-      # these checks mostly concern them
-
       # Temporary variables: $lookups take a long time, it makes sense to save
       # accessed values if used multiple times
-      src           <- private$.eps$src
-      dst           <- private$.eps$dst
-      src.level     <- src$level
-      dst.level     <- dst$level
+      src        <- private$.eps$src
+      dst        <- private$.eps$dst
+      src.level  <- src$level
+      dst.level  <- dst$level
 
-      src.perm      <- private$.eps$src.perm
-      dst.perm      <- private$.eps$dst.perm
+      src.device <- src$device
+      dst.device <- dst$device
+
+      src.perm   <- private$.eps$src.perm
+      dst.perm   <- private$.eps$dst.perm
+
+      context    <- private$.eps$context
+      stream     <- private$.eps$stream
+
+      # Multi-step pipes are no longer valid:
+      # L0-L3 and back
+      # L3-L3 cross device
 
       # Deep transfers are L3-L3 transfers
       transfer.deep <- ( src.level == 3L && dst.level == 3L )
 
+      if( transfer.deep && src.device != dst.device ){
+        stop( "Cross-device pipes are not allowed" )
+      }
+
+      if( ( src.level == 0L && dst.level == 3L ) ||
+          ( src.level == 3L && dst.level == 0L ) ){
+        stop( "Multi-step pipes are not allowed" )
+      }
+
+      # Now that the pipe is certainly single step, we can find a dedicated
+      # device
+      if( src.level == 3L ){
+        device <- src.device
+      }else if( dst.level == 3L ){
+        device <- dst.device
+      }else{
+        device = -1
+      }
+
+      # Source permutation
       if( !is.null( src.perm ) ){
         src.perm.level  <- src.perm$level
 
         if( transfer.deep ){
-          if( src.device == dst.device ){
-            if( src.perm.level != 3L ){
-              stop( "Source permutation tensor is not on the correct level" )
-            }
+          if( src.perm.level != 3L ){
+            stop( "Source permutation tensor is not on the correct level" )
+          }
 
-            if( src.perm$device != src.device ){
-              stop( "Source permutation tensor is not on the correct device" )
-            }
-          }else{
-            if( src.perm.level == 3L ){
-              stop( "Source permutation tensor is not on the correct level" )
-            }
+          if( src.perm$device != device ){
+            stop( "Source permutation tensor is not on the correct device" )
           }
         }else{
           if( src.perm.level == 3L ){
@@ -157,22 +178,17 @@ pipe <- R6Class(
         }
       }
 
+      # Destination permutation
       if( !is.null( dst.perm ) ){
         dst.perm.level  <- dst.perm$level
 
         if( transfer.deep ){
-          if( src.device == dst.device ){
-            if( dst.perm.level != 3L ){
-              stop( "Destination permutation tensor is not on the correct level" )
-            }
+          if( dst.perm.level != 3L ){
+            stop( "Destination permutation tensor is not on the correct level" )
+          }
 
-            if( dst.perm$device != dst.device ){
-              stop( "Destination permutation tensor is not on the correct device" )
-            }
-          }else{
-            if( dst.perm.level == 3L ){
-              stop( "Destination permutation tensor is not on the correct level" )
-            }
+          if( dst.perm$device != device ){
+            stop( "Destination permutation tensor is not on the correct device" )
           }
         }else{
           if( dst.perm.level == 3L ){
@@ -181,60 +197,54 @@ pipe <- R6Class(
         }
       }
 
-      # context <- private$.eps$context
-      #
-      # if( src.level != 0L || dst.level != 0L ){
-      #   if( is.null( context ) ){
-      #     stop( "Pipe requires an L1 or L3 context" )
-      #   }
-      #
-      #   if( is.null( context$level ) ){
-      #     stop( "Pipe requires an L1 or L3 context" )
-      #   }
-      #
-      #   if( src.level == 3L || dst.level == 3L ){
-      #     if( context$level != 3L ){
-      #       stop( "Pipe requires an L3 context" )
-      #     }
-      #   }
-      #
-      #   if( src.level == 3L && dst.level != 3L ){
-      #     if( context$device != src.device ){
-      #       stop( "Context is not on the correct device" )
-      #     }
-      #   }
-      #
-      #   if( src.level != 3L && dst.level == 3L ){
-      #     if( context$device != dst.device ){
-      #       stop( "Context is not on the correct device" )
-      #     }
-      #   }
-      # }
-      #
-      # if( !is.null( private$.eps$stream ) ){
-      #   stream <- private$.eps$stream
-      #
-      #   if( !stream$is.destroyed ){
-      #     if( transfer.deep ){
-      #       if( stream$device != src.device ){
-      #         stop( "Stream is not on the correct device" )
-      #       }
-      #     }
-      #   }
-      # }
+      if( src.level != 0L || dst.level != 0L ){
+        if( is.null( context ) ){
+          stop( "Pipe requires an L1 or L3 context" )
+        }
 
-      # This only works because you dont have to set the device correctly
-      # if no kernels are run, and kernels are only run on L3-L3 same device
-      # transfers
-      private$.device <- src.device
+        if( is.null( context$level ) ){
+          stop( "Pipe requires an L1 or L3 context" )
+        }
+
+        if( src.level == 3L || dst.level == 3L ){
+          if( context$level != 3L ){
+            stop( "Pipe requires an L3 context" )
+          }
+
+          if( context$device != device ){
+            stop( "Context is not on the correct device" )
+          }
+        }
+      }
+
+      if( !is.null( stream ) ){
+        if( !is.null( stream$level ) ){
+          if( src.level == 3L || dst.level == 3L ){
+            if( stream$level != 3L ){
+              stop( "Pipe requires an L3 stream" )
+            }
+
+            if( stream$device != device ){
+              stop( "Stream is not on the correct device" )
+            }
+          }
+        }
+      }
+
+      # Assignements
+      private$.device           <- device
       private$.params$src.level <- src.level
       private$.params$dst.level <- dst.level
 
-      # Multi or single-step transfer
-      private$.fun <- .transfer.ptr.choose( src.level,
-                                            dst.level,
-                                            src.device ,
-                                            dst.device )
+      browser()
+      # TODO ====
+      # Check this
+
+      # # Multi or single-step transfer
+      # private$.fun <- .transfer.ptr.choose( src.level,
+      #                                       dst.level,
+      #                                       src.device ,
+      #                                       dst.device )
     }
   )
 )

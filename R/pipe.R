@@ -2,14 +2,14 @@
 # argument sanity checks at creation, and try to do the rest only when needed at
 # runtime. Overhead reduction is key for smaller tasks.
 
-# cuBLAS handle class ====
+# Pipe context class ====
 pipe.context <- R6Class(
   "cuR.pipe.context",
   inherit = fusion.context,
   public = list(
-    initialize = function( workers = 4L, ... ){
+    initialize = function( workers = 4L, stream = NULL, deployed = NULL, device = NULL ){
       self$workers <- workers
-      super$initialize( ... )
+      super$initialize( stream, deployed, device )
     }
   ),
 
@@ -64,6 +64,7 @@ pipe.context <- R6Class(
   )
 )
 
+# Pipe class ====
 pipe <- R6Class(
   "cuR.pipe",
   inherit = fusion,
@@ -237,14 +238,7 @@ pipe <- R6Class(
       private$.params$dst.level <- dst.level
 
       browser()
-      # TODO ====
-      # Check this
-
-      # # Multi or single-step transfer
-      # private$.fun <- .transfer.ptr.choose( src.level,
-      #                                       dst.level,
-      #                                       src.device ,
-      #                                       dst.device )
+      private$.fun              <- .transfer.ptr
     }
   )
 )

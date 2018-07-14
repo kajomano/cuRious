@@ -576,28 +576,18 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     Rf_asInteger( dst_span_off_r ) - 1;
 
   sd_queue* workers_ptr;
-  sd_queue  workers;
+  sd_queue* stream_ptr;
+
+  // Stream is explicitly turned off when no context is uspported, however, such
+  // calls should be impossible from the R side
   if( R_NilValue == workers_ptr_r ){
-    workers     = sd_queue( 4, false );
-    workers_ptr = &workers;
+    workers_ptr = new sd_queue( 4, false);
+    stream_ptr  = NULL;
   }else{
-    workers_ptr = (sd_queue*) R_ExternalPtrAddr( workers_ptr_r );
+    workers_ptr = (sd_queue*) R_ExternalPtrAddr( stream_ptr_r );
+    stream_ptr  = ( R_NilValue == stream_ptr_r ) ? NULL :
+      (sd_queue*) R_ExternalPtrAddr( stream_ptr_r );
   }
-
-  sd_queue* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
-    (sd_queue*) R_ExternalPtrAddr( stream_ptr_r );
-
-// #ifndef CUDA_EXCLUDE
-//
-//   cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
-//     (cudaStream_t*) R_ExternalPtrAddr( stream_ptr_r );
-//
-// #else
-//
-//   void* stream_ptr;
-//
-// #endif
-//
 
   if( src_perm_ptr && !src_dims ){
     Rf_error( "Source dimensions need to be supplied with permutation" );
@@ -1824,6 +1814,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
 
   default:
     Rf_error( "Invalid source level in transfer call" );
+  }
+
+  // Delete temporary workers
+  if( R_NilValue == workers_ptr_r ){
+    delete workers;
   }
 
   return R_NilValue;

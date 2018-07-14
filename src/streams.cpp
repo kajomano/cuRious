@@ -4,7 +4,7 @@
 
 #include "streams.h"
 
-#include <cstdio>
+// #include <cstdio>
 
 // Stream dispatch queues
 sd_queue::sd_queue( size_t thread_cnt, bool cuda_streams ) : threads_( thread_cnt ), waiting_( thread_cnt ), cuda_streams_( cuda_streams ){
@@ -63,7 +63,7 @@ void sd_queue::dispatch( const fp_t& op ){
   lock.unlock();
   cv_.notify_all();
 
-  printf( "<%p> Dispatch\n", (void*)this );
+  // printf( "<%p> Dispatch\n", (void*)this );
 }
 
 void sd_queue::dispatch( const fp_cuda_t& op ){
@@ -75,7 +75,7 @@ void sd_queue::dispatch( const fp_cuda_t& op ){
   lock.unlock();
   cv_.notify_all();
 
-  printf( "<%p> Dispatch\n", (void*)this );
+  // printf( "<%p> Dispatch\n", (void*)this );
 }
 
 void sd_queue::dispatch( fp_t&& op ){
@@ -89,7 +89,7 @@ void sd_queue::dispatch( fp_t&& op ){
   lock.unlock();
   cv_.notify_all();
 
-  printf( "<%p> Dispatch\n", (void*)this );
+  // printf( "<%p> Dispatch\n", (void*)this );
 }
 
 void sd_queue::dispatch( fp_cuda_t&& op ){
@@ -101,12 +101,12 @@ void sd_queue::dispatch( fp_cuda_t&& op ){
   lock.unlock();
   cv_.notify_all();
 
-  printf( "<%p> Dispatch\n", (void*)this );
+  // printf( "<%p> Dispatch\n", (void*)this );
 }
 
 void sd_queue::sync(){
   std::unique_lock<std::mutex> lock( lock_ );
-  printf( "<%p> Syncing\n", (void*)this );
+  // printf( "<%p> Syncing\n", (void*)this );
 
   // notify threads that we are waiting for an empty queue
   sync_ = true;
@@ -146,11 +146,11 @@ void sd_queue::dispatch_thread_handler( int id ){
     // set status to waiting
     waiting_[id] = true;
 
-    printf( "<%p> Worker %d sync %d\n", (void*)this, id, sync_ );
+    // printf( "<%p> Worker %d sync %d\n", (void*)this, id, sync_ );
 
     // if sync_ is underway and we are going into waiting, wake the dispatcher
     if( !q_.size() && sync_ ){
-      printf( "Worker %d going to sleep\n", id );
+      // printf( "Worker %d going to sleep\n", id );
 
       sync_cv_.notify_all();
     }
@@ -168,7 +168,7 @@ void sd_queue::dispatch_thread_handler( int id ){
       auto op = std::move( q_.front() );
       q_.pop();
 
-      printf( "Worker %d pop, queue: %zu\n", id, q_.size() );
+      // printf( "Worker %d pop, queue: %zu\n", id, q_.size() );
 
       //unlock now that we're done messing with the queue
       lock.unlock();
@@ -185,7 +185,7 @@ void sd_queue::dispatch_thread_handler( int id ){
 
       lock.lock();
 
-      printf( "Worker %d done, queue: %zu\n", id, q_.size() );
+      // printf( "Worker %d done, queue: %zu\n", id, q_.size() );
     }
     // Only quit when we have the signal AND there are no more jobs to do in the
     // queue

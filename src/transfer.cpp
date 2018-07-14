@@ -26,8 +26,8 @@ void cuR_transfer_host_host( s* src_ptr,
                              int* dst_perm_ptr,
                              int src_span_off,
                              int dst_span_off,
-                             sd_queue* worker_q_ptr,
-                             void* stream_ptr = NULL ){
+                             sd_queue* worker_q_ptr = NULL,
+                             void* stream_ptr       = NULL ){
 
   int src_dims_1;
   if( src_dims ){
@@ -66,7 +66,9 @@ void cuR_transfer_host_host( s* src_ptr,
   int dst_pos;
   int src_pos;
 
-  int span_task = cuR_transfer_task_span( dims_0, dims_1, worker_q_ptr );
+  sd_queue* worker_q = ( !worker_q_ptr ) ? new sd_queue( 4, false ) : worker_q_ptr;
+
+  int span_task = cuR_transfer_task_span( dims_0, dims_1, worker_q );
   int task = 0;
 
   // Out-of-bounds checks only check for permutation content
@@ -83,7 +85,7 @@ void cuR_transfer_host_host( s* src_ptr,
   if( !src_perm_ptr && !dst_perm_ptr ){
     // No subsetting
     for( ; task + span_task < dims_1; task += span_task ){
-      worker_q_ptr -> dispatch( [=]{
+      worker_q -> dispatch( [=]{
         int dst_pos;
         int src_pos;
 
@@ -98,7 +100,7 @@ void cuR_transfer_host_host( s* src_ptr,
       });
     }
 
-    worker_q_ptr -> dispatch( [=]{
+    worker_q -> dispatch( [=]{
       int dst_pos;
       int src_pos;
 
@@ -112,12 +114,12 @@ void cuR_transfer_host_host( s* src_ptr,
       }
     });
 
-    worker_q_ptr -> sync();
+    worker_q -> sync();
   }
   else if( src_perm_ptr && dst_perm_ptr ){
     // Both subsetted
     for( ; task + span_task < dims_1; task += span_task ){
-      worker_q_ptr -> dispatch( [=]{
+      worker_q -> dispatch( [=]{
         int dst_pos;
         int src_pos;
 
@@ -140,7 +142,7 @@ void cuR_transfer_host_host( s* src_ptr,
       });
     }
 
-    worker_q_ptr -> dispatch( [=]{
+    worker_q -> dispatch( [=]{
       int dst_pos;
       int src_pos;
 
@@ -162,12 +164,12 @@ void cuR_transfer_host_host( s* src_ptr,
       }
     });
 
-    worker_q_ptr -> sync();
+    worker_q -> sync();
   }
   else if( dst_perm_ptr ){
     // Destination subsetted
     for( ; task + span_task < dims_1; task += span_task ){
-      worker_q_ptr -> dispatch( [=]{
+      worker_q -> dispatch( [=]{
         int dst_pos;
         int src_pos;
 
@@ -186,7 +188,7 @@ void cuR_transfer_host_host( s* src_ptr,
       });
     }
 
-    worker_q_ptr -> dispatch( [=]{
+    worker_q -> dispatch( [=]{
       int dst_pos;
       int src_pos;
 
@@ -204,12 +206,12 @@ void cuR_transfer_host_host( s* src_ptr,
       }
     });
 
-    worker_q_ptr -> sync();
+    worker_q -> sync();
   }
   else{
     // Source subsetted
     for( ; task + span_task < dims_1; task += span_task ){
-      worker_q_ptr -> dispatch( [=]{
+      worker_q -> dispatch( [=]{
         int dst_pos;
         int src_pos;
 
@@ -228,7 +230,7 @@ void cuR_transfer_host_host( s* src_ptr,
       });
     }
 
-    worker_q_ptr -> dispatch( [=]{
+    worker_q -> dispatch( [=]{
       int dst_pos;
       int src_pos;
 
@@ -248,6 +250,10 @@ void cuR_transfer_host_host( s* src_ptr,
 
     worker_q_ptr -> sync();
   }
+
+  if( !worker_q_ptr ){
+    delete worker_q;
+  }
 }
 
 #ifndef CUDA_EXCLUDE
@@ -262,8 +268,8 @@ void cuR_transfer_host_device( t* src_ptr,
                                int* dst_perm_ptr,
                                int src_span_off,
                                int dst_span_off,
-                               sd_queue* worker_q_ptr,
-                               void* stream_ptr = NULL ){
+                               sd_queue* worker_q_ptr = NULL,
+                               void* stream_ptr       = NULL ){
 
   int src_dims_1;
   if( src_dims ){
@@ -302,7 +308,9 @@ void cuR_transfer_host_device( t* src_ptr,
   int src_pos;
   int dst_pos;
 
-  int span_task = cuR_transfer_task_span( dims_0, dims_1, worker_q_ptr );
+  sd_queue* worker_q = ( !worker_q_ptr ) ? new sd_queue( 4, true ) : worker_q_ptr;
+
+  int span_task = cuR_transfer_task_span( dims_0, dims_1, worker_q );
   int task = 0;
 
   cudaStream_t* stream_ = (cudaStream_t*) stream_ptr;
@@ -406,6 +414,10 @@ void cuR_transfer_host_device( t* src_ptr,
   }else{
     cudaDeviceSynchronize();
   }
+
+  if( !worker_q_ptr ){
+    delete worker_q;
+  }
 }
 
 template <typename t>
@@ -418,8 +430,8 @@ void cuR_transfer_device_host( t* src_ptr,
                                int* dst_perm_ptr,
                                int src_span_off,
                                int dst_span_off,
-                               sd_queue* worker_q_ptr,
-                               void* stream_ptr = NULL ){
+                               sd_queue* worker_q_ptr = NULL,
+                               void* stream_ptr       = NULL ){
 
   int src_dims_1;
   if( src_dims ){
@@ -437,9 +449,6 @@ void cuR_transfer_device_host( t* src_ptr,
 
   int dims_0 = dims[0];
   int dims_1 = dims[1];
-
-  int span_task = cuR_transfer_task_span( dims_0, dims_1, worker_q_ptr );
-  int task = 0;
 
   // Offsets with permutations offset the permutation vector itself
   if( src_span_off ){
@@ -460,6 +469,11 @@ void cuR_transfer_device_host( t* src_ptr,
 
   int dst_pos;
   int src_pos;
+
+  sd_queue* worker_q = ( !worker_q_ptr ) ? new sd_queue( 4, true ) : worker_q_ptr;
+
+  int span_task = cuR_transfer_task_span( dims_0, dims_1, worker_q );
+  int task = 0;
 
   cudaStream_t* stream_ = (cudaStream_t*) stream_ptr;
   if( stream_ ){
@@ -561,6 +575,10 @@ void cuR_transfer_device_host( t* src_ptr,
   }else{
     cudaDeviceSynchronize();
   }
+
+  if( !worker_q_ptr ){
+    delete worker_q;
+  }
 }
 
 #endif
@@ -606,22 +624,11 @@ SEXP cuR_transfer( SEXP src_ptr_r,
   int dst_span_off  = ( R_NilValue == dst_span_off_r ) ? 0 :
     Rf_asInteger( dst_span_off_r ) - 1;
 
-  sd_queue* worker_q_ptr;
-  sd_queue* stream_q_ptr;
+  sd_queue* worker_q_ptr = ( R_NilValue == worker_q_ptr_r ) ? NULL :
+    (sd_queue*) R_ExternalPtrAddr( worker_q_ptr_r );
 
-  // Stream is explicitly turned off when no context is uspported, however, such
-  // calls should be impossible from the R side also
-  if( R_NilValue == worker_q_ptr_r ){                     // Temporary context
-    worker_q_ptr = new sd_queue( 4, false);
-    if( R_NilValue != stream_q_ptr_r ){
-      Rf_error( "Stream supplied without a persistent context" );
-    }
-    stream_q_ptr = NULL;
-  }else{                                                  // Normal functioning
-    worker_q_ptr = (sd_queue*) R_ExternalPtrAddr( worker_q_ptr_r );
-    stream_q_ptr = ( R_NilValue == stream_q_ptr_r ) ? NULL :
-      (sd_queue*) R_ExternalPtrAddr( stream_q_ptr_r );
-  }
+  sd_queue* stream_q_ptr = ( R_NilValue == stream_q_ptr_r ) ? NULL :
+    (sd_queue*) R_ExternalPtrAddr( stream_q_ptr_r );
 
   if( src_perm_ptr && !src_dims ){
     Rf_error( "Source dimensions need to be supplied with permutation" );
@@ -1940,11 +1947,6 @@ SEXP cuR_transfer( SEXP src_ptr_r,
 
   default:
     Rf_error( "Invalid source level in transfer call" );
-  }
-
-  // Delete temporary workers
-  if( R_NilValue == worker_q_ptr_r ){
-    delete worker_q_ptr;
   }
 
   return R_NilValue;

@@ -1,7 +1,7 @@
 #ifndef COMMON_DEBUG
 #define COMMON_DEBUG
 
-#define DEBUG_PRINTS 1
+// #define DEBUG_PRINTS 1
 
 // Debug print macros
 #ifdef DEBUG_PRINTS

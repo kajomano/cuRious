@@ -1,129 +1,53 @@
 # .Calls: src/transfer.cpp
 # Highly connected to code in pipe.R
 
-# High level transfer call. Thin wrapper around a temporary pipe. Should only
+# High level transfer call, wrapper around temporary pipe(s). Should only
 # be used in non speed-critical places.
 transfer <- function( src,
                       dst,
                       src.perm = NULL,
                       dst.perm = NULL,
                       src.span = NULL,
-                      dst.span = NULL,
-                      stream   = NULL ){
+                      dst.span = NULL ){
 
-  pip <- pipe$new( src, dst, src.perm, dst.perm, src.span, dst.span, stream )
-  res <- pip$run()
-  pip$destroy()
-  invisible( res )
-}
+  src.level <- src$level
+  dst.level <- dst$level
 
-# Low level transfer calls that handles ptrs, for speed considerations
-# no argument checks are done, don't use interactively!
-.transfer.ptr.choose = function( src.level,
-                                 dst.level,
-                                 src.device = NULL,
-                                 dst.device = NULL ){
-
-  deep <- ( src.level == 3L && dst.level == 3L )
-  if( deep ){
-    if( is.null( src.device ) || is.null( dst.device ) ){
-      stop( "Missing devices for transfer call choice" )
-    }
-  }
-
+  deep.transfer <- ( src.level == 3L && dst$level == 3L )
   if( ( src.level == 3L && dst.level == 0L ) ||
       ( src.level == 0L && dst.level == 3L ) ||
-      deep && ( src.device != dst.device ) ){
-    .transfer.ptr.multi
+      deep.transfer && ( src$device != dst$device ) ){
+    # Multi-step transfers
+
+    src.dims <- .tensor.dims$new( src )
+    dst.dims <- .tensor.dims$new( dst )
+
+    src.dims$check.perm( src.perm )
+    dst.dims$check.perm( dst.perm )
+    src.dims$check.span( src.span )
+    dst.dims$check.span( dst.span )
+
+    if( !identical( src.dims$dims, dst.dims$dims ) ){
+      stop( "Dimensions do not match" )
+    }
+
+    tmp  <- tensor$new( NULL, 2L, src.dims$dims, src$type )
+    pip1 <- pipe$new( src, tmp, src.perm, NULL, src.span, NULL )
+    pip2 <- pipe$new( tmp, dst, NULL, dst.perm, NULL, dst.span )
+
+    pip1$run()
+    pip2$run()
+
+    tmp$destroy()
+    pip1$destroy()
+    pip2$destroy()
   }else{
-    .transfer.ptr.uni
+    # Single-step transfers
+
+    pip <- pipe$new( src, dst, src.perm, dst.perm, src.span, dst.span )
+    pip$run()
+    pip$destroy()
   }
+
+  invisible( TRUE )
 }
-
-# Single-step transfer calls
-transfer.ptr = function( src.tensor,
-                          dst.tensor,
-                          src.level,
-                          dst.level,
-                          type,
-                          dims,
-                          src.dims        = NULL,
-                          dst.dims        = NULL,
-                          src.perm.tensor = NULL,
-                          dst.perm.tensor = NULL,
-                          src.span.off    = NULL,
-                          dst.span.off    = NULL,
-                          context.workers = NULL,
-                          stream.queue    = NULL ){
-
-  .Call( "cuR_transfer",
-         src.tensor,
-         dst.tensor,
-         src.level,
-         dst.level,
-         type,
-         dims,
-         src.dims,
-         dst.dims,
-         src.perm.tensor,
-         dst.perm.tensor,
-         src.span.off,
-         dst.span.off,
-         context.workers,
-         stream.queue )
-}
-
-# # Multi-transfer calls: 0L-2L-3L, 3L-2L-0L or 3L-2L-3L on different devices
-# # Context and stream is ignored
-# .transfer.ptr.multi = function( src.tensor,
-#                                 dst.tensor,
-#                                 src.level,
-#                                 dst.level,
-#                                 type,
-#                                 dims,
-#                                 src.dims        = NULL,
-#                                 dst.dims        = NULL,
-#                                 src.perm.tensor = NULL,
-#                                 dst.perm.tensor = NULL,
-#                                 src.span.off    = NULL,
-#                                 dst.span.off    = NULL,
-#                                 context.workers = NULL,
-#                                 stream.queue    = NULL ){
-#
-#   # Multi-transfer call 0L-2L-3L or 3L-2L-0L
-#   tmp.tensor <- .Call( "cuR_tensor_create", 2L, dims, type )
-#
-#   .Call( "cuR_transfer",
-#          src.tensor,
-#          tmp.tensor,
-#          src.level,
-#          2L,
-#          type,
-#          dims,
-#          src.dims,
-#          dims,
-#          src.perm.tensor,
-#          NULL,
-#          src.span.off,
-#          NULL,
-#          NULL,
-#          NULL )
-#
-#   .Call( "cuR_transfer",
-#          tmp.tensor,
-#          dst.tensor,
-#          2L,
-#          dst.level,
-#          type,
-#          dims,
-#          dims,
-#          dst.dims,
-#          NULL,
-#          dst.perm.tensor,
-#          NULL,
-#          dst.span.off,
-#          NULL,
-#          NULL )
-#
-#   .Call( "cuR_tensor_destroy", tmp.tensor, 2L, type )
-# }

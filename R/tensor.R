@@ -128,7 +128,7 @@ tensor <- R6Class(
       }
     },
 
-    # Push takes objects or tensors, pull takes only objects
+    # Push takes objects or tensors, pull returns only objects
     # Reason: if you want to pull into a tensor, you can push into it this
     # tensor. If you need a new tensor while also data being pulled into it,
     # create a new tensor with data = this tensor.
@@ -243,44 +243,31 @@ tensor <- R6Class(
 
     .push = function( data ){
       if( is.tensor( data ) ){
-        ptr    <- data$ptrs$tensor
-        level  <- data$level
-        device <- data$device
+        data.tensor <- data
       }else if( is.obj( data ) ){
-        ptr    <- data
-        level  <- 0L
-        device <- 0L
+        data.tensor <- tensor$new( data )
       }else{
         stop( "Invalid data format" )
       }
 
-      browser()
+      transfer( data.tensor, self )
 
-      # .transfer.ptr.choose( level,
-      #                       private$.level,
-      #                       device,
-      #                       private$.device )( ptr,
-      #                                          private$.ptrs$tensor,
-      #                                          level,
-      #                                          private$.level,
-      #                                          private$.type,
-      #                                          private$.dims )
+      if( is.obj( data ) ){
+        data.tensor$destroy()
+      }
     },
 
     .temp = function( level = private$.level, device = private$.device ){
-      tmp <- private$.create.ptr( level = level, device = device )
+      tmp.tensor <- tensor$new( NULL,
+                                level,
+                                private$.dims,
+                                private$.type,
+                                device )
 
-      browser()
+      transfer( self, tmp.tensor )
 
-      # .transfer.ptr.choose( private$.level,
-      #                       level,
-      #                       private$.device,
-      #                       device )( private$.ptrs$tensor,
-      #                                 tmp,
-      #                                 private$.level,
-      #                                 level,
-      #                                 private$.type,
-      #                                 private$.dims )
+      tmp <- tmp.tensor$ptrs$tensor
+      tmp.tensor$destroy()
       tmp
     }
   ),

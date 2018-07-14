@@ -2,10 +2,14 @@ source( "./Tests/test_utils.R" )
 
 verbose <- TRUE
 
-stream <- cuRious::stream$new()
+threads <- 4
 
 cols <- 1000
 rows <- 1000
+
+stream        <- cuRious::stream$new( 3 )
+context.sync  <- cuRious::pipe.context$new( threads )
+context.async <- cuRious::pipe.context$new( threads, stream )
 
 for( type in types ){
   mat.cont <- switch(
@@ -19,24 +23,24 @@ for( type in types ){
 
   # for( src.level in 0:3 ){
   #   for( dst.level in 0:3 ){
-  for( src.level in 2 ){
-    for( dst.level in 3 ){
+  for( src.level in 0 ){
+    for( dst.level in 0 ){
       print( paste0( type, " ", src.level, " ", dst.level ) )
 
       src <- tensor$new( mat, src.level )
       dst <- tensor$new( mat, dst.level, copy = FALSE )
 
       if( src.level == 3L && dst.level == 3L ){
-        perm <- tensor$new( 1:1000, 3L )
+        perm <- cuRious::tensor$new( 1:1000, 3L )
       }else{
-        perm <- tensor$new( 1:1000, 0L )
+        perm <- cuRious::tensor$new( 1:1000, 0L )
       }
 
-      pip.sync  <- pipe$new( src, dst )
-      pip.async <- pipe$new( src, dst, stream = stream )
+      pip.sync       <- cuRious::pipe$new( src, dst, context = context.sync )
+      pip.async      <- cuRious::pipe$new( src, dst, context = context.async )
 
-      pip.sync.perm  <- pipe$new( src, dst, perm, perm )
-      pip.async.perm <- pipe$new( src, dst, perm, perm, stream = stream )
+      pip.sync.perm  <- cuRious::pipe$new( src, dst, perm, perm, context = context.sync )
+      pip.async.perm <- cuRious::pipe$new( src, dst, perm, perm, context = context.async )
 
       pip.sync$run()
       if( !test.thr.equality( dst$pull(), mat ) ){

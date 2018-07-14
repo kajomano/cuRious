@@ -1,3 +1,5 @@
+# .Calls: src/transfer.cpp
+
 # Pipes are for transferring data between tensors. Pipes do most of the
 # argument sanity checks at creation, and try to do the rest only when needed at
 # runtime. Overhead reduction is key for smaller tasks.
@@ -118,6 +120,106 @@ pipe <- R6Class(
   ),
 
   private = list(
+    .call.L0 = function( src.tensor,
+                         dst.tensor,
+                         src.level,
+                         dst.level,
+                         type,
+                         dims,
+                         src.dims        = NULL,
+                         dst.dims        = NULL,
+                         src.perm.tensor = NULL,
+                         dst.perm.tensor = NULL,
+                         src.span.off    = NULL,
+                         dst.span.off    = NULL ){
+
+      src.perm <- NULL
+      dst.perm <- NULL
+
+      if( !is.null( src.span.off ) ){
+        src.perm <- src.span.off:( src.span.off + dims[[2]] - 1 )
+      }
+
+      if( !is.null( dst.span.off ) ){
+        dst.perm <- dst.span.off:( dst.span.off + dims[[2]] - 1 )
+      }
+
+      if( !is.null( src.perm.tensor ) ){
+        if( !is.null( src.perm ) ){
+          src.perm <- src.perm.tensor[ src.perm ]
+        }else{
+          src.perm <- src.perm.tensor
+        }
+      }
+
+      if( !is.null( dst.perm.tensor ) ){
+        if( !is.null( dst.perm ) ){
+          dst.perm <- dst.perm.tensor[ dst.perm ]
+        }else{
+          dst.perm <- dst.perm.tensor
+        }
+      }
+
+      # Hell
+      if( is.null( src.perm ) && is.null( dst.perm ) ){
+        if( dims[[1]] == 1L ){
+          private$.eps.out$dst$obj <- private$.eps$src$obj
+        }else{
+          private$.eps.out$dst$obj <- private$.eps$src$obj
+        }
+      }else if( is.null( src.perm ) ){
+        if( dims[[1]] == 1L ){
+          private$.eps.out$dst$obj[ dst.perm ] <- private$.eps$src$obj
+        }else{
+          private$.eps.out$dst$obj[, dst.perm ] <- private$.eps$src$obj
+        }
+      }else if( is.null( dst.perm ) ){
+        if( dims[[1]] == 1L ){
+          private$.eps.out$dst$obj <- private$.eps$src$obj[ src.perm ]
+        }else{
+          private$.eps.out$dst$obj <- private$.eps$src$obj[, src.perm ]
+        }
+      }else{
+        if( dims[[1]] == 1L ){
+          private$.eps.out$dst$obj[ dst.perm ] <- private$.eps$src$obj[ src.perm ]
+        }else{
+          private$.eps.out$dst$obj[, dst.perm ] <- private$.eps$src$obj[, src.perm ]
+        }
+      }
+    },
+
+    .call.L03 = function( src.tensor,
+                          dst.tensor,
+                          src.level,
+                          dst.level,
+                          type,
+                          dims,
+                          src.dims        = NULL,
+                          dst.dims        = NULL,
+                          src.perm.tensor = NULL,
+                          dst.perm.tensor = NULL,
+                          src.span.off    = NULL,
+                          dst.span.off    = NULL,
+                          context.workers = NULL,
+                          stream.queue    = NULL ){
+
+      .Call( "cuR_transfer",
+             src.tensor,
+             dst.tensor,
+             src.level,
+             dst.level,
+             type,
+             dims,
+             src.dims,
+             dst.dims,
+             src.perm.tensor,
+             dst.perm.tensor,
+             src.span.off,
+             dst.span.off,
+             context.workers,
+             stream.queue )
+    },
+
     .update.context = function( ... ){
       # Temporary variables: $lookups take a long time, it makes sense to save
       # accessed values if used multiple times
@@ -151,6 +253,16 @@ pipe <- R6Class(
         stop( "Multi-step pipes are not allowed" )
       }
 
+      # L0-L0 contextless calls (native R) need L0 perm vectors, others dont
+      native.call <- FALSE
+      if( src.level == 0L && dst.level == 0L ){
+        if( is.null( context ) ){
+          native.call <- TRUE
+        }else if( is.null( context$level ) ){
+          native.call <- TRUE
+        }
+      }
+
       # Now that the pipe is certainly single step, we can find a dedicated
       # device
       if( src.level == 3L ){
@@ -167,11 +279,15 @@ pipe <- R6Class(
 
         if( transfer.deep ){
           if( src.perm.level != 3L ){
-            stop( "Source permutation tensor is not on the correct level" )
+            stop( "Source permutation tensor is not on L3" )
           }
 
           if( src.perm$device != device ){
             stop( "Source permutation tensor is not on the correct device" )
+          }
+        }else if( native.call ){
+          if( src.perm.level != 0L ){
+            stop( "Source permutation tensor is not on L0" )
           }
         }else{
           if( src.perm.level == 3L ){
@@ -186,11 +302,15 @@ pipe <- R6Class(
 
         if( transfer.deep ){
           if( dst.perm.level != 3L ){
-            stop( "Destination permutation tensor is not on the correct level" )
+            stop( "Destination permutation tensor is not on L3" )
           }
 
           if( dst.perm$device != device ){
             stop( "Destination permutation tensor is not on the correct device" )
+          }
+        }else if( native.call ){
+          if( dst.perm.level != 0L ){
+            stop( "Destination permutation tensor is not on L0" )
           }
         }else{
           if( dst.perm.level == 3L ){
@@ -199,26 +319,22 @@ pipe <- R6Class(
         }
       }
 
-      if( src.level != 0L || dst.level != 0L ){
-        if( is.null( context ) ){
-          stop( "Pipe requires an L1 or L3 context" )
-        }
+      # Context
+      if( src.level == 3L || dst.level == 3L ){
+        if( !is.null( context ) ){
+          if( !is.null( context$level ) ){
+            if( context$level != 3L ){
+              stop( "Pipe requires an L3 context" )
+            }
 
-        if( is.null( context$level ) ){
-          stop( "Pipe requires an L1 or L3 context" )
-        }
-
-        if( src.level == 3L || dst.level == 3L ){
-          if( context$level != 3L ){
-            stop( "Pipe requires an L3 context" )
-          }
-
-          if( context$device != device ){
-            stop( "Context is not on the correct device" )
+            if( context$device != device ){
+              stop( "Context is not on the correct device" )
+            }
           }
         }
       }
 
+      # Stream
       if( !is.null( stream ) ){
         if( !is.null( stream$level ) ){
           if( src.level == 3L || dst.level == 3L ){
@@ -238,8 +354,12 @@ pipe <- R6Class(
       private$.params$src.level <- src.level
       private$.params$dst.level <- dst.level
 
-      browser()
-      private$.fun              <- .transfer.ptr
+      # Fun
+      if( native.call ){
+        private$.fun <- private$.call.L0
+      }else{
+        private$.fun <- private$.call.L03
+      }
     }
   )
 )

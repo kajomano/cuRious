@@ -5,14 +5,18 @@
 #include "transfer.h"
 #include "streams.h"
 
+#include <typeinfo>
+#include <cstring>
+
 // Very simple logic for now
 int cuR_transfer_task_span( int dims_0, int dims_1, sd_queue* worker_q_ptr ){
+  const int thread_split = 2;
   int threads = (int)worker_q_ptr -> thread_cnt();
 
-  if( threads > dims_1 ){
+  if( ( threads * thread_split ) > dims_1 ){
     return 1;
   }else{
-    return dims_1 / threads;
+    return dims_1 / ( threads * thread_split );
   }
 }
 
@@ -318,9 +322,6 @@ void cuR_transfer_host_device( t* src_ptr,
     cudaTry( cudaStreamSynchronize( *stream_ ) );
   }
 
-  // TODO ====
-  // Dispatch to workers
-
   // Copy
   if( !src_perm_ptr && !dst_perm_ptr ){
     // No subsetting
@@ -337,80 +338,151 @@ void cuR_transfer_host_device( t* src_ptr,
                                 cudaMemcpyHostToDevice ) );
     }
   }else if( src_perm_ptr && dst_perm_ptr ){
-    for( int i = 0; i < dims_1; i ++ ){
-      if( src_perm_ptr[i] > src_dims_1 ){
-        continue;
-      }
+    // Both subsetted
+    for( ; task + span_task < dims_1; task += span_task ){
+      worker_q -> dispatch( [=]( void* stream_ptr ){
+        int dst_pos;
+        int src_pos;
 
-      if( dst_perm_ptr[i] > dst_dims_1 ){
-        continue;
-      }
+        for( int i = task; i < task + span_task; i++ ){
+          if( src_perm_ptr[i] > src_dims_1 ){
+            continue;
+          }
 
-      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
-      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+          if( dst_perm_ptr[i] > dst_dims_1 ){
+            continue;
+          }
 
-      if( stream_ ){
+          src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+          dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
+          cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                    src_ptr + src_pos,
+                                    dims_0 * sizeof(t),
+                                    cudaMemcpyHostToDevice,
+                                    *(cudaStream_t*)stream_ptr ) );
+        }
+      });
+    }
+
+    worker_q -> dispatch( [=]( void* stream_ptr ){
+      int dst_pos;
+      int src_pos;
+
+      for( int i = task; i < dims_1; i++ ){
+        if( src_perm_ptr[i] > src_dims_1 ){
+          continue;
+        }
+
+        if( dst_perm_ptr[i] > dst_dims_1 ){
+          continue;
+        }
+
+        src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+        dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
                                   dims_0 * sizeof(t),
                                   cudaMemcpyHostToDevice,
-                                  *stream_ ) );
-      }else{
-        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
-                                  src_ptr + src_pos,
-                                  dims_0 * sizeof(t),
-                                  cudaMemcpyHostToDevice ) );
+                                  *(cudaStream_t*)stream_ptr ) );
       }
-    }
+    });
+
+    worker_q -> sync();
   }else if( dst_perm_ptr ){
-    for( int i = 0; i < dims_1; i ++ ){
-      if( dst_perm_ptr[i] > dst_dims_1 ){
-        continue;
-      }
+    for( ; task + span_task < dims_1; task += span_task ){
+      worker_q -> dispatch( [=]( void* stream_ptr ){
+        int dst_pos;
+        int src_pos;
 
-      src_pos = i * dims_0;
-      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+        for( int i = task; i < task + span_task; i++ ){
+          if( dst_perm_ptr[i] > dst_dims_1 ){
+            continue;
+          }
 
-      if( stream_ ){
+          src_pos = i * dims_0;
+          dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
+          cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                    src_ptr + src_pos,
+                                    dims_0 * sizeof(t),
+                                    cudaMemcpyHostToDevice,
+                                    *(cudaStream_t*)stream_ptr ) );
+        }
+      });
+    }
+
+    worker_q -> dispatch( [=]( void* stream_ptr ){
+      int dst_pos;
+      int src_pos;
+
+      for( int i = task; i < dims_1; i++ ){
+        if( dst_perm_ptr[i] > dst_dims_1 ){
+          continue;
+        }
+
+        src_pos = i * dims_0;
+        dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
                                   dims_0 * sizeof(t),
                                   cudaMemcpyHostToDevice,
-                                  *stream_ ) );
-      }else{
-        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
-                                  src_ptr + src_pos,
-                                  dims_0 * sizeof(t),
-                                  cudaMemcpyHostToDevice ) );
+                                  *(cudaStream_t*)stream_ptr ) );
       }
-    }
+    });
+
+    worker_q -> sync();
   }else{
-    for( int i = 0; i < dims_1; i ++ ){
-      if( src_perm_ptr[i] > src_dims_1 ){
-        continue;
-      }
+    for( ; task + span_task < dims_1; task += span_task ){
+      worker_q -> dispatch( [=]( void* stream_ptr ){
+        int dst_pos;
+        int src_pos;
 
-      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
-      dst_pos = i * dims_0;
+        for( int i = task; i < task + span_task; i++ ){
+          if( src_perm_ptr[i] > src_dims_1 ){
+            continue;
+          }
 
-      if( stream_ ){
+          src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+          dst_pos = i * dims_0;
+
+          cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                    src_ptr + src_pos,
+                                    dims_0 * sizeof(t),
+                                    cudaMemcpyHostToDevice,
+                                    *(cudaStream_t*)stream_ptr ) );
+        }
+      });
+    }
+
+    worker_q -> dispatch( [=]( void* stream_ptr ){
+      int dst_pos;
+      int src_pos;
+
+      for( int i = task; i < dims_1; i++ ){
+        if( src_perm_ptr[i] > src_dims_1 ){
+          continue;
+        }
+
+        src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+        dst_pos = i * dims_0;
+
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
                                   dims_0 * sizeof(t),
                                   cudaMemcpyHostToDevice,
-                                  *stream_ ) );
-      }else{
-        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
-                                  src_ptr + src_pos,
-                                  dims_0 * sizeof(t),
-                                  cudaMemcpyHostToDevice ) );
+                                  *(cudaStream_t*)stream_ptr ) );
       }
-    }
+    });
+
+    worker_q -> sync();
   }
 
-  if( stream_ptr ){
-    // Flush for WDDM
-    cudaStreamQuery(0);
+  if( stream_ ){
+    // Also flushes for WDDM
+    cudaTry( cudaStreamSynchronize( *stream_ ) );
   }else{
     cudaDeviceSynchronize();
   }
@@ -467,8 +539,8 @@ void cuR_transfer_device_host( t* src_ptr,
     }
   }
 
-  int dst_pos;
   int src_pos;
+  int dst_pos;
 
   sd_queue* worker_q = ( !worker_q_ptr ) ? new sd_queue( 4, true ) : worker_q_ptr;
 
@@ -496,82 +568,151 @@ void cuR_transfer_device_host( t* src_ptr,
                                 cudaMemcpyDeviceToHost ) );
     }
   }else if( src_perm_ptr && dst_perm_ptr ){
-    for( int i = 0; i < dims_1; i ++ ){
-      if( src_perm_ptr[i] > src_dims_1 ){
-        continue;
-      }
+    // Both subsetted
+    for( ; task + span_task < dims_1; task += span_task ){
+      worker_q -> dispatch( [=]( void* stream_ptr ){
+        int dst_pos;
+        int src_pos;
 
-      if( dst_perm_ptr[i] > dst_dims_1 ){
-        continue;
-      }
+        for( int i = task; i < task + span_task; i++ ){
+          if( src_perm_ptr[i] > src_dims_1 ){
+            continue;
+          }
 
-      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
-      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+          if( dst_perm_ptr[i] > dst_dims_1 ){
+            continue;
+          }
 
-      if( stream_ ){
-        // This copy is not async to the host if dst is unpinned, or just takes
-        // a very long time.
+          src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+          dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
+          cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                    src_ptr + src_pos,
+                                    dims_0 * sizeof(t),
+                                    cudaMemcpyDeviceToHost,
+                                    *(cudaStream_t*)stream_ptr ) );
+        }
+      });
+    }
+
+    worker_q -> dispatch( [=]( void* stream_ptr ){
+      int dst_pos;
+      int src_pos;
+
+      for( int i = task; i < dims_1; i++ ){
+        if( src_perm_ptr[i] > src_dims_1 ){
+          continue;
+        }
+
+        if( dst_perm_ptr[i] > dst_dims_1 ){
+          continue;
+        }
+
+        src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+        dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
                                   dims_0 * sizeof(t),
                                   cudaMemcpyDeviceToHost,
-                                  *stream_ ) );
-      }else{
-        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
-                                  src_ptr + src_pos,
-                                  dims_0 * sizeof(t),
-                                  cudaMemcpyDeviceToHost ) );
+                                  *(cudaStream_t*)stream_ptr ) );
       }
-    }
+    });
+
+    worker_q -> sync();
   }else if( dst_perm_ptr ){
-    for( int i = 0; i < dims_1; i ++ ){
-      if( dst_perm_ptr[i] > dst_dims_1 ){
-        continue;
-      }
+    for( ; task + span_task < dims_1; task += span_task ){
+      worker_q -> dispatch( [=]( void* stream_ptr ){
+        int dst_pos;
+        int src_pos;
 
-      src_pos = i * dims_0;
-      dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+        for( int i = task; i < task + span_task; i++ ){
+          if( dst_perm_ptr[i] > dst_dims_1 ){
+            continue;
+          }
 
-      if( stream_ ){
+          src_pos = i * dims_0;
+          dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
+          cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                    src_ptr + src_pos,
+                                    dims_0 * sizeof(t),
+                                    cudaMemcpyDeviceToHost,
+                                    *(cudaStream_t*)stream_ptr ) );
+        }
+      });
+    }
+
+    worker_q -> dispatch( [=]( void* stream_ptr ){
+      int dst_pos;
+      int src_pos;
+
+      for( int i = task; i < dims_1; i++ ){
+        if( dst_perm_ptr[i] > dst_dims_1 ){
+          continue;
+        }
+
+        src_pos = i * dims_0;
+        dst_pos = ( dst_perm_ptr[i] - 1 ) * dims_0;
+
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
                                   dims_0 * sizeof(t),
                                   cudaMemcpyDeviceToHost,
-                                  *stream_ ) );
-      }else{
-        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
-                                  src_ptr + src_pos,
-                                  dims_0 * sizeof(t),
-                                  cudaMemcpyDeviceToHost ) );
+                                  *(cudaStream_t*)stream_ptr ) );
       }
-    }
+    });
+
+    worker_q -> sync();
   }else{
-    for( int i = 0; i < dims_1; i ++ ){
-      if( src_perm_ptr[i] > src_dims_1 ){
-        continue;
-      }
+    for( ; task + span_task < dims_1; task += span_task ){
+      worker_q -> dispatch( [=]( void* stream_ptr ){
+        int dst_pos;
+        int src_pos;
 
-      src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
-      dst_pos = i * dims_0;
+        for( int i = task; i < task + span_task; i++ ){
+          if( src_perm_ptr[i] > src_dims_1 ){
+            continue;
+          }
 
-      if( stream_ ){
+          src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+          dst_pos = i * dims_0;
+
+          cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
+                                    src_ptr + src_pos,
+                                    dims_0 * sizeof(t),
+                                    cudaMemcpyDeviceToHost,
+                                    *(cudaStream_t*)stream_ptr ) );
+        }
+      });
+    }
+
+    worker_q -> dispatch( [=]( void* stream_ptr ){
+      int dst_pos;
+      int src_pos;
+
+      for( int i = task; i < dims_1; i++ ){
+        if( src_perm_ptr[i] > src_dims_1 ){
+          continue;
+        }
+
+        src_pos = ( src_perm_ptr[i] - 1 ) * dims_0;
+        dst_pos = i * dims_0;
+
         cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
                                   src_ptr + src_pos,
                                   dims_0 * sizeof(t),
                                   cudaMemcpyDeviceToHost,
-                                  *stream_ ) );
-      }else{
-        cudaTry( cudaMemcpyAsync( dst_ptr + dst_pos,
-                                  src_ptr + src_pos,
-                                  dims_0 * sizeof(t),
-                                  cudaMemcpyDeviceToHost ) );
+                                  *(cudaStream_t*)stream_ptr ) );
       }
-    }
+    });
+
+    worker_q -> sync();
   }
 
-  if( stream_ptr ){
-    // Flush for WDDM
-    cudaStreamQuery(0);
+  if( stream_ ){
+    // Also flushes for WDDM
+    cudaTry( cudaStreamSynchronize( *stream_ ) );
   }else{
     cudaDeviceSynchronize();
   }

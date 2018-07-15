@@ -1,4 +1,4 @@
-source( "./Tests/test_utils.R" )
+source( "E:/Rprojects/cuRious/Tests/test_utils.R" )
 
 verbose <- TRUE
 
@@ -8,7 +8,8 @@ cols    <- 1000
 rows    <- 1000
 
 stream        <- cuRious::stream$new( deployed = 3 )
-context.sync  <- cuRious::pipe.context$new( threads, deployed = 3 )
+# context.sync  <- cuRious::pipe.context$new( threads, deployed = 3 )
+context.sync  <- NULL
 context.async <- cuRious::pipe.context$new( threads, stream, deployed = 3 )
 
 for( type in types ){
@@ -23,8 +24,8 @@ for( type in types ){
 
   # for( src.level in 0:3 ){
   #   for( dst.level in 0:3 ){
-  for( src.level in 2 ){
-    for( dst.level in 3 ){
+  for( src.level in 0 ){
+    for( dst.level in 0 ){
       if( ( src.level == 0L && dst.level == 3L ) ||
           ( src.level == 3L && dst.level == 0L ) ){
         next
@@ -35,17 +36,22 @@ for( type in types ){
       src <- tensor$new( mat, src.level )
       dst <- tensor$new( mat, dst.level, copy = FALSE )
 
+      perm.src <- NULL
+      perm.dst <- NULL
+
       if( src.level == 3L && dst.level == 3L ){
-        perm <- cuRious::tensor$new( 1:1000, 3L )
+        perm.src <- cuRious::tensor$new( 1:1000, 3L )
+        perm.dst <- cuRious::tensor$new( 1:1000, 3L )
       }else{
-        perm <- cuRious::tensor$new( 1:1000, 0L )
+        perm.src <- cuRious::tensor$new( 1:1000, 0L )
+        perm.dst <- cuRious::tensor$new( 1:1000, 0L )
       }
 
       pip.sync       <- cuRious::pipe$new( src, dst, context = context.sync )
       pip.async      <- cuRious::pipe$new( src, dst, context = context.async )
 
-      pip.sync.perm  <- cuRious::pipe$new( src, dst, perm, perm, context = context.sync )
-      pip.async.perm <- cuRious::pipe$new( src, dst, perm, perm, context = context.async )
+      pip.sync.perm  <- cuRious::pipe$new( src, dst, perm.src, perm.dst, context = context.sync )
+      pip.async.perm <- cuRious::pipe$new( src, dst, perm.src, perm.dst, context = context.async )
 
       pip.sync$run()
       if( !test.thr.equality( dst$pull(), mat ) ){
@@ -102,12 +108,6 @@ for( type in types ){
           print( paste0( "synced.perm: ", min( bench.synced.perm$time ) / 1000, " us" ) )
         }
       }
-
-      break
     }
-
-    break
   }
-
-  break
 }

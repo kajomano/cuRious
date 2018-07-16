@@ -136,11 +136,11 @@ pipe <- R6Class(
       src.perm <- NULL
       dst.perm <- NULL
 
-      if( src.span.off != 1L ){
+      if( src.span.off != 1L || obj.dims( src.tensor )[[2]] != dims[[2]] ){
         src.perm <- src.span.off:( src.span.off + dims[[2]] - 1 )
       }
 
-      if( dst.span.off != 1L ){
+      if( dst.span.off != 1L || obj.dims( dst.tensor )[[2]] != dims[[2]] ){
         dst.perm <- dst.span.off:( dst.span.off + dims[[2]] - 1 )
       }
 
@@ -167,25 +167,13 @@ pipe <- R6Class(
       # there is a duplicate holder of it's contents
 
       # Hell
-      if( is.null( src.perm ) && is.null( dst.perm ) ){
-        private$.eps.out$dst$obj <- private$.eps$src$obj
-      }else if( is.null( src.perm ) ){
-        if( dims[[1]] == 1L ){
-          private$.eps.out$dst$obj[ dst.perm ] <- private$.eps$src$obj
-        }else{
-          private$.eps.out$dst$obj[, dst.perm ] <- private$.eps$src$obj
-        }
-      }else if( is.null( dst.perm ) ){
-        if( dims[[1]] == 1L ){
-          private$.eps.out$dst$obj <- private$.eps$src$obj[ src.perm ]
-        }else{
-          private$.eps.out$dst$obj <- private$.eps$src$obj[, src.perm ]
-        }
+      if( is.null( dst.perm ) ){
+        private$.eps.out$dst$obj <- obj.subset( private$.eps$src$obj, src.perm )
       }else{
         if( dims[[1]] == 1L ){
-          private$.eps.out$dst$obj[ dst.perm ] <- private$.eps$src$obj[ src.perm ]
+          private$.eps.out$dst$obj[ dst.perm ] <- obj.subset( private$.eps$src$obj, src.perm )
         }else{
-          private$.eps.out$dst$obj[, dst.perm ] <- private$.eps$src$obj[, src.perm ]
+          private$.eps.out$dst$obj[, dst.perm ] <- obj.subset( private$.eps$src$obj, src.perm )
         }
       }
     },
@@ -330,8 +318,10 @@ pipe <- R6Class(
             }
 
             if( context$device != device ){
-              stop( "Context is not on the correct device" )
+              stop( "Pipe context is not on the correct device" )
             }
+          }else{
+            warning( "Context supported but inactive" )
           }
         }
       }
@@ -348,6 +338,8 @@ pipe <- R6Class(
               stop( "Stream is not on the correct device" )
             }
           }
+        }else{
+          warning( "Stream supported but inactive" )
         }
       }
 

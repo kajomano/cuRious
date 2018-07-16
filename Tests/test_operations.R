@@ -1,47 +1,56 @@
 source( "./Tests/test_utils.R" )
 
-verbose <- TRUE
+verbose <- 1
 
 test.files <- dir( "./Tests", "^[0-9]", full.names = TRUE )
 test.files <- test.files[ test.files != "./Tests/000_all.R" ]
 
-lapply( test.files, function( test.file ){
+lapply( test.files[4], function( test.file ){
   print( test.file )
 
+  # Test results
   # ----------------------------------------------------------------------------
   mult <- 1
   source( test.file, local = TRUE )
 
-  # Test call overhead
-  bench.unit <- microbenchmark( unit$run() )
-  call.oh <- min( bench.unit$time )
-
   # Test L0 call
   L0$run()
+
+  context$deploy( 3 )
 
   # Test L3 call - sync
   L3$run()
 
   # Test equality
-  if( !test( verbose ) ){
+  if( !test( verbose > 1 ) ){
     stop( "Non-identical results across levels" )
   }
 
-  # Test L3 call - async
+  # Benchmark
   # ----------------------------------------------------------------------------
-  mult <- 100
-  source( test.files[[1]], local = TRUE )
+  if( verbose > 0 ){
+    mult <- 100
+    source( test.file, local = TRUE )
 
-  stream$deploy()
-  context$deploy()
+    context$deploy( 3 )
 
-  bench.L3 <- microbenchmark( L3$run() )
+    bench.sync  <- microbenchmark( L3$run(), times = 100 )
 
-  if( min( bench.L3$time ) > 1.2 * call.oh ){
-    stop( "Suspected blocking on async calls" )
+    stream$deploy( 3 )
+    context$deploy()
+
+    bench.async <- microbenchmark( L3$run(), times = 100 )
+
+    synced <- function(){
+      L3$run()
+      stream$sync()
+    }
+    bench.synced <- microbenchmark( synced(), times = 100 )
+
+    print( paste0( "sync: ", min( bench.sync$time ) / 1000, " us" ) )
+    print( paste0( "async: ", min( bench.async$time ) / 1000, " us" ) )
+    print( paste0( "synced: ", min( bench.synced$time ) / 1000, " us" ) )
   }
-
-  stream$sync()
 
   # Cleanup
   rm( list = ls() )

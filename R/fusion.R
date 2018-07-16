@@ -107,41 +107,55 @@ fusion <- R6Class(
         }
       }
 
-      stop( "Check this" )
+      # Context
+      if( level %in% c( 1L, 3L ) ){
+        if( is.null( context ) ){
+          stop( "Subroutine requires an L1 or L3 context" )
+        }
 
-      # if( level %in% c( 1L, 3L ) ){
-      #   if( is.null( context ) ){
-      #     stop( "Subroutine requires an active context" )
-      #   }else{
-      #     if( context$is.destroyed ){
-      #       stop( "Subroutine requires an active context" )
-      #     }
-      #
-      #     if( context$device != device ){
-      #       stop( "Context is not deployed to the correct device" )
-      #     }
-      #
-      #     if( context$level != level ){
-      #       stop( "Context is not deployed to the correct level" )
-      #     }
-      #   }
-      # }
-      #
-      # if( !is.null( stream ) ){
-      #   if( !stream$is.destroyed ){
-      #     if( level == 0L ){
-      #       warning( "An active stream is given to a synchronous subroutine" )
-      #     }
-      #   }
-      # }
+        if( is.null( context$level ) ){
+          stop( "Subroutine requires an L1 or L3 context" )
+        }
+
+        if( level == 3L ){
+          if( context$level != 3L ){
+            stop( "Subroutine requires an L3 context" )
+          }
+
+          if( context$device != device ){
+            stop( "Subroutine context is not on the correct device" )
+          }
+        }
+      }
+
+      # Stream
+      if( !is.null( stream ) ){
+        if( !is.null( stream$level ) ){
+          if( level == 0L ){
+            warning( "An active stream is given to a synchronous subroutine" )
+          }
+
+          if( level == 3L ){
+            if( stream$level != 3L ){
+              stop( "Pipe requires an L3 stream" )
+            }
+
+            if( stream$device != device ){
+              stop( "Stream is not on the correct device" )
+            }
+          }
+        }else{
+          warning( "Stream supported but inactive" )
+        }
+      }
 
       private$.device <- device
 
       private$.fun <- switch(
         as.character( level ),
-        `0`= private$.L0.call,
-        `1`= private$.L1.call,
-        `3`= private$.L3.call
+        `0`= private$.call.L0,
+        `1`= private$.call.L1,
+        `3`= private$.call.L3
       )
 
       private$.sever <- as.logical( level )
@@ -171,6 +185,14 @@ fusion <- R6Class(
     is.destroyed = function( val ){
       if( missing( val ) ){
         return( is.null( private$.eps ) )
+      }
+    },
+
+    context = function( val ){
+      if( missing( val ) ){
+        return( private$.context )
+      }else{
+        stop( "Context is not directly settable" )
       }
     }
   )
@@ -214,7 +236,7 @@ fusion.context <- R6Class(
       if( is.null( level ) ){
         if( !is.null( private$.stream ) ){
           if( !private$.stream$is.destroyed ){
-            level = private$.stream$level
+            level <- private$.stream$level
           }
         }
       }
@@ -282,18 +304,9 @@ fusion.context <- R6Class(
   active = list(
     stream = function( val ){
       if( missing( val ) ){
-        private$.stream
+        return( private$.stream )
       }else{
-        if( !is.null( private$.ptrs ) ){
-          stop( "Cannot change stream: deployed context" )
-        }
-
-        if( is.null( val ) ){
-          private$.attach.stream( NULL )
-        }else{
-          check.stream( val )
-          private$.attach.stream( val )
-        }
+        stop( "Stream is not directly settable" )
       }
     }
   )

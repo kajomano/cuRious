@@ -1,6 +1,6 @@
 source( "./Tests/test_utils.R" )
 
-verbose <- TRUE
+verbose <- 0
 
 threads <- 4
 
@@ -32,18 +32,18 @@ for( type in types ){
 
       print( paste0( type, " ", src.level, " ", dst.level ) )
 
-      src <- tensor$new( mat, src.level )
-      dst <- tensor$new( mat, dst.level, copy = FALSE )
+      src            <- cuRious::tensor$new( mat, src.level )
+      dst            <- cuRious::tensor$new( mat, dst.level, copy = FALSE )
 
-      perm.src <- NULL
-      perm.dst <- NULL
+      perm.src       <- NULL
+      perm.dst       <- NULL
 
       if( src.level == 3L && dst.level == 3L ){
-        perm.src <- cuRious::tensor$new( 1:cols, 3L )
-        perm.dst <- cuRious::tensor$new( 1:cols, 3L )
+        perm.src     <- cuRious::tensor$new( 1:cols, 3L )
+        perm.dst     <- cuRious::tensor$new( 1:cols, 3L )
       }else{
-        perm.src <- cuRious::tensor$new( 1:cols, 0L )
-        perm.dst <- cuRious::tensor$new( 1:cols, 0L )
+        perm.src     <- cuRious::tensor$new( 1:cols, 0L )
+        perm.dst     <- cuRious::tensor$new( 1:cols, 0L )
       }
 
       pip.sync       <- cuRious::pipe$new( src, dst, context = context.sync )

@@ -161,8 +161,6 @@ __declspec( dllexport )
           dst_dims_1,
           src_perm_ptr,
           dst_perm_ptr );
-
-      cudaStreamQuery(0);
     }else{
       cuR_transfer_device_device_cu_kern<float><<<numBlocks, blockSize>>>(
           (float*) src_ptr,
@@ -189,8 +187,6 @@ __declspec( dllexport )
           dst_dims_1,
           src_perm_ptr,
           dst_perm_ptr );
-
-      cudaStreamQuery(0);
     }else{
       cuR_transfer_device_device_cu_kern<int><<<numBlocks, blockSize>>>(
           (int*) src_ptr,
@@ -217,8 +213,6 @@ __declspec( dllexport )
           dst_dims_1,
           src_perm_ptr,
           dst_perm_ptr );
-
-      cudaStreamQuery(0);
     }else{
       cuR_transfer_device_device_cu_kern<bool><<<numBlocks, blockSize>>>(
           (bool*) src_ptr,

@@ -46,3 +46,25 @@ obj.create <- function( dims, type = "n" ){
             ncol = dims[2] )
   }
 }
+
+# Subset an object with the same rules as cuRious does
+# ( Vectors normally, matrices by column )
+obj.subset <- function( obj, subset = NULL ){
+  obj    <- check.obj( obj )
+
+  if( is.null( subset ) ){
+    return( obj )
+  }
+
+  subset <- check.obj( subset )
+
+  if( obj.type( subset ) != "i" || obj.dims( subset )[[1]] != 1L ){
+    stop( "Invalid subset" )
+  }
+
+  if( obj.dims( obj )[[1]] == 1L ){
+    obj[ subset ]
+  }else{
+    obj[, subset ]
+  }
+}

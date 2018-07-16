@@ -9,7 +9,6 @@ stream <- R6Class(
   public = list(
     initialize = function( deployed = NULL, device = cuda.device.default.get() ){
       self$device <- device
-      self$deploy
 
       if( is.null( deployed ) ){
         return()

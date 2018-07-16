@@ -15,7 +15,7 @@ cublas.context <- R6Class(
     },
 
     .deploy.L3 = function(){
-      super$.deploy(
+      super$.deploy.L3(
         expression(
           list( handle = .Call( "cuR_cublas_handle_create" ) )
         )
@@ -53,7 +53,7 @@ cublas.context <- R6Class(
 # tp = transpose
 cublas.sgemv <- R6Class(
   "cuR.cublas.sgemv",
-  inherit = contexted.fusion,
+  inherit = fusion,
   public = list(
     initialize = function( A,
                            x,
@@ -119,13 +119,8 @@ cublas.sgemv <- R6Class(
     }
   ),
 
-  # ITT ====
-  # Span offseteket nem opcionálisan
-  # C++ forrásokból is kivenni
-  # Csinálni tovább a kontextelős dupladeployt a thrustban is
-
   private = list(
-    .L3.call = function( A.tensor,
+    .call.L3 = function( A.tensor,
                          x.tensor,
                          y.tensor,
                          A.dims,
@@ -136,8 +131,7 @@ cublas.sgemv <- R6Class(
                          alpha,
                          beta,
                          context.handle,
-                         stream.queue  = NULL,
-                         stream.stream = NULL ){
+                         stream.queue  = NULL ){
 
       .Call( "cuR_cublas_sgemv",
              A.tensor,
@@ -151,28 +145,26 @@ cublas.sgemv <- R6Class(
              alpha,
              beta,
              context.handle,
-             stream.queue,
-             stream.stream )
+             stream.queue )
 
       invisible( TRUE )
     },
 
-    .L0.call = function( A.tensor,
+    .call.L0 = function( A.tensor,
                          x.tensor,
                          y.tensor,
                          A.dims,
-                         A.span.off = NULL,
-                         x.span.off = NULL,
-                         y.span.off = NULL,
+                         A.span.off,
+                         x.span.off,
+                         y.span.off,
                          A.tp,
                          alpha,
                          beta,
                          context.handle = NULL,
-                         stream.queue   = NULL,
-                         stream.stream  = NULL ){
+                         stream.queue   = NULL ){
 
-      if( !is.null( A.span.off ) ){
-        A.tensor <- A.tensor[, A.span.off:( A.span.off + A.dims[[2]] - 1 ) ]
+      if( A.span.off != 1L || obj.dims( A.tensor )[[2]] != A.dims[[2]] ){
+        A.tensor <- obj.subset( A.tensor, A.span.off:( A.span.off + A.dims[[2]] - 1 ) )
       }
 
       if( A.tp ){
@@ -180,19 +172,24 @@ cublas.sgemv <- R6Class(
         A.dims <- rev( A.dims )
       }
 
-      if( !is.null( x.span.off ) ){
+      if( x.span.off != 1L || obj.dims( x.tensor )[[2]] != A.dims[[2]] ){
         x.tensor <- x.tensor[ x.span.off:( x.span.off + A.dims[[2]] - 1 ) ]
       }
 
-      if( is.null( y.span.off ) ){
-        y.range <- 1:A.dims[[1]]
-      }else{
-        y.range <- y.span.off:( y.span.off + A.dims[[1]] - 1 )
+      y.range <- NULL
+
+      if( y.span.off != 1L || obj.dims( y.tensor )[[2]] != A.dims[[1]] ){
+        y.range  <- y.span.off:( y.span.off + A.dims[[1]] - 1 )
         y.tensor <- y.tensor[ y.range ]
       }
 
       res <- ( alpha * A.tensor ) %*% x.tensor + ( beta * y.tensor )
-      private$.eps.out$y$obj.unsafe[ y.range ] <- res
+
+      if( is.null( y.range ) ){
+        private$.eps.out$y$obj.unsafe <- res
+      }else{
+        private$.eps.out$y$obj.unsafe[ y.range ] <- res
+      }
 
       invisible( TRUE )
     }
@@ -204,7 +201,7 @@ cublas.sgemv <- R6Class(
 # tp = transpose
 cublas.sger <- R6Class(
   "cuR.cublas.sger",
-  inherit = contexted.fusion,
+  inherit = fusion,
   public = list(
     initialize = function( x,
                            y,
@@ -262,17 +259,16 @@ cublas.sger <- R6Class(
   ),
 
   private = list(
-    .L3.call = function( x.tensor,
+    .call.L3 = function( x.tensor,
                          y.tensor,
                          A.tensor,
                          A.dims,
-                         x.span.off = NULL,
-                         y.span.off = NULL,
-                         A.span.off = NULL,
+                         x.span.off,
+                         y.span.off,
+                         A.span.off,
                          alpha,
                          context.handle,
-                         stream.queue  = NULL,
-                         stream.stream = NULL ){
+                         stream.queue  = NULL ){
 
       .Call( "cuR_cublas_sger",
              x.tensor,
@@ -284,45 +280,47 @@ cublas.sger <- R6Class(
              A.span.off,
              alpha,
              context.handle,
-             stream.queue,
-             stream.stream )
+             stream.queue )
 
       invisible( TRUE )
     },
 
-    .L0.call = function( x.tensor,
+    .call.L0 = function( x.tensor,
                          y.tensor,
                          A.tensor,
                          A.dims,
-                         x.span.off = NULL,
-                         y.span.off = NULL,
-                         A.span.off = NULL,
+                         x.span.off,
+                         y.span.off,
+                         A.span.off,
                          alpha,
                          context.handle = NULL,
-                         stream.queue   = NULL,
-                         stream.stream  = NULL ){
+                         stream.queue   = NULL ){
 
-      if( !is.null( x.span.off ) ){
+      if( x.span.off != 1L || obj.dims( x.tensor )[[2]] != A.dims[[1]] ){
         x.tensor <- x.tensor[ x.span.off:( x.span.off + A.dims[[1]] - 1 ) ]
       }
 
-      if( !is.null( y.span.off ) ){
+      if( y.span.off != 1L || obj.dims( y.tensor )[[2]] != A.dims[[2]] ){
         y.tensor <- y.tensor[ y.span.off:( y.span.off + A.dims[[2]] - 1 ) ]
       }
 
-      if( is.null( A.span.off ) ){
-        A.range <- 1:A.dims[[2]]
-      }else{
+      A.range <- NULL
+
+      if( A.span.off != 1L || obj.dims( A.tensor )[[2]] != A.dims[[2]] ){
         A.range <- A.span.off:( A.span.off + A.dims[[2]] - 1 )
-        A.tensor <- A.tensor[, A.range ]
+        A.tensor <- obj.subset( A.tensor, A.range )
       }
 
       res <- ( alpha * x.tensor ) %*% t( y.tensor ) + A.tensor
 
-      if( A.dims[[1]] == 1L ){
-        private$.eps.out$A$obj.unsafe[ A.range ] <- res
+      if( is.null( A.range ) ){
+        private$.eps.out$A$obj.unsafe <- res
       }else{
-        private$.eps.out$A$obj.unsafe[, A.range ] <- res
+        if( A.dims[[1]] == 1L ){
+          private$.eps.out$A$obj.unsafe[ A.range ] <- res
+        }else{
+          private$.eps.out$A$obj.unsafe[, A.range ] <- res
+        }
       }
 
       invisible( TRUE )
@@ -335,7 +333,7 @@ cublas.sger <- R6Class(
 # tp = transpose
 cublas.sgemm <- R6Class(
   "cuR.cublas.sgemm",
-  inherit = contexted.fusion,
+  inherit = fusion,
   public = list(
     initialize = function( A,
                            B,
@@ -411,21 +409,20 @@ cublas.sgemm <- R6Class(
   ),
 
   private = list(
-    .L3.call = function( A.tensor,
+    .call.L3 = function( A.tensor,
                          B.tensor,
                          C.tensor,
                          A.dims,
                          B.dims,
-                         A.span.off = NULL,
-                         B.span.off = NULL,
-                         C.span.off = NULL,
+                         A.span.off,
+                         B.span.off,
+                         C.span.off,
                          A.tp,
                          B.tp,
                          alpha,
                          beta,
                          context.handle,
-                         stream.queue  = NULL,
-                         stream.stream = NULL ){
+                         stream.queue   = NULL ){
 
       .Call( "cuR_cublas_sgemm",
              A.tensor,
@@ -441,30 +438,28 @@ cublas.sgemm <- R6Class(
              alpha,
              beta,
              context.handle,
-             stream.queue,
-             stream.stream )
+             stream.queue )
 
       invisible( TRUE )
     },
 
-    .L0.call = function( A.tensor,
+    .call.L0 = function( A.tensor,
                          B.tensor,
                          C.tensor,
                          A.dims,
                          B.dims,
-                         A.span.off = NULL,
-                         B.span.off = NULL,
-                         C.span.off = NULL,
+                         A.span.off,
+                         B.span.off,
+                         C.span.off,
                          A.tp,
                          B.tp,
                          alpha,
                          beta,
                          context.handle = NULL,
-                         stream.queue   = NULL,
-                         stream.stream  = NULL ){
+                         stream.queue   = NULL ){
 
-      if( !is.null( A.span.off ) ){
-        A.tensor <- A.tensor[, A.span.off:( A.span.off + A.dims[[2]] - 1 ) ]
+      if( A.span.off != 1L || obj.dims( A.tensor )[[2]] != A.dims[[2]] ){
+        A.tensor <- obj.subset( A.tensor, A.span.off:( A.span.off + A.dims[[2]] - 1 ) )
       }
 
       if( A.tp ){
@@ -472,8 +467,8 @@ cublas.sgemm <- R6Class(
         A.dims   <- rev( A.dims )
       }
 
-      if( !is.null( B.span.off ) ){
-        B.tensor <- B.tensor[, B.span.off:( B.span.off + B.dims[[2]] - 1 ) ]
+      if( B.span.off != 1L || obj.dims( B.tensor )[[2]] != B.dims[[2]] ){
+        B.tensor <- obj.subset( B.tensor, B.span.off:( B.span.off + B.dims[[2]] - 1 ) )
       }
 
       if( B.tp ){
@@ -481,20 +476,24 @@ cublas.sgemm <- R6Class(
         B.dims   <- rev( B.dims )
       }
 
-      if( is.null( C.span.off ) ){
-        C.range <- 1:B.dims[[2]]
-      }else{
+      C.range <- NULL
+
+      if( C.span.off != 1L || obj.dims( C.tensor )[[2]] != B.dims[[2]] ){
         C.range  <- C.span.off:( C.span.off + B.dims[[2]] - 1 )
-        C.tensor <- C.tensor[, C.range ]
+        C.tensor <- obj.subset( C.tensor, C.range )
       }
 
       # Operation
       res <- ( alpha * A.tensor ) %*% B.tensor + ( beta * C.tensor )
 
-      if( A.dims[[1]] == 1L ){
-        private$.eps.out$C$obj.unsafe[ C.range ] <- res
+      if( is.null( C.range ) ){
+        private$.eps.out$C$obj.unsafe <- res
       }else{
-        private$.eps.out$C$obj.unsafe[, C.range ] <- res
+        if( A.dims[[1]] == 1L ){
+          private$.eps.out$C$obj.unsafe[ C.range ] <- res
+        }else{
+          private$.eps.out$C$obj.unsafe[, C.range ] <- res
+        }
       }
 
       invisible( TRUE )

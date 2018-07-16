@@ -294,6 +294,27 @@ tensor <- R6Class(
       }
     },
 
+    obj.unsafe = function( val ){
+      self$check.destroyed()
+
+      if( private$.level != 0L ){
+        stop( "Not surfaced, direct object access denied" )
+      }
+
+      # This access is not be registered, the given object
+      # will not be protected
+
+      if( missing( val ) ){
+        return( private$.ptrs$tensor )
+      }else{
+        val <- check.obj( val )
+        private$.match( val )
+
+        private$.ptrs$tensor <- val
+        private$.alert.content()
+      }
+    },
+
     ptrs = function( val ){
       self$check.destroyed()
 

@@ -18,8 +18,10 @@ fusion <- R6Class(
     run = function(){
       self$check.destroyed()
 
-      for( ep in private$.eps.out ){
-        ep$sever()
+      if( private$.sever ){
+        for( ep in private$.eps.out ){
+          ep$sever()
+        }
       }
 
       if( length( private$.context.changed ) ){
@@ -69,6 +71,8 @@ fusion <- R6Class(
     .params  = list(),
 
     .device  = NULL,
+
+    .sever   = TRUE,
 
     .add.ep  = function( ep, ep.name, output = FALSE ){
       if( !is.null( ep ) ){
@@ -139,6 +143,8 @@ fusion <- R6Class(
         `1`= private$.L1.call,
         `3`= private$.L3.call
       )
+
+      private$.sever <- as.logical( level )
     },
 
     .update.content = function( names ){

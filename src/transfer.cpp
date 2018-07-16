@@ -760,10 +760,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
     ( TYPEOF( dst_perm_ptr_r ) == EXTPTRSXP ? (int*) R_ExternalPtrAddr( dst_perm_ptr_r ) :
         INTEGER( dst_perm_ptr_r ) );
 
-  int src_span_off  = ( R_NilValue == src_span_off_r ) ? 0 :
-    Rf_asInteger( src_span_off_r ) - 1;
-  int dst_span_off  = ( R_NilValue == dst_span_off_r ) ? 0 :
-    Rf_asInteger( dst_span_off_r ) - 1;
+  int src_span_off  = Rf_asInteger( src_span_off_r ) - 1;
+  int dst_span_off  = Rf_asInteger( dst_span_off_r ) - 1;
 
   sd_queue* worker_q_ptr = ( R_NilValue == worker_q_ptr_r ) ? NULL :
     (sd_queue*) R_ExternalPtrAddr( worker_q_ptr_r );

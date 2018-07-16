@@ -192,7 +192,7 @@ cublas.sgemv <- R6Class(
       }
 
       res <- ( alpha * A.tensor ) %*% x.tensor + ( beta * y.tensor )
-      private$.eps.out$y$obj[ y.range ] <- res
+      private$.eps.out$y$obj.unsafe[ y.range ] <- res
 
       invisible( TRUE )
     }
@@ -320,9 +320,9 @@ cublas.sger <- R6Class(
       res <- ( alpha * x.tensor ) %*% t( y.tensor ) + A.tensor
 
       if( A.dims[[1]] == 1L ){
-        private$.eps.out$A$obj[ A.range ] <- res
+        private$.eps.out$A$obj.unsafe[ A.range ] <- res
       }else{
-        private$.eps.out$A$obj[, A.range ] <- res
+        private$.eps.out$A$obj.unsafe[, A.range ] <- res
       }
 
       invisible( TRUE )
@@ -492,9 +492,9 @@ cublas.sgemm <- R6Class(
       res <- ( alpha * A.tensor ) %*% B.tensor + ( beta * C.tensor )
 
       if( A.dims[[1]] == 1L ){
-        private$.eps.out$C$obj[ C.range ] <- res
+        private$.eps.out$C$obj.unsafe[ C.range ] <- res
       }else{
-        private$.eps.out$C$obj[, C.range ] <- res
+        private$.eps.out$C$obj.unsafe[, C.range ] <- res
       }
 
       invisible( TRUE )

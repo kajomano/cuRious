@@ -130,17 +130,17 @@ pipe <- R6Class(
                          dst.dims        = NULL,
                          src.perm.tensor = NULL,
                          dst.perm.tensor = NULL,
-                         src.span.off    = NULL,
-                         dst.span.off    = NULL ){
+                         src.span.off,
+                         dst.span.off ){
 
       src.perm <- NULL
       dst.perm <- NULL
 
-      if( !is.null( src.span.off ) ){
+      if( src.span.off != 1L ){
         src.perm <- src.span.off:( src.span.off + dims[[2]] - 1 )
       }
 
-      if( !is.null( dst.span.off ) ){
+      if( dst.span.off != 1L ){
         dst.perm <- dst.span.off:( dst.span.off + dims[[2]] - 1 )
       }
 
@@ -160,13 +160,15 @@ pipe <- R6Class(
         }
       }
 
+      # TODO ====
+      # Nicer out-of-bounds error
+
+      # Src also must be accessed by $obj, because it needs to be signalled that
+      # there is a duplicate holder of it's contents
+
       # Hell
       if( is.null( src.perm ) && is.null( dst.perm ) ){
-        if( dims[[1]] == 1L ){
-          private$.eps.out$dst$obj <- private$.eps$src$obj
-        }else{
-          private$.eps.out$dst$obj <- private$.eps$src$obj
-        }
+        private$.eps.out$dst$obj <- private$.eps$src$obj
       }else if( is.null( src.perm ) ){
         if( dims[[1]] == 1L ){
           private$.eps.out$dst$obj[ dst.perm ] <- private$.eps$src$obj
@@ -198,8 +200,8 @@ pipe <- R6Class(
                           dst.dims        = NULL,
                           src.perm.tensor = NULL,
                           dst.perm.tensor = NULL,
-                          src.span.off    = NULL,
-                          dst.span.off    = NULL,
+                          src.span.off,
+                          dst.span.off,
                           context.workers = NULL,
                           stream.queue    = NULL ){
 
@@ -356,9 +358,11 @@ pipe <- R6Class(
 
       # Fun
       if( native.call ){
-        private$.fun <- private$.call.L0
+        private$.fun   <- private$.call.L0
+        private$.sever <- FALSE
       }else{
-        private$.fun <- private$.call.L03
+        private$.fun   <- private$.call.L03
+        private$.sever <- TRUE
       }
     }
   )

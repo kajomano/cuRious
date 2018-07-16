@@ -1,4 +1,4 @@
-source( "E:/Rprojects/cuRious/Tests/test_utils.R" )
+source( "./Tests/test_utils.R" )
 
 verbose <- TRUE
 
@@ -8,8 +8,7 @@ cols    <- 1000
 rows    <- 1000
 
 stream        <- cuRious::stream$new( deployed = 3 )
-# context.sync  <- cuRious::pipe.context$new( threads, deployed = 3 )
-context.sync  <- NULL
+context.sync  <- cuRious::pipe.context$new( threads, deployed = 3 )
 context.async <- cuRious::pipe.context$new( threads, stream, deployed = 3 )
 
 for( type in types ){
@@ -22,10 +21,10 @@ for( type in types ){
 
   mat <- matrix( mat.cont, rows, cols )
 
-  # for( src.level in 0:3 ){
-  #   for( dst.level in 0:3 ){
-  for( src.level in 0 ){
-    for( dst.level in 0 ){
+  for( src.level in 0:3 ){
+    for( dst.level in 0:3 ){
+  # for( src.level in 0 ){
+  #   for( dst.level in 0 ){
       if( ( src.level == 0L && dst.level == 3L ) ||
           ( src.level == 3L && dst.level == 0L ) ){
         next
@@ -40,11 +39,11 @@ for( type in types ){
       perm.dst <- NULL
 
       if( src.level == 3L && dst.level == 3L ){
-        perm.src <- cuRious::tensor$new( 1:1000, 3L )
-        perm.dst <- cuRious::tensor$new( 1:1000, 3L )
+        perm.src <- cuRious::tensor$new( 1:cols, 3L )
+        perm.dst <- cuRious::tensor$new( 1:cols, 3L )
       }else{
-        perm.src <- cuRious::tensor$new( 1:1000, 0L )
-        perm.dst <- cuRious::tensor$new( 1:1000, 0L )
+        perm.src <- cuRious::tensor$new( 1:cols, 0L )
+        perm.dst <- cuRious::tensor$new( 1:cols, 0L )
       }
 
       pip.sync       <- cuRious::pipe$new( src, dst, context = context.sync )

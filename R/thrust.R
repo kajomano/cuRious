@@ -134,9 +134,9 @@ thrust.pow <- R6Class(
       res <- A.tensor ^ pow
 
       if( A.dims[[1]] == 1L ){
-        private$.eps.out$B$obj[ B.range ] <- res
+        private$.eps.out$B$obj.unsafe[ B.range ] <- res
       }else{
-        private$.eps.out$B$obj[, B.range ] <- res
+        private$.eps.out$B$obj.unsafe[, B.range ] <- res
       }
 
       invisible( TRUE )
@@ -242,7 +242,7 @@ thrust.cmin.pos <- R6Class(
       }
 
       res <- apply( A.tensor, 2, which.min )
-      private$.eps.out$x$obj[ x.range ] <- res
+      private$.eps.out$x$obj.unsafe[ x.range ] <- res
 
       invisible( TRUE )
     }
@@ -367,11 +367,11 @@ thrust.table <- R6Class(
 
       p.tensor <- order( x.tensor )
       p.range  <- p.span.off:( p.span.off + x.dims[[2]] - 1L )
-      private$.eps.out$p$obj[ p.range ] <- p.tensor + x.span.off - 1L
+      private$.eps.out$p$obj.unsafe[ p.range ] <- p.tensor + x.span.off - 1L
 
       s.tensor <- x.tensor[ p.tensor ]
       s.range  <- s.span.off:( s.span.off + x.dims[[2]] - 1L )
-      private$.eps.out$s$obj[ s.range ] <- s.tensor
+      private$.eps.out$s$obj.unsafe[ s.range ] <- s.tensor
 
       # Weight dims check
       if( s.tensor[[ 1  ]] < 1 ||
@@ -393,7 +393,7 @@ thrust.table <- R6Class(
 
       w.tensor[ is.na(w.tensor) ] <- 0L
       w.range  <- w.span.off:( w.span.off + w.dims[[2]] - 1L )
-      private$.eps.out$w$obj[ w.range ] <- w.tensor
+      private$.eps.out$w$obj.unsafe[ w.range ] <- w.tensor
 
       invisible( TRUE )
     }

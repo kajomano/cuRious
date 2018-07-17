@@ -5,7 +5,7 @@
 # context will be also destroyed. Keeping a single handle through multiple
 # cublas calls (through the whole session) is advisable.
 
-# cuBLAS handle class ====
+# cuBLAS context class ====
 cublas.context <- R6Class(
   "cuR.cublas.context",
   inherit = fusion.context,
@@ -32,7 +32,7 @@ cublas.context <- R6Class(
   )
 )
 
-# cuBLAS linear algebra operations ====
+# cuBLAS fusions ====
 # TODO ====
 # Add sswap from cuBLAS!
 
@@ -164,7 +164,7 @@ cublas.sgemv <- R6Class(
                          stream.queue   = NULL ){
 
       if( A.span.off != 1L || obj.dims( A.tensor )[[2]] != A.dims[[2]] ){
-        A.tensor <- obj.subset( A.tensor, A.span.off:( A.span.off + A.dims[[2]] - 1 ) )
+        A.tensor <- obj.subset( A.tensor, A.span.off:( A.span.off + A.dims[[2]] - 1L ) )
       }
 
       if( A.tp ){
@@ -173,13 +173,13 @@ cublas.sgemv <- R6Class(
       }
 
       if( x.span.off != 1L || obj.dims( x.tensor )[[2]] != A.dims[[2]] ){
-        x.tensor <- x.tensor[ x.span.off:( x.span.off + A.dims[[2]] - 1 ) ]
+        x.tensor <- x.tensor[ x.span.off:( x.span.off + A.dims[[2]] - 1L ) ]
       }
 
       y.range <- NULL
 
       if( y.span.off != 1L || obj.dims( y.tensor )[[2]] != A.dims[[1]] ){
-        y.range  <- y.span.off:( y.span.off + A.dims[[1]] - 1 )
+        y.range  <- y.span.off:( y.span.off + A.dims[[1]] - 1L )
         y.tensor <- y.tensor[ y.range ]
       }
 
@@ -297,17 +297,17 @@ cublas.sger <- R6Class(
                          stream.queue   = NULL ){
 
       if( x.span.off != 1L || obj.dims( x.tensor )[[2]] != A.dims[[1]] ){
-        x.tensor <- x.tensor[ x.span.off:( x.span.off + A.dims[[1]] - 1 ) ]
+        x.tensor <- x.tensor[ x.span.off:( x.span.off + A.dims[[1]] - 1L ) ]
       }
 
       if( y.span.off != 1L || obj.dims( y.tensor )[[2]] != A.dims[[2]] ){
-        y.tensor <- y.tensor[ y.span.off:( y.span.off + A.dims[[2]] - 1 ) ]
+        y.tensor <- y.tensor[ y.span.off:( y.span.off + A.dims[[2]] - 1L ) ]
       }
 
       A.range <- NULL
 
       if( A.span.off != 1L || obj.dims( A.tensor )[[2]] != A.dims[[2]] ){
-        A.range <- A.span.off:( A.span.off + A.dims[[2]] - 1 )
+        A.range <- A.span.off:( A.span.off + A.dims[[2]] - 1L )
         A.tensor <- obj.subset( A.tensor, A.range )
       }
 
@@ -459,7 +459,7 @@ cublas.sgemm <- R6Class(
                          stream.queue   = NULL ){
 
       if( A.span.off != 1L || obj.dims( A.tensor )[[2]] != A.dims[[2]] ){
-        A.tensor <- obj.subset( A.tensor, A.span.off:( A.span.off + A.dims[[2]] - 1 ) )
+        A.tensor <- obj.subset( A.tensor, A.span.off:( A.span.off + A.dims[[2]] - 1L ) )
       }
 
       if( A.tp ){
@@ -468,7 +468,7 @@ cublas.sgemm <- R6Class(
       }
 
       if( B.span.off != 1L || obj.dims( B.tensor )[[2]] != B.dims[[2]] ){
-        B.tensor <- obj.subset( B.tensor, B.span.off:( B.span.off + B.dims[[2]] - 1 ) )
+        B.tensor <- obj.subset( B.tensor, B.span.off:( B.span.off + B.dims[[2]] - 1L ) )
       }
 
       if( B.tp ){
@@ -479,7 +479,7 @@ cublas.sgemm <- R6Class(
       C.range <- NULL
 
       if( C.span.off != 1L || obj.dims( C.tensor )[[2]] != B.dims[[2]] ){
-        C.range  <- C.span.off:( C.span.off + B.dims[[2]] - 1 )
+        C.range  <- C.span.off:( C.span.off + B.dims[[2]] - 1L )
         C.tensor <- obj.subset( C.tensor, C.range )
       }
 

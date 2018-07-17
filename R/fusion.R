@@ -145,7 +145,10 @@ fusion <- R6Class(
             }
           }
         }else{
-          warning( "Stream supported but inactive" )
+          # TODO ====
+          # Im bothered by the warnings, but also dont want to accidentally
+          # forget something
+          # warning( "Stream supported but inactive" )
         }
       }
 

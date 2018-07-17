@@ -1,30 +1,24 @@
 require( cuRious )
 require( microbenchmark )
 
-# mult <- 1
-
-cols <- 10 * mult
-rows <- 6 * mult
-subs <- c( 1 * mult + 1 , 7 * mult )
+cols <- 10 * mult + 1
+rows <- 10 * mult
+subs <- c( 1, 10 * mult )
 
 mat.A  <- matrix( as.double( 1:(cols*rows) ), ncol = cols )
 
-tens.A.3 <- tensor$new( mat.A, 3 )
-tens.B.3 <- tensor$new( mat.A, 3 )
+tens.A.3 <- cuRious::tensor$new( mat.A, 3 )
+tens.B.3 <- cuRious::tensor$new( mat.A, 3 )
 
-tens.A.0 <- tensor$new( mat.A, 0 )
-tens.B.0 <- tensor$new( mat.A, 0 )
-
-unit.A.3 <- tensor$new( 1.0, 3 )
-unit.B.3 <- tensor$new( 1.0, 3 )
+tens.A.0 <- cuRious::tensor$new( mat.A, 0 )
+tens.B.0 <- cuRious::tensor$new( mat.A, 0 )
 
 # Mandatory variables
-stream  <- cuda.stream$new( FALSE )
-context <- thrust.context$new( stream )
+stream   <- cuRious::stream$new()
+context  <- cuRious::thrust.context$new( stream )
 
-unit <- thrust.pow$new( unit.A.3, unit.B.3, context = context )
-L3   <- thrust.pow$new( tens.A.3, tens.B.3, subs, subs, context = context )
-L0   <- thrust.pow$new( tens.A.0, tens.B.0, subs, subs )
+L3       <- cuRious::thrust.pow$new( tens.A.3, tens.B.3, subs, subs, context = context )
+L0       <- cuRious::thrust.pow$new( tens.A.0, tens.B.0, subs, subs )
 
 test <- function( verbose = FALSE ){
   if( verbose ){

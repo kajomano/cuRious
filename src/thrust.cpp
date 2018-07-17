@@ -47,44 +47,36 @@ extern "C"
 SEXP cuR_thrust_pow( SEXP A_ptr_r,
                      SEXP B_ptr_r,
                      SEXP dims_r,
-                     SEXP A_span_off_r,   // Optional
-                     SEXP B_span_off_r,   // Optional
+                     SEXP A_span_off_r,
+                     SEXP B_span_off_r,
                      SEXP pow_r,
                      SEXP allocator_ptr_r,
-                     SEXP queue_ptr_r,    // Optional
-                     SEXP stream_ptr_r ){ // Optional
+                     SEXP stream_q_ptr_r ){ // Optional
 
   // Recover allocator, queue and stream
   void* allocator_ptr = R_ExternalPtrAddr( allocator_ptr_r );
 
-  sd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
-    (sd_queue*) R_ExternalPtrAddr( queue_ptr_r );
-
-  cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
-    (cudaStream_t*)R_ExternalPtrAddr( stream_ptr_r );
+  sd_queue* stream_q_ptr = ( R_NilValue == stream_q_ptr_r ) ? NULL :
+    (sd_queue*) R_ExternalPtrAddr( stream_q_ptr_r );
 
   float* A_ptr    = (float*)R_ExternalPtrAddr( A_ptr_r );
   float* B_ptr    = (float*)R_ExternalPtrAddr( B_ptr_r );
   int*   dims     = INTEGER( dims_r );
   float  pow      = Rf_asReal( pow_r );
 
-  int A_span_off  = ( R_NilValue == A_span_off_r ) ? 0:
-    ( Rf_asInteger( A_span_off_r ) - 1 );
-
-  int B_span_off  = ( R_NilValue == B_span_off_r ) ? 0:
-    ( Rf_asInteger( B_span_off_r ) - 1 );
+  int A_span_off  = Rf_asInteger( A_span_off_r ) - 1;
+  int B_span_off  = Rf_asInteger( B_span_off_r ) - 1;
 
   // Offsets
   A_ptr = A_ptr + A_span_off * dims[0];
   B_ptr = B_ptr + B_span_off * dims[0];
 
-  if( queue_ptr ){
-    queue_ptr -> dispatch( [=]{
-      cuR_thrust_pow_cu( A_ptr, B_ptr, dims, pow, allocator_ptr, stream_ptr );
-      cudaStreamQuery(0);
+  if( stream_q_ptr ){
+    stream_q_ptr -> dispatch( [=]( void* stream_ptr ){
+      cuR_thrust_pow_cu( A_ptr, B_ptr, dims, pow, allocator_ptr, (cudaStream_t*) stream_ptr );
     });
   }else{
-    cuR_thrust_pow_cu( A_ptr, B_ptr, dims, pow, allocator_ptr, stream_ptr );
+    cuR_thrust_pow_cu( A_ptr, B_ptr, dims, pow, allocator_ptr );
     cudaTry( cudaDeviceSynchronize() );
   }
 
@@ -95,42 +87,34 @@ extern "C"
 SEXP cuR_thrust_cmin_pos( SEXP A_ptr_r,
                           SEXP x_ptr_r,
                           SEXP A_dims_r,
-                          SEXP A_span_off_r,   // Optional
-                          SEXP x_span_off_r,   // Optional
+                          SEXP A_span_off_r,
+                          SEXP x_span_off_r,
                           SEXP allocator_ptr_r,
-                          SEXP queue_ptr_r,    // Optional
-                          SEXP stream_ptr_r ){ // Optional
+                          SEXP stream_q_ptr_r ){ // Optional
 
   // Recover allocator, queue and stream
   void* allocator_ptr = R_ExternalPtrAddr( allocator_ptr_r );
 
-  sd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
-    (sd_queue*) R_ExternalPtrAddr( queue_ptr_r );
-
-  cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
-    (cudaStream_t*)R_ExternalPtrAddr( stream_ptr_r );
+  sd_queue* stream_q_ptr = ( R_NilValue == stream_q_ptr_r ) ? NULL :
+    (sd_queue*) R_ExternalPtrAddr( stream_q_ptr_r );
 
   float* A_ptr    = (float*)R_ExternalPtrAddr( A_ptr_r );
   int*   x_ptr    = (int*)R_ExternalPtrAddr( x_ptr_r );
   int*   A_dims   = INTEGER( A_dims_r );
 
-  int A_span_off  = ( R_NilValue == A_span_off_r ) ? 0:
-    ( Rf_asInteger( A_span_off_r ) - 1 );
-
-  int x_span_off  = ( R_NilValue == x_span_off_r ) ? 0:
-    ( Rf_asInteger( x_span_off_r ) - 1 );
+  int A_span_off  = Rf_asInteger( A_span_off_r ) - 1;
+  int x_span_off  = Rf_asInteger( x_span_off_r ) - 1;
 
   // Offsets
   A_ptr = A_ptr + A_span_off * A_dims[0];
   x_ptr = x_ptr + x_span_off;
 
-  if( queue_ptr ){
-    queue_ptr -> dispatch( [=]{
-      cuR_thrust_cmin_pos_cu( A_ptr, x_ptr, A_dims, allocator_ptr, stream_ptr );
-      cudaStreamQuery(0);
+  if( stream_q_ptr ){
+    stream_q_ptr -> dispatch( [=]( void* stream_ptr ){
+      cuR_thrust_cmin_pos_cu( A_ptr, x_ptr, A_dims, allocator_ptr, (cudaStream_t*) stream_ptr );
     });
   }else{
-    cuR_thrust_cmin_pos_cu( A_ptr, x_ptr, A_dims, allocator_ptr, stream_ptr );
+    cuR_thrust_cmin_pos_cu( A_ptr, x_ptr, A_dims, allocator_ptr );
     cudaTry( cudaDeviceSynchronize() );
   }
 
@@ -149,17 +133,13 @@ SEXP cuR_thrust_table( SEXP x_ptr_r,
                        SEXP w_span_off_r,
                        SEXP s_span_off_r,
                        SEXP allocator_ptr_r,
-                       SEXP queue_ptr_r,    // Optional
-                       SEXP stream_ptr_r ){ // Optional
+                       SEXP stream_q_ptr_r ){ // Optional
 
   // Recover allocator, queue and stream
   void* allocator_ptr = R_ExternalPtrAddr( allocator_ptr_r );
 
-  sd_queue* queue_ptr = ( R_NilValue == queue_ptr_r ) ? NULL :
-    (sd_queue*) R_ExternalPtrAddr( queue_ptr_r );
-
-  cudaStream_t* stream_ptr = ( R_NilValue == stream_ptr_r ) ? NULL :
-    (cudaStream_t*)R_ExternalPtrAddr( stream_ptr_r );
+  sd_queue* stream_q_ptr = ( R_NilValue == stream_q_ptr_r ) ? NULL :
+    (sd_queue*) R_ExternalPtrAddr( stream_q_ptr_r );
 
   int* x_ptr     = (int*)R_ExternalPtrAddr( x_ptr_r );
   int* p_ptr     = (int*)R_ExternalPtrAddr( p_ptr_r );
@@ -180,13 +160,12 @@ SEXP cuR_thrust_table( SEXP x_ptr_r,
   w_ptr = w_ptr + w_span_off;
   s_ptr = s_ptr + s_span_off;
 
-  if( queue_ptr ){
-    queue_ptr -> dispatch( [=]{
-      cuR_thrust_table_cu( x_ptr, p_ptr, w_ptr, s_ptr, x_dims, w_dims, x_span_off, allocator_ptr, stream_ptr );
-      cudaStreamQuery(0);
+  if( stream_q_ptr ){
+    stream_q_ptr -> dispatch( [=]( void* stream_ptr ){
+      cuR_thrust_table_cu( x_ptr, p_ptr, w_ptr, s_ptr, x_dims, w_dims, x_span_off, allocator_ptr, (cudaStream_t*) stream_ptr );
     });
   }else{
-    cuR_thrust_table_cu( x_ptr, p_ptr, w_ptr, s_ptr, x_dims, w_dims, x_span_off, allocator_ptr, stream_ptr );
+    cuR_thrust_table_cu( x_ptr, p_ptr, w_ptr, s_ptr, x_dims, w_dims, x_span_off, allocator_ptr );
     cudaTry( cudaDeviceSynchronize() );
   }
 

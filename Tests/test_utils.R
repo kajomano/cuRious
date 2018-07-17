@@ -7,7 +7,7 @@ test.thr.equality <- function( obj1, obj2 ){
 
   switch(
     obj.type( obj1 ),
-    numeric = {
+    n = {
       all(
         obj1 >= obj2 * ( 1 - thr ),
         obj2 >= obj1 * ( 1 - thr ),

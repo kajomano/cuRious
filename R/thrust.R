@@ -5,13 +5,17 @@
 # not something I want to test for each. Thrust allocators are not thread safe,
 # a separate one needs to be created for use with each cuda stream and device.
 
-# Thrust allocator class ====
+# Thrust context class ====
 thrust.context <- R6Class(
   "cuR.thrust.context",
   inherit = fusion.context,
   private = list(
-    .deploy = function(){
-      super$.deploy(
+    .deploy.L1 = function(){
+      stop( "Not yet implemented" )
+    },
+
+    .deploy.L3 = function(){
+      super$.deploy.L3(
         expression(
           list( alloc = .Call( "cuR_thrust_allocator_create" ) )
         )
@@ -28,13 +32,13 @@ thrust.context <- R6Class(
   )
 )
 
-# Thrust operations ====
+# Thrust fusions ====
 
 # pow ====
 # B <- A^pow
 thrust.pow <- R6Class(
   "cuR.thrust.pow",
-  inherit = contexted.fusion,
+  inherit = fusion,
   public = list(
     initialize = function( A,
                            B,
@@ -81,15 +85,14 @@ thrust.pow <- R6Class(
   ),
 
   private = list(
-    .L3.call = function( A.tensor,
+    .call.L3 = function( A.tensor,
                          B.tensor,
                          A.dims,
-                         A.span.off    = NULL,
-                         B.span.off    = NULL,
+                         A.span.off,
+                         B.span.off,
                          pow,
                          context.alloc,
-                         stream.queue  = NULL,
-                         stream.stream = NULL ){
+                         stream.queue  = NULL ){
 
       .Call( "cuR_thrust_pow",
              A.tensor,
@@ -99,44 +102,40 @@ thrust.pow <- R6Class(
              B.span.off,
              pow,
              context.alloc,
-             stream.queue,
-             stream.stream )
+             stream.queue )
 
       invisible( TRUE )
     },
 
-    .L0.call = function( A.tensor,
+    .call.L0 = function( A.tensor,
                          B.tensor,
                          A.dims,
-                         A.span.off    = NULL,
-                         B.span.off    = NULL,
+                         A.span.off,
+                         B.span.off,
                          pow,
                          context.alloc = NULL,
-                         stream.queue  = NULL,
-                         stream.stream = NULL ){
+                         stream.queue  = NULL ){
 
-      if( !is.null( A.span.off ) ){
-        A.range <- A.span.off:( A.span.off + A.dims[[2]] - 1 )
-
-        if( A.dims[[1]] == 1L ){
-          A.tensor <- A.tensor[ A.range ]
-        }else{
-          A.tensor <- A.tensor[, A.range ]
-        }
+      if( A.span.off != 1L || obj.dims( A.tensor )[[2]] != A.dims[[2]] ){
+        A.tensor <- obj.subset( A.tensor, A.span.off:( A.span.off + A.dims[[2]] - 1L ) )
       }
 
-      if( !is.null( B.span.off ) ){
-        B.range <- B.span.off:( B.span.off + A.dims[[2]] - 1 )
-      }else{
-        B.range <- 1:A.dims[[2]]
+      B.range <- NULL
+
+      if( B.span.off != 1L || obj.dims( B.tensor )[[2]] != A.dims[[2]] ){
+        B.range <- B.span.off:( B.span.off + A.dims[[2]] - 1L )
       }
 
       res <- A.tensor ^ pow
 
-      if( A.dims[[1]] == 1L ){
-        private$.eps.out$B$obj.unsafe[ B.range ] <- res
+      if( is.null( B.range ) ){
+        private$.eps.out$B$obj.unsafe <- res
       }else{
-        private$.eps.out$B$obj.unsafe[, B.range ] <- res
+        if( A.dims[[1]] == 1L ){
+          private$.eps.out$B$obj.unsafe[ B.range ] <- res
+        }else{
+          private$.eps.out$B$obj.unsafe[, B.range ] <- res
+        }
       }
 
       invisible( TRUE )
@@ -148,7 +147,7 @@ thrust.pow <- R6Class(
 # Tells which row contains the smallest number for every column
 thrust.cmin.pos <- R6Class(
   "cuR.thrust.cmin.pos",
-  inherit = contexted.fusion,
+  inherit = fusion,
   public = list(
     initialize = function( A,
                            x,
@@ -194,14 +193,13 @@ thrust.cmin.pos <- R6Class(
   ),
 
   private = list(
-    .L3.call = function( A.tensor,
+    .call.L3 = function( A.tensor,
                          x.tensor,
                          A.dims,
-                         A.span.off    = NULL,
-                         x.span.off    = NULL,
+                         A.span.off,
+                         x.span.off,
                          context.alloc,
-                         stream.queue  = NULL,
-                         stream.stream = NULL ){
+                         stream.queue  = NULL ){
 
       .Call( "cuR_thrust_cmin_pos",
              A.tensor,
@@ -210,39 +208,36 @@ thrust.cmin.pos <- R6Class(
              A.span.off,
              x.span.off,
              context.alloc,
-             stream.queue,
-             stream.stream )
+             stream.queue )
 
       invisible( TRUE )
     },
 
-    .L0.call = function( A.tensor,
+    .call.L0 = function( A.tensor,
                          x.tensor,
                          A.dims,
-                         A.span.off    = NULL,
-                         x.span.off    = NULL,
+                         A.span.off,
+                         x.span.off,
                          context.alloc = NULL,
-                         stream.queue  = NULL,
-                         stream.stream = NULL  ){
+                         stream.queue  = NULL ){
 
-      if( !is.null( A.span.off ) ){
-        A.range <- A.span.off:( A.span.off + A.dims[[2]] - 1 )
-
-        if( A.dims[[1]] == 1L ){
-          A.tensor <- A.tensor[ A.range ]
-        }else{
-          A.tensor <- A.tensor[, A.range ]
-        }
+      if( A.span.off != 1L || obj.dims( A.tensor )[[2]] != A.dims[[2]] ){
+        A.tensor <- obj.subset( A.tensor, A.span.off:( A.span.off + A.dims[[2]] - 1L ) )
       }
 
-      if( !is.null( x.span.off ) ){
-        x.range <- x.span.off:( x.span.off + A.dims[[2]] - 1 )
-      }else{
-        x.range <- 1:A.dims[[2]]
+      x.range <- NULL
+
+      if( x.span.off != 1L || obj.dims( x.tensor )[[2]] != A.dims[[2]] ){
+        x.range <- x.span.off:( x.span.off + A.dims[[2]] - 1L )
       }
 
       res <- apply( A.tensor, 2, which.min )
-      private$.eps.out$x$obj.unsafe[ x.range ] <- res
+
+      if( is.null( x.range ) ){
+        private$.eps.out$x$obj.unsafe <- res
+      }else{
+        private$.eps.out$x$obj.unsafe[ x.range ] <- res
+      }
 
       invisible( TRUE )
     }
@@ -252,7 +247,7 @@ thrust.cmin.pos <- R6Class(
 # table ====
 thrust.table <- R6Class(
   "cuR.thrust.table",
-  inherit = contexted.fusion,
+  inherit = fusion,
   public = list(
     initialize = function( x,  # Input vector tensor to be table-d
                            p,  # Output permutation for sorting to cont. blocks
@@ -317,7 +312,7 @@ thrust.table <- R6Class(
   ),
 
   private = list(
-    .L3.call = function( x.tensor,
+    .call.L3 = function( x.tensor,
                          p.tensor,
                          w.tensor,
                          s.tensor,
@@ -328,8 +323,7 @@ thrust.table <- R6Class(
                          w.span.off,
                          s.span.off,
                          context.alloc,
-                         stream.queue  = NULL,
-                         stream.stream = NULL ){
+                         stream.queue  = NULL ){
 
       .Call( "cuR_thrust_table",
              x.tensor,
@@ -343,13 +337,12 @@ thrust.table <- R6Class(
              w.span.off,
              s.span.off,
              context.alloc,
-             stream.queue,
-             stream.stream )
+             stream.queue )
 
       invisible( TRUE )
     },
 
-    .L0.call = function( x.tensor,
+    .call.L0 = function( x.tensor,
                          p.tensor,
                          w.tensor,
                          s.tensor,
@@ -360,40 +353,74 @@ thrust.table <- R6Class(
                          w.span.off,
                          s.span.off,
                          context.alloc,
-                         stream.queue  = NULL,
-                         stream.stream = NULL  ){
+                         stream.queue  = NULL ){
 
-      x.tensor <- x.tensor[ x.span.off:( x.span.off + x.dims[[2]] - 1L ) ]
+      if( x.span.off != 1L || obj.dims( x.tensor )[[2]] != x.dims[[2]] ){
+        x.tensor <- x.tensor[ x.span.off:( x.span.off + x.dims[[2]] - 1L ) ]
+      }
 
-      p.tensor <- order( x.tensor )
-      p.range  <- p.span.off:( p.span.off + x.dims[[2]] - 1L )
-      private$.eps.out$p$obj.unsafe[ p.range ] <- p.tensor + x.span.off - 1L
+      # P
+      p.res <- order( x.tensor ) + x.span.off - 1L
 
-      s.tensor <- x.tensor[ p.tensor ]
-      s.range  <- s.span.off:( s.span.off + x.dims[[2]] - 1L )
-      private$.eps.out$s$obj.unsafe[ s.range ] <- s.tensor
+      p.range  <- NULL
 
+      if( p.span.off != 1L || obj.dims( p.tensor )[[2]] != x.dims[[2]] ){
+        p.range <- p.span.off:( p.span.off + x.dims[[2]] - 1L )
+      }
+
+      if( is.null( p.range ) ){
+        private$.eps.out$p$obj.unsafe <- p.res
+      }else{
+        private$.eps.out$p$obj.unsafe[ p.range ] <- p.res
+      }
+
+      # S
+      s.res <- x.tensor[ p.res ]
+
+      s.range  <- NULL
+
+      if( s.span.off != 1L || obj.dims( s.tensor )[[2]] != x.dims[[2]] ){
+        s.range <- s.span.off:( s.span.off + x.dims[[2]] - 1L )
+      }
+
+      if( is.null( s.range ) ){
+        private$.eps.out$s$obj.unsafe <- s.res
+      }else{
+        private$.eps.out$s$obj.unsafe[ s.range ] <- s.res
+      }
+
+      # W
       # Weight dims check
-      if( s.tensor[[ 1  ]] < 1 ||
-          s.tensor[[ length( s.tensor ) ]] > w.dims[[2]] ){
+      if( s.res[[ 1  ]] < 1 ||
+          s.res[[ length( s.res ) ]] > w.dims[[2]] ){
         stop( "Invalid key" )
       }
 
-      w.tensor <- as.data.frame( table( s.tensor, dnn = "Var" ),
-                                 stringsAsFactors = FALSE )
+      w.res <- as.data.frame( table( s.res, dnn = "Var" ),
+                              stringsAsFactors = FALSE )
 
-      w.tensor <- merge( w.tensor,
-                         data.frame(
-                           Var = as.character(
-                             1:w.dims[[2]]
-                           )
-                         ),
-                         all.y = TRUE
+      w.res <- merge( w.res,
+                      data.frame(
+                        Var = as.character(
+                          1:w.dims[[2]]
+                        )
+                      ),
+                      all.y = TRUE
       )$Freq
 
-      w.tensor[ is.na(w.tensor) ] <- 0L
-      w.range  <- w.span.off:( w.span.off + w.dims[[2]] - 1L )
-      private$.eps.out$w$obj.unsafe[ w.range ] <- w.tensor
+      w.res[ is.na( w.res ) ] <- 0L
+
+      w.range  <- NULL
+
+      if( w.span.off != 1L || obj.dims( w.tensor )[[2]] != w.dims[[2]] ){
+        w.range <- w.span.off:( w.span.off + w.dims[[2]] - 1L )
+      }
+
+      if( is.null( w.range ) ){
+        private$.eps.out$w$obj.unsafe <- w.res
+      }else{
+        private$.eps.out$w$obj.unsafe[ w.range ] <- w.res
+      }
 
       invisible( TRUE )
     }

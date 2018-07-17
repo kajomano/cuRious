@@ -312,44 +312,73 @@ void cuR_thrust_table_cu( int* x_ptr, int* p_ptr, int* w_ptr, int* s_ptr,
   thrust::device_ptr<int> t_tmp_w_ptr( tmp_w_ptr );
 
   if( stream_ptr ){
-    // // Initialize perm
-    // thrust::sequence(
-    //   thrust::cuda::par( *allocator ).on( *stream_ptr ),
-    //   t_p_ptr,
-    //   ( t_p_ptr + x_dims[1] ),
-    //   1 + x_span_off
-    // );
-    //
-    // // Copy x to s
-    // thrust::copy(
-    //   thrust::cuda::par( *allocator ).on( *stream_ptr ),
-    //   t_x_ptr,
-    //   ( t_x_ptr + x_dims[1] ),
-    //   t_s_ptr
-    // );
-    //
-    // // Stable sort s together with perm
-    // thrust::stable_sort_by_key(
-    //   thrust::cuda::par( *allocator ).on( *stream_ptr ),
-    //   t_s_ptr,
-    //   ( t_s_ptr + x_dims[1] ),
-    //   t_p_ptr
-    // );
-    //
-    // // TODO ====
-    // // Check if there is enough space in weights
-    //
-    // // Count occurences
-    // thrust::reduce_by_key(
-    //   thrust::cuda::par( *allocator ).on( *stream_ptr ),
-    //   t_s_ptr,
-    //   ( t_s_ptr + x_dims[1] ),
-    //   thrust::make_constant_iterator( (int) 1 ),
-    //   thrust::make_discard_iterator(),
-    //   t_w_ptr,
-    //   thrust::equal_to<int>(),
-    //   thrust::plus<int>()
-    // );
+    // Initialize perm
+    thrust::sequence(
+      thrust::cuda::par( *allocator ).on( *stream_ptr ),
+      t_p_ptr,
+      ( t_p_ptr + x_dims[1] ),
+      1 + x_span_off
+    );
+
+    // Copy x to s
+    thrust::copy(
+      thrust::cuda::par( *allocator ).on( *stream_ptr ),
+      t_x_ptr,
+      ( t_x_ptr + x_dims[1] ),
+      t_s_ptr
+    );
+
+    // Stable sort s together with perm
+    thrust::stable_sort_by_key(
+      thrust::cuda::par( *allocator ).on( *stream_ptr ),
+      t_s_ptr,
+      ( t_s_ptr + x_dims[1] ),
+      t_p_ptr
+    );
+
+    // TODO ====
+    // Check if there is enough space in weights
+
+    // Fill temp with 0-s
+    thrust::fill_n(
+      thrust::cuda::par( *allocator ).on( *stream_ptr ),
+      t_tmp_k_ptr,
+      w_dims[1],
+            0
+    );
+
+    // Count occurences
+    thrust::reduce_by_key(
+      thrust::cuda::par( *allocator ).on( *stream_ptr ),
+      t_s_ptr,
+      ( t_s_ptr + x_dims[1] ),
+      thrust::make_constant_iterator( (int) 1 ),
+      // thrust::make_discard_iterator(),
+      t_tmp_k_ptr,
+      t_tmp_w_ptr,
+      thrust::equal_to<int>(),
+      thrust::plus<int>()
+    );
+
+    // Count unique keys with count_if != 0
+    int k_count = thrust::count_if(
+      thrust::cuda::par( *allocator ).on( *stream_ptr ),
+      t_tmp_k_ptr,
+      ( t_tmp_k_ptr + w_dims[1] ),
+      is_non_zero()
+    );
+
+    // Permutate-copy to correct places
+    thrust::scatter(
+      thrust::cuda::par( *allocator ).on( *stream_ptr ),
+      t_tmp_w_ptr,
+      t_tmp_w_ptr + k_count,
+      t_tmp_k_ptr,
+      t_w_ptr - 1 // Risky
+    );
+
+    allocator -> deallocate( (char*)tmp_k_ptr, 0 );
+    allocator -> deallocate( (char*)tmp_w_ptr, 0 );
   }else{
     // Initialize perm
     thrust::sequence(

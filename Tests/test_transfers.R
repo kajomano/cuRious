@@ -1,8 +1,8 @@
 source( "./Tests/test_utils.R" )
 
-verbose <- 0
+verbose <- 1
 
-threads <- 4
+threads <- 6
 
 cols    <- 1000
 rows    <- 1000

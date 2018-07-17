@@ -5,7 +5,7 @@ verbose <- 1
 test.files <- dir( "./Tests", "^[0-9]", full.names = TRUE )
 test.files <- test.files[ test.files != "./Tests/000_all.R" ]
 
-lapply( test.files[4], function( test.file ){
+lapply( test.files, function( test.file ){
   print( test.file )
 
   # Test results

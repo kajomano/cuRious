@@ -176,6 +176,8 @@ pipe <- R6Class(
           private$.eps.out$dst$obj[, dst.perm ] <- obj.subset( private$.eps$src$obj, src.perm )
         }
       }
+
+      print( "this" )
     },
 
     .call.L03 = function( src.tensor,

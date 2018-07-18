@@ -57,7 +57,7 @@ library( cuRious )
 tens <- tensor$new( rnorm( 10 ), level = 3L )
 
 # The tensor ptr is an actual pointer pointing to device memory:
-print( tens$ptr )
+print( tens$ptrs$tensor )
 
 # Direct assignement is not allowed on any level other than L0:
 try( tens$obj <- 1 )
@@ -78,6 +78,6 @@ print( tens$pull() )
 # operation. Destroying a tensor does not actually remove the reference object,
 # but makes any further interaction produce an error:
 tens$destroy()
-try( tens$ptr )
+try( tens$obj )
 
 clean()

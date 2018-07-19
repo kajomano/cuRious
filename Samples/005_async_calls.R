@@ -2,27 +2,27 @@ library( cuRious )
 library( microbenchmark )
 
 # Devices are capable of executing some functions asynchronously with regards to
-# the host thread, given the right circumstances. One such instance is data
-# transfers involving L2-L3 tensors.
+# the host thread, given the right circumstances. cuRious supports asynchronous
+# execution on all fusion calls, including all pipe calls.
 
-# L2 tensors are stored in pinned host memory, which is directly accessible by
-# the devices. This means that a device can oversee the task of data transfer
-# without the need for supervision from the host thread. When invoking an a-
-# synchronous transfer, the control is immediately returned to the host thread.
+# In order to invoke a pipe transfer in an asynchronous manner, an active stream
+# needs be supplied to the pipe context. Streams are action queues, which store,
+# order and execute the operations that were issued to a device.
 
-# In order to invoke a data transfer in an asynchronous manner, a stream needs
-# be supplied. Streams are action queues, which store, order and execute the
-# operations that were issued to a device.
+# Let's create a stream. Streams are also created undeployed by default, if no
+# deployment target is set:
+stream <- stream$new()$deploy( 1 )
 
-# Let's create a stream:
-stream <- stream$new()
+# Pipe contexts
+pip.cont.sync  <- pipe.context$new()$deploy( 1 )
+pip.cont.async <- pipe.context$new( stream = stream )$deploy( 1 )
 
 # A synchronous and an asynchronous transfer:
-src <- tensor$new( rnorm( 10^6 ), 2L )
-dst <- tensor$new( src, 3L, copy = FALSE )
+src <- tensor$new( rnorm( 10^6 ) )
+dst <- tensor$new( src, copy = FALSE )
 
-pip.sync  <- pipe$new( src, dst )
-pip.async <- pipe$new( src, dst, stream = stream )
+pip.sync  <- pipe$new( src, dst, context = pip.cont.sync )
+pip.async <- pipe$new( src, dst, context = pip.cont.async )
 
 print( microbenchmark( pip.sync$run(),  times = 100 ) )
 print( microbenchmark( pip.async$run(), times = 100 ) )

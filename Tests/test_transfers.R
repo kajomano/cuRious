@@ -2,14 +2,14 @@ source( "./Tests/test_utils.R" )
 
 verbose <- 1
 
-threads <- 6
+workers <- 4
 
 cols    <- 1000
 rows    <- 1000
 
-stream        <- cuRious::stream$new( deployed = 3 )
-context.sync  <- cuRious::pipe.context$new( threads, deployed = 3 )
-context.async <- cuRious::pipe.context$new( threads, stream, deployed = 3 )
+stream        <- cuRious::stream$new()$deploy( 3 )
+context.sync  <- cuRious::pipe.context$new( workers = workers )$deploy( 3 )
+context.async <- cuRious::pipe.context$new( stream, workers = workers )$deploy( 3 )
 
 for( type in types ){
   mat.cont <- switch(

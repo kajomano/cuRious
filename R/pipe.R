@@ -9,9 +9,9 @@ pipe.context <- R6Class(
   "cuR.pipe.context",
   inherit = fusion.context,
   public = list(
-    initialize = function( workers = 4L, stream = NULL, deployed = NULL, device = NULL ){
+    initialize = function( stream = NULL, device = NULL, workers = 4L ){
       self$workers <- workers
-      super$initialize( stream, deployed, device )
+      super$initialize( stream, device )
     }
   ),
 
@@ -176,8 +176,6 @@ pipe <- R6Class(
           private$.eps.out$dst$obj[, dst.perm ] <- obj.subset( private$.eps$src$obj, src.perm )
         }
       }
-
-      print( "this" )
     },
 
     .call.L03 = function( src.tensor,

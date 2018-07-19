@@ -20,14 +20,13 @@ A <- tensor$new( mat.A, 3L )
 B <- tensor$new( mat.B, 3L )
 C <- tensor$new( mat.C, 3L )
 
-# Cublas operations require a cublas handle to be supplied. These handles are
-# context objects, and are implemented the same way as cuda streams.
-handle <- cublas.handle$new()
+# Cublas operations are fusions, thus requiring a fusion context to function:
+context <- cublas.context$new()$deploy( 3 )
 
 # Let's create a GEMM operation. Following the same logic as pipes, cublas lib-
 # rary calls are wrapped in persistent cublas objects to minimize call overhead
 # on frequently reused operations:
-gemm <- cublas.sgemm$new( A, B, C, handle = handle )
+gemm <- cublas.sgemm$new( A, B, C, context = context )
 
 # Let's mutliply the two matrices, the result ending up in C. We can check if we
 # got a correct result: they should be equal, as we used whole numbers.
@@ -50,7 +49,7 @@ B.3 <- tensor$new( A.3 )
 C.3 <- tensor$new( A.3 )
 
 gemm.0 <- cublas.sgemm$new( A.0, B.0, C.0 )
-gemm.3 <- cublas.sgemm$new( A.3, B.3, C.3, handle = handle )
+gemm.3 <- cublas.sgemm$new( A.3, B.3, C.3, context = context )
 
 print( microbenchmark( gemm.0$run(), times = 10 ) )
 print( microbenchmark( gemm.3$run(), times = 10 ) )

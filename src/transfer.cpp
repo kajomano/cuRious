@@ -90,31 +90,15 @@ void cuR_transfer_host_host( s* src_ptr,
     // No subsetting
     for( ; task + span_task < dims_1; task += span_task ){
       worker_q -> dispatch( [=]{
-        int dst_pos;
-        int src_pos;
-
-        for( int i = task; i < task + span_task; i++ ){
-          dst_pos = i * dims_0;
-          src_pos = i * dims_0;
-
-          for( int j = 0; j < dims_0; j++ ){
-            dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-          }
+        for( int i = task * dims_0; i < ( task + span_task ) * dims_0; i++ ){
+          dst_ptr[i] = (d)src_ptr[i];
         }
       });
     }
 
     worker_q -> dispatch( [=]{
-      int dst_pos;
-      int src_pos;
-
-      for( int i = task; i < dims_1; i++ ){
-        dst_pos = i * dims_0;
-        src_pos = i * dims_0;
-
-        for( int j = 0; j < dims_0; j++ ){
-          dst_ptr[dst_pos + j] = (d)src_ptr[src_pos + j];
-        }
+      for( int i = task * dims_0; i < dims_1 * dims_0; i++ ){
+        dst_ptr[i] = (d)src_ptr[i];
       }
     });
 

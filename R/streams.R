@@ -7,19 +7,13 @@ stream <- R6Class(
   "cuR.stream",
   inherit = .alert.send,
   public = list(
-    initialize = function( deployed = NULL, device = cuda.device.default.get() ){
+    initialize = function( device = cuda.device.default.get() ){
       self$device <- device
-
-      if( is.null( deployed ) ){
-        return()
-      }
-
-      self$deploy( deployed )
     },
 
     deploy = function( level ){
       if( is.null( level ) ){
-        stop( "Invalid deployment target level" )
+        stop( "No deployment target level" )
       }
 
       if( !( level %in% c( 1L, 3L ) ) ){
@@ -36,7 +30,7 @@ stream <- R6Class(
         ) )
       }
 
-      invisible( TRUE )
+      invisible( self )
     },
 
     destroy = function(){
@@ -44,7 +38,7 @@ stream <- R6Class(
         .Call( "cuR_stream_queue_destroy", private$.ptrs$queue )
       } ) )
 
-      invisible( TRUE )
+      invisible( self )
     },
 
     sync = function(){
@@ -54,7 +48,7 @@ stream <- R6Class(
 
       .Call( "cuR_stream_queue_sync", private$.ptrs$queue )
 
-      invisible( TRUE )
+      invisible( self )
     }
   )
 )

@@ -206,7 +206,7 @@ fusion.context <- R6Class(
   "cuR.fusion.context",
   inherit = .alert.send.recv,
   public = list(
-    initialize = function( stream = NULL, deployed = NULL, device = NULL ){
+    initialize = function( stream = NULL, device = NULL ){
       if( !is.null( stream ) ){
         check.stream( stream )
         private$.attach.stream( stream )
@@ -221,29 +221,9 @@ fusion.context <- R6Class(
       }else{
         self$device <- device
       }
-
-      if( is.null( deployed ) ){
-        if( is.null( stream ) ){
-          return()
-        }
-
-        if( stream$is.destroyed ){
-          return()
-        }
-      }
-
-      self$deploy( deployed )
     },
 
-    deploy = function( level = NULL ){
-      if( is.null( level ) ){
-        if( !is.null( private$.stream ) ){
-          if( !private$.stream$is.destroyed ){
-            level <- private$.stream$level
-          }
-        }
-      }
-
+    deploy = function( level ){
       if( is.null( level ) ){
         stop( "No deployment target level" )
       }
@@ -274,12 +254,12 @@ fusion.context <- R6Class(
         private$.deploy.L3()
       }
 
-      invisible( TRUE )
+      invisible( self )
     },
 
     destroy = function(){
       private$.destroy()
-      invisible( TRUE )
+      invisible( self )
     },
 
     alert.context = function( name ){

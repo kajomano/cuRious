@@ -37,7 +37,7 @@ lapply( test.files, function( test.file ){
     bench.sync  <- microbenchmark( L3$run(), times = 100 )
 
     stream$deploy( 3 )
-    context$deploy()
+    context$deploy( 3 )
 
     bench.async <- microbenchmark( L3$run(), times = 100 )
 

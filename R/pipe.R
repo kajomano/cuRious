@@ -339,7 +339,7 @@ pipe <- R6Class(
             }
           }
         }else{
-          warning( "Stream supported but inactive" )
+          # warning( "Stream supported but inactive" )
         }
       }
 

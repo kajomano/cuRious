@@ -7,7 +7,7 @@ library( microbenchmark )
 # between the host and the device.
 
 # Base matrix size
-n <- 10
+n <- 1000
 
 # Let's create a larger matrix that will serve as our input data. This matrix
 # will be processed in 10 equal sized chunks
@@ -89,12 +89,20 @@ proc <- function(){
 
     if( i %in% 2:11 ){
       gemms[[i %% 2 + 1]]$run()
+      gemms[[i %% 2 + 1]]$run()
+      gemms[[i %% 2 + 1]]$run()
+      gemms[[i %% 2 + 1]]$run()
+      gemms[[i %% 2 + 1]]$run()
     }
 
     if( i %in% 3:12 ){
       pipes.out.L3.L2[[i %% 2 + 1]]$run()
       pipes.out.L2.L0[[i-2]]$run()
     }
+
+    stream.in$sync()
+    stream.out$sync()
+    stream.proc$sync()
   }
 }
 
@@ -116,15 +124,35 @@ pipe.cont.out$deploy( 3L )
 
 cublas.cont$deploy( 3L )
 
-# TODO ====
-# Something segfaults here here
-proc()
-
-bench.cuda.sync    <- microbenchmark( proc(), times = 1000 )
+bench.cuda.sync    <- microbenchmark( proc(), times = 10 )
 tens.out.cuda.sync <- tensor$new( tens.out )
 
 # TODO ====
-# Why does deploying/destroying a stream destroy the associated contexts?
+# * Why does deploying/destroying a stream destroy the associated contexts?
+# * Deploy could be just a level assignement as in tensors
+
+stream.in$deploy( 3L )
+stream.out$deploy( 3L )
+stream.proc$deploy( 3L )
+
+pipe.cont.in$deploy( 3L )
+pipe.cont.out$deploy( 3L )
+
+cublas.cont$deploy( 3L )
+
+bench.cuda.async    <- microbenchmark( proc(), times = 10 )
+tens.out.cuda.async <- tensor$new( tens.out )
+
+# TODO ====
+# * Sporadically, asyncs still produce unequals
+# * Should include async tests into test_operations.R and _transfers.R
+
+print( bench.R )
+print( bench.cuda.sync )
+print( bench.cuda.async )
+
+print( identical( tens.out.R$pull(), tens.out.cuda.sync$pull() ) )
+print( identical( tens.out.R$pull(), tens.out.cuda.async$pull() ) )
 
 clean()
 

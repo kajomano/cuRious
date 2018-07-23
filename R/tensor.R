@@ -267,7 +267,6 @@ tensor <- R6Class(
       transfer( self, tmp.tensor )
 
       tmp <- tmp.tensor$ptrs$tensor
-      tmp.tensor$destroy()
       tmp
     }
   ),

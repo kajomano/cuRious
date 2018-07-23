@@ -43,7 +43,7 @@ stream <- R6Class(
 
     sync = function(){
       if( is.null( private$.ptrs ) ){
-        stop( "Stream is destroyed" )
+        return( invisible( self ) )
       }
 
       .Call( "cuR_stream_queue_sync", private$.ptrs$queue )

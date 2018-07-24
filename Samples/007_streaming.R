@@ -11,10 +11,12 @@ n <- 1000
 
 # Let's create a larger matrix that will serve as our input data. This matrix
 # will be processed in 10 equal sized chunks
-mat.in    <- matrix( round(rnorm( 10*n*n )), nrow = n, ncol = 10*n )
+# mat.in    <- matrix( round( rep( 10:1, times = n*n ) ), nrow = n, ncol = 10*n )
+mat.in    <- matrix( round( rnorm( 10*n*n ) ), nrow = n, ncol = 10*n )
 
 # This matrix will serve as our processing matrix for the gemm operation
-mat.proc  <- t( diag( 1, n, n ) )
+# mat.proc  <- t( diag( 1, n, n ) )
+mat.proc  <- diag( 1, n, n )
 
 # Tensors
 tens.in        <- tensor$new( mat.in )
@@ -81,7 +83,7 @@ gemms <- list(
 )
 
 proc <- function(){
-  for( i in 1:12 ){
+  for( i in 1:11 ){
     if( i %in% 1:10 ){
       pipes.in.L0.L2[[i]]$run()
       pipes.in.L2.L3[[i %% 2 + 1]]$run()
@@ -89,10 +91,10 @@ proc <- function(){
 
     if( i %in% 2:11 ){
       gemms[[i %% 2 + 1]]$run()
-      gemms[[i %% 2 + 1]]$run()
-      gemms[[i %% 2 + 1]]$run()
-      gemms[[i %% 2 + 1]]$run()
-      gemms[[i %% 2 + 1]]$run()
+      # gemms[[i %% 2 + 1]]$run()
+      # gemms[[i %% 2 + 1]]$run()
+      # gemms[[i %% 2 + 1]]$run()
+      # gemms[[i %% 2 + 1]]$run()
     }
 
     if( i %in% 3:12 ){
@@ -106,7 +108,8 @@ proc <- function(){
   }
 }
 
-bench.R    <- microbenchmark( proc(), times = 10 )
+proc()
+# bench.R    <- microbenchmark( proc(), times = 10 )
 tens.out.R <- tensor$new( tens.out )
 
 tens.proc$level      <- 3L
@@ -124,7 +127,8 @@ pipe.cont.out$deploy( 3L )
 
 cublas.cont$deploy( 3L )
 
-bench.cuda.sync    <- microbenchmark( proc(), times = 10 )
+proc()
+# bench.cuda.sync    <- microbenchmark( proc(), times = 10 )
 tens.out.cuda.sync <- tensor$new( tens.out )
 
 # TODO ====
@@ -140,21 +144,26 @@ pipe.cont.out$deploy( 3L )
 
 cublas.cont$deploy( 3L )
 
-bench.cuda.async    <- microbenchmark( proc(), times = 10 )
+proc()
+# bench.cuda.async    <- microbenchmark( proc(), times = 10 )
 tens.out.cuda.async <- tensor$new( tens.out )
 
 # TODO ====
 # * Sporadically, asyncs still produce unequals
 # * Should include async tests into test_operations.R and _transfers.R
 
-print( bench.R )
-print( bench.cuda.sync )
-print( bench.cuda.async )
+# print( bench.R )
+# print( bench.cuda.sync )
+# print( bench.cuda.async )
 
 print( identical( tens.out.R$pull(), tens.out.cuda.sync$pull() ) )
 print( identical( tens.out.R$pull(), tens.out.cuda.async$pull() ) )
 
-clean()
+which( tens.out.R$pull() != tens.out.cuda.async$pull(), arr.ind = T )
+tens.out.R$pull()[ 1, 8251 ]
+tens.out.cuda.sync$pull()[ 1, 8251 ]
+tens.out.cuda.async$pull()[ 1, 8251 ]
+# clean()
 
 
 

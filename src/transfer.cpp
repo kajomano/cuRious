@@ -8,6 +8,8 @@
 #include <typeinfo>
 #include <cstring>
 
+#include <cstdio>
+
 // Very simple logic for now
 int cuR_transfer_task_span( int dims_0, int dims_1, sd_queue* worker_q_ptr ){
   const int thread_split = 2;
@@ -31,7 +33,8 @@ void cuR_transfer_host_host( s* src_ptr,
                              int src_span_off,
                              int dst_span_off,
                              sd_queue* worker_q_ptr = NULL,
-                             void* stream_ptr       = NULL ){
+                             void* stream_ptr       = NULL,
+                             bool debug = false ){
 
   int src_dims_1;
   if( src_dims ){
@@ -90,6 +93,10 @@ void cuR_transfer_host_host( s* src_ptr,
     // No subsetting
     for( ; task + span_task < dims_1; task += span_task ){
       worker_q -> dispatch( [=]{
+        if( debug ){
+          printf( "*%d %d\n", task, span_task );
+        }
+
         for( int i = task * dims_0; i < ( task + span_task ) * dims_0; i++ ){
           dst_ptr[i] = (d)src_ptr[i];
         }
@@ -97,6 +104,10 @@ void cuR_transfer_host_host( s* src_ptr,
     }
 
     worker_q -> dispatch( [=]{
+      if( debug ){
+        printf( "%d %d\n", task, span_task );
+      }
+
       for( int i = task * dims_0; i < dims_1 * dims_0; i++ ){
         dst_ptr[i] = (d)src_ptr[i];
       }
@@ -1470,7 +1481,8 @@ SEXP cuR_transfer( SEXP src_ptr_r,
                                                    src_span_off,
                                                    dst_span_off,
                                                    worker_q_ptr,
-                                                   stream_ptr );
+                                                   stream_ptr,
+                                                   true );
           });
         }else{
           cuR_transfer_host_host<float, double>( (float*) R_ExternalPtrAddr( src_ptr_r ),

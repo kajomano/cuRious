@@ -11,12 +11,10 @@ n <- 1000
 
 # Let's create a larger matrix that will serve as our input data. This matrix
 # will be processed in 10 equal sized chunks
-# mat.in    <- matrix( round( rep( 10:1, times = n*n ) ), nrow = n, ncol = 10*n )
 mat.in    <- matrix( round( rnorm( 10*n*n ) ), nrow = n, ncol = 10*n )
 
 # This matrix will serve as our processing matrix for the gemm operation
-# mat.proc  <- t( diag( 1, n, n ) )
-mat.proc  <- diag( 1, n, n )
+mat.proc  <- t( diag( 1, n, n ) )
 
 # Tensors
 tens.in        <- tensor$new( mat.in )
@@ -59,7 +57,7 @@ pipes.out.L3.L2 <- list(
 
 pipes.out.L2.L0 <- lapply( 1:10, function(i){
   span <- c( (1+(i-1)*n), (i*n) )
-  pipe$new( tens.out.stage, tens.out, dst.span = span, context = pipe.cont.in )
+  pipe$new( tens.out.stage, tens.out, dst.span = span, context = pipe.cont.out )
 })
 
 # cuBLAS contexts
@@ -108,8 +106,7 @@ proc <- function(){
   }
 }
 
-proc()
-# bench.R    <- microbenchmark( proc(), times = 10 )
+bench.R    <- microbenchmark( proc(), times = 10 )
 tens.out.R <- tensor$new( tens.out )
 
 tens.proc$level      <- 3L
@@ -127,8 +124,7 @@ pipe.cont.out$deploy( 3L )
 
 cublas.cont$deploy( 3L )
 
-proc()
-# bench.cuda.sync    <- microbenchmark( proc(), times = 10 )
+bench.cuda.sync    <- microbenchmark( proc(), times = 10 )
 tens.out.cuda.sync <- tensor$new( tens.out )
 
 # TODO ====
@@ -144,26 +140,21 @@ pipe.cont.out$deploy( 3L )
 
 cublas.cont$deploy( 3L )
 
-proc()
-# bench.cuda.async    <- microbenchmark( proc(), times = 10 )
+bench.cuda.async    <- microbenchmark( proc(), times = 10 )
 tens.out.cuda.async <- tensor$new( tens.out )
 
 # TODO ====
 # * Sporadically, asyncs still produce unequals
 # * Should include async tests into test_operations.R and _transfers.R
 
-# print( bench.R )
-# print( bench.cuda.sync )
-# print( bench.cuda.async )
+print( bench.R )
+print( bench.cuda.sync )
+print( bench.cuda.async )
 
 print( identical( tens.out.R$pull(), tens.out.cuda.sync$pull() ) )
 print( identical( tens.out.R$pull(), tens.out.cuda.async$pull() ) )
 
-which( tens.out.R$pull() != tens.out.cuda.async$pull(), arr.ind = T )
-tens.out.R$pull()[ 1, 8251 ]
-tens.out.cuda.sync$pull()[ 1, 8251 ]
-tens.out.cuda.async$pull()[ 1, 8251 ]
-# clean()
+clean()
 
 
 

@@ -1,3 +1,110 @@
+# fusion.context ====
+fusion.context <- R6Class(
+  "cuR.fusion.context",
+  inherit = .alert.send.recv,
+  public = list(
+    initialize = function( stream = NULL, level = NULL, device = NULL ){
+      if( !is.null( stream ) ){
+        check.stream( stream )
+        private$.attach.stream( stream )
+      }
+
+      # TODO ====
+      # The argument order changed, change it in inherited classes too
+
+      if( is.null( device ) ){
+        if( !is.null( stream ) ){
+          self$device <- stream$device
+        }else{
+          self$device <- cuda.device.default.get()
+        }
+      }else{
+        self$device <- device
+      }
+
+      if( is.null( level ) ){
+        if( !is.null( stream ) ){
+          self$level <- stream$level
+        }else{
+          self$level <- 0L
+        }
+      }else{
+        self$level <- level
+      }
+    },
+
+    # deploy = function( level ){
+    #   if( is.null( level ) ){
+    #     stop( "No deployment target level" )
+    #   }
+    #
+    #   if( !( level %in% c( 1L, 3L ) ) ){
+    #     stop( "Invalid deployment target level" )
+    #   }
+    #
+    #   if( !self$is.destroyed ){
+    #     if( private$.level != level ){
+    #       stop( "Context is already deployed to a different level" )
+    #     }else{
+    #       return()
+    #     }
+    #   }
+    #
+    #   if( length( private$.context.changed ) && level == 3L ){
+    #     if( private$.device != private$.stream$device ){
+    #       stop( "Not matching device with stream device" )
+    #     }
+    #
+    #     private$.context.changed <- NULL
+    #   }
+    #
+    #   if( level == 1L ){
+    #     private$.deploy.L1()
+    #   }else if( level == 3L ){
+    #     private$.deploy.L3()
+    #   }
+    #
+    #   invisible( self )
+    # },
+
+    destroy = function(){
+      private$.destroy()
+      invisible( self )
+    },
+
+    alert.context = function( name ){
+      self$destroy()
+      super$alert.context( name )
+    }
+  ),
+
+  private = list(
+    .stream = NULL,
+
+    .attach.stream = function( stream ){
+      if( !is.null( private$.stream ) ){
+        private$.unsubscribe( private$.stream, "stream" )
+      }
+
+      if( !is.null( stream ) ){
+        private$.subscribe( stream, "stream" )
+      }
+
+      private$.stream <- stream
+    }
+  ),
+
+  active = list(
+    stream = function( val ){
+      if( missing( val ) ){
+        return( private$.stream )
+      }else{
+        stop( "Stream is not directly settable" )
+      }
+    }
+  )
+)
+
 # fusion ====
 fusion <- R6Class(
   "cuR.fusion",
@@ -196,100 +303,6 @@ fusion <- R6Class(
         return( private$.context )
       }else{
         stop( "Context is not directly settable" )
-      }
-    }
-  )
-)
-
-# fusion.context ====
-fusion.context <- R6Class(
-  "cuR.fusion.context",
-  inherit = .alert.send.recv,
-  public = list(
-    initialize = function( stream = NULL, device = NULL ){
-      if( !is.null( stream ) ){
-        check.stream( stream )
-        private$.attach.stream( stream )
-      }
-
-      if( is.null( device ) ){
-        if( !is.null( stream ) ){
-          self$device <- stream$device
-        }else{
-          self$device <- cuda.device.default.get()
-        }
-      }else{
-        self$device <- device
-      }
-    },
-
-    deploy = function( level ){
-      if( is.null( level ) ){
-        stop( "No deployment target level" )
-      }
-
-      if( !( level %in% c( 1L, 3L ) ) ){
-        stop( "Invalid deployment target level" )
-      }
-
-      if( !self$is.destroyed ){
-        if( private$.level != level ){
-          stop( "Context is already deployed to a different level" )
-        }else{
-          return()
-        }
-      }
-
-      if( length( private$.context.changed ) && level == 3L ){
-        if( private$.device != private$.stream$device ){
-          stop( "Not matching device with stream device" )
-        }
-
-        private$.context.changed <- NULL
-      }
-
-      if( level == 1L ){
-        private$.deploy.L1()
-      }else if( level == 3L ){
-        private$.deploy.L3()
-      }
-
-      invisible( self )
-    },
-
-    destroy = function(){
-      private$.destroy()
-      invisible( self )
-    },
-
-    alert.context = function( name ){
-      self$destroy()
-      super$alert.context( name )
-    }
-  ),
-
-  private = list(
-    .stream = NULL,
-
-    .attach.stream = function( stream ){
-      if( !is.null( private$.stream ) ){
-        private$.unsubscribe( private$.stream, "stream" )
-      }
-
-      if( !is.null( stream ) ){
-        private$.subscribe( stream, "stream" )
-      }
-
-      private$.stream <- stream
-    }
-  ),
-
-  active = list(
-    stream = function( val ){
-      if( missing( val ) ){
-        return( private$.stream )
-      }else{
-        stop( "Stream is not directly settable" )
       }
     }
   )

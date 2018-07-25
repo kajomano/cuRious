@@ -9,9 +9,9 @@ pipe.context <- R6Class(
   "cuR.pipe.context",
   inherit = fusion.context,
   public = list(
-    initialize = function( stream = NULL, device = NULL, workers = 4L ){
+    initialize = function( stream = NULL, level = NULL, device = NULL, workers = 4L ){
       self$workers <- workers
-      super$initialize( stream, device )
+      super$initialize( stream, level, device )
     }
   ),
 

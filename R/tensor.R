@@ -314,16 +314,6 @@ tensor <- R6Class(
       }
     },
 
-    ptrs = function( val ){
-      self$check.destroyed()
-
-      if( missing( val ) ){
-        return( private$.ptrs )
-      }else{
-        stop( "Container contents are not directly settable" )
-      }
-    },
-
     dims = function( val ){
       self$check.destroyed()
       if( missing( val ) ) return( private$.dims )

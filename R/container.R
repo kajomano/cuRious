@@ -3,12 +3,20 @@
 .container <- R6Class(
   "cuR.container",
   public = list(
+    destroy = function(){
+      private$.destroy()
+      invisible( TRUE )
+    },
+
     check.destroyed = function(){
       if( is.null( private$.ptrs ) ){
         stop( "Container contents are destroyed" )
       }
-
       invisible( TRUE )
+    },
+
+    is.destroyed = function(){
+      return( is.null( private$.ptrs ) )
     }
   ),
 
@@ -17,48 +25,77 @@
     .device = NULL,
     .level  = NULL,
 
-    # Unevaluated expressions
-    .deploy.L1 = function( expr ){
-      if( !is.null( private$.ptrs ) ){
-        if( private$.level != 1L ){
-          stop( "Container is deployed to a different level" )
-        }else{
-          return()
-        }
+    .deploy= function( level = private$.level ){
+      if( level == 3L ){
+        .cuda.device.set( private$.device )
       }
 
-      private$.ptrs <- eval( expr )
-      private$.level <- 1L
+      switch(
+        level + 1L,
+        private$.deploy.L0(),
+        private$.deploy.L1(),
+        private$.deploy.L2(),
+        private$.deploy.L3()
+      )
     },
 
-    .deploy.L3 = function( expr ){
-      if( !is.null( private$.ptrs ) ){
-        if( private$.level != 3L ){
-          stop( "Container is deployed to a different level" )
-        }else{
-          return()
-        }
-      }
-
-      .cuda.device.set( private$.device )
-      private$.ptrs <- eval( expr )
-      private$.level <- 3L
+    .deploy.L0 = function(){
+      stop( "Deployment not implemented for L0" )
     },
 
-    .destroy = function( expr ){
+    .deploy.L1 = function(){
+      stop( "Deployment not implemented for L1" )
+    },
+
+    .deploy.L2 = function(){
+      stop( "Deployment not implemented for L2" )
+    },
+
+    .deploy.L3 = function(){
+      stop( "Deployment not implemented for L3" )
+    },
+
+    .destroy = function(){
       if( is.null( private$.ptrs ) ){
         return()
       }
 
-      .cuda.device.set( private$.device )
-      eval( expr )
+      if( private$.level == 3L ){
+        .cuda.device.set( private$.device )
+      }
+
+      switch(
+        private$.level + 1L,
+        private$.destroy.L0(),
+        private$.destroy.L1(),
+        private$.destroy.L2(),
+        private$.destroy.L3()
+      )
+
       private$.ptrs  <- NULL
-      private$.level <- NULL
+    },
+
+    .destroy.L0 = function(){
+      stop( "Destruction not implemented for L0" )
+    },
+
+    .destroy.L1 = function(){
+      stop( "Destruction not implemented for L1" )
+    },
+
+    .destroy.L2 = function(){
+      stop( "Destruction not implemented for L2" )
+    },
+
+    .destroy.L3 = function(){
+      stop( "Destruction not implemented for L3" )
     }
   ),
 
   active = list(
     ptrs = function( val ){
+      self$check.destroyed()
+
       if( missing( val ) ){
         return( private$.ptrs )
       }else{
@@ -66,30 +103,54 @@
       }
     },
 
-    device = function( device ){
-      if( missing( device ) ){
-        return( private$.device )
-      }else{
-        if( !is.null( private$.ptrs ) ){
-          stop( "Cannot change device: deployed container" )
-        }
-
-        device <- check.device( device )
-        private$.device <- device
-      }
-    },
-
     level = function( level ){
+      self$check.destroyed()
+
       if( missing( level ) ){
         return( private$.level )
       }else{
-        stop( "Container level is not directly settable" )
+        level <- check.level( level )
+
+        if( private$.level == level ){
+          return()
+        }
+
+        # Create the new content while the old still exists
+        .ptrs <- private$.deploy( level = level )
+
+        # Destroy old content
+        private$.destroy()
+
+        # Update
+        private$.ptrs  <- .ptrs
+        private$.level <- level
       }
     },
 
-    is.destroyed = function( val ){
-      if( missing( val ) ){
-        return( is.null( private$.ptrs ) )
+    device = function( device ){
+      self$check.destroyed()
+
+      if( missing( device) ){
+        return( private$.device )
+      }else{
+        device <- check.device( device )
+
+        if( private$.device == device ){
+          return()
+        }
+
+        private$.device <- device
+
+        if( private$.level == 3L ){
+          # Create the new content while the old still exists
+          .ptrs <- private$.deploy()
+
+          # Destroy old content
+          private$.destroy()
+
+          # Update
+          private$.ptrs <- .ptrs
+        }
       }
     }
   )

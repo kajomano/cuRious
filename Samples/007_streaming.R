@@ -82,6 +82,11 @@ gemms <- list(
 
 proc <- function(){
   for( i in 1:11 ){
+    if( i %in% 3:12 ){
+      pipes.out.L3.L2[[i %% 2 + 1]]$run()
+      pipes.out.L2.L0[[i-2]]$run()
+    }
+
     if( i %in% 1:10 ){
       pipes.in.L0.L2[[i]]$run()
       pipes.in.L2.L3[[i %% 2 + 1]]$run()
@@ -89,15 +94,8 @@ proc <- function(){
 
     if( i %in% 2:11 ){
       gemms[[i %% 2 + 1]]$run()
-      # gemms[[i %% 2 + 1]]$run()
-      # gemms[[i %% 2 + 1]]$run()
-      # gemms[[i %% 2 + 1]]$run()
-      # gemms[[i %% 2 + 1]]$run()
-    }
-
-    if( i %in% 3:12 ){
-      pipes.out.L3.L2[[i %% 2 + 1]]$run()
-      pipes.out.L2.L0[[i-2]]$run()
+      gemms[[i %% 2 + 1]]$run()
+      gemms[[i %% 2 + 1]]$run()
     }
 
     stream.in$sync()
@@ -124,12 +122,13 @@ pipe.cont.out$deploy( 3L )
 
 cublas.cont$deploy( 3L )
 
-bench.cuda.sync    <- microbenchmark( proc(), times = 10 )
+bench.cuda.sync    <- microbenchmark( proc(), times = 100 )
 tens.out.cuda.sync <- tensor$new( tens.out )
 
 # TODO ====
 # * Why does deploying/destroying a stream destroy the associated contexts?
 # * Deploy could be just a level assignement as in tensors
+# * You should be able to reconfigure without destroying
 
 stream.in$deploy( 3L )
 stream.out$deploy( 3L )
@@ -140,12 +139,12 @@ pipe.cont.out$deploy( 3L )
 
 cublas.cont$deploy( 3L )
 
-bench.cuda.async    <- microbenchmark( proc(), times = 10 )
+bench.cuda.async    <- microbenchmark( proc(), times = 100 )
 tens.out.cuda.async <- tensor$new( tens.out )
 
 # TODO ====
-# * Sporadically, asyncs still produce unequals
 # * Should include async tests into test_operations.R and _transfers.R
+# * New test script for overlap such as this very script
 
 print( bench.R )
 print( bench.cuda.sync )

@@ -7,9 +7,9 @@ workers <- 4
 cols    <- 1000
 rows    <- 1000
 
-stream        <- cuRious::stream$new()$deploy( 3 )
-context.sync  <- cuRious::pipe.context$new( workers = workers )$deploy( 3 )
-context.async <- cuRious::pipe.context$new( stream, workers = workers )$deploy( 3 )
+stream        <- cuRious::stream$new( 3L )
+context.sync  <- cuRious::pipe.context$new( level = 3L, workers = workers )
+context.async <- cuRious::pipe.context$new( stream, 3L, workers = workers )
 
 for( type in types ){
   mat.cont <- switch(

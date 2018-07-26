@@ -13,13 +13,13 @@ mat.A  <- matrix( as.double( 1:(cols*rows) ), ncol = cols )
 vect.x <- as.double( 1:(cols) )
 vect.y <- as.double( 1:(cols) )
 
-tens.A.3 <- cuRious::tensor$new( mat.A  , 3 )
-tens.x.3 <- cuRious::tensor$new( vect.x , 3 )
-tens.y.3 <- cuRious::tensor$new( vect.y , 3 )
+tens.A.3 <- cuRious::tensor$new( mat.A,  3 )
+tens.x.3 <- cuRious::tensor$new( vect.x, 3 )
+tens.y.3 <- cuRious::tensor$new( vect.y, 3 )
 
-tens.A.0 <- cuRious::tensor$new( mat.A  , 0 )
-tens.x.0 <- cuRious::tensor$new( vect.x , 0 )
-tens.y.0 <- cuRious::tensor$new( vect.y , 0 )
+tens.A.0 <- cuRious::tensor$new( mat.A,  0 )
+tens.x.0 <- cuRious::tensor$new( vect.x, 0 )
+tens.y.0 <- cuRious::tensor$new( vect.y, 0 )
 
 # Mandatory variables
 stream   <- cuRious::stream$new()
@@ -35,4 +35,8 @@ test <- function( verbose = FALSE ){
   }
 
   test.thr.equality( tens.y.3$pull(), tens.y.0$pull() )
+}
+
+clear <- function(){
+  tens.y.3$push( vect.y )
 }

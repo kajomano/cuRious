@@ -10,24 +10,20 @@ cublas.context <- R6Class(
   "cuR.cublas.context",
   inherit = fusion.context,
   private = list(
-    .deploy.L1 = function(){
-      stop( "Not yet implemented" )
+    .deploy.L0 = function(){
+      list( handle = NULL )
     },
 
     .deploy.L3 = function(){
-      super$.deploy.L3(
-        expression(
-          list( handle = .Call( "cuR_cublas_handle_create" ) )
-        )
-      )
+      list( handle = .Call( "cuR_cublas_handle_create" ) )
     },
 
-    .destroy = function(){
-      super$.destroy(
-        expression(
-          .Call( "cuR_cublas_handle_destroy", private$.ptrs$handle )
-        )
-      )
+    .destroy.L0 = function(){
+      return()
+    },
+
+    .destroy.L3 = function(){
+      .Call( "cuR_cublas_handle_destroy", private$.ptrs$handle )
     }
   )
 )

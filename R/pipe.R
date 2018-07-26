@@ -10,7 +10,16 @@ pipe.context <- R6Class(
   inherit = fusion.context,
   public = list(
     initialize = function( stream = NULL, level = NULL, device = NULL, workers = 4L ){
-      self$workers <- workers
+      if( !is.numeric( workers ) || length( workers ) != 1 ){
+        stop( "Invalid workers parameter" )
+      }
+
+      if( as.logical( workers %% 1 ) || workers < 1 ){
+        stop( "Invalid workers parameter" )
+      }
+
+      private$.workers <- as.integer( workers )
+
       super$initialize( stream, level, device )
     }
   ),
@@ -18,50 +27,63 @@ pipe.context <- R6Class(
   private = list(
     .workers = NULL,
 
+    .deploy.L0 = function(){
+      list( workers = NULL )
+    },
+
     .deploy.L1 = function(){
-      super$.deploy.L1(
-        expression(
-          list( workers  = .Call( "cuR_stream_queue_create", private$.workers, FALSE ) )
-        )
-      )
+      list( workers = .Call( "cuR_stream_queue_create", private$.workers, FALSE ) )
     },
 
     .deploy.L3 = function(){
-      super$.deploy.L3(
-        expression(
-          list( workers  = .Call( "cuR_stream_queue_create", private$.workers, TRUE ) )
-        )
-      )
+      list( workers = .Call( "cuR_stream_queue_create", private$.workers, TRUE ) )
     },
 
-    .destroy = function(){
-      super$.destroy(
-        expression(
-          .Call( "cuR_stream_queue_destroy", private$.ptrs$workers )
-        )
-      )
+    .destroy.L0 = function(){
+      return()
+    },
+
+    .destroy.L1 = function(){
+      .Call( "cuR_stream_queue_destroy", private$.ptrs$workers )
+    },
+
+    .destroy.L3 = function(){
+      .Call( "cuR_stream_queue_destroy", private$.ptrs$workers )
     }
   ),
 
   active = list(
-    workers = function( val ){
-      if( missing( val ) ){
+    workers = function( workers ){
+      self$check.destroyed()
+
+      if( missing( workers ) ){
         private$.workers
       }else{
-        if( !is.null( private$.ptrs ) ){
-          stop( "Cannot change workers: deployed stream" )
-        }
-
-        if( !is.numeric( val ) || length( val ) != 1 ){
+        if( !is.numeric( workers ) || length( workers ) != 1 ){
           stop( "Invalid workers parameter" )
         }
 
-
-        if( as.logical( val %% 1 ) || val < 1 ){
+        if( as.logical( workers %% 1 ) || workers < 1 ){
           stop( "Invalid workers parameter" )
         }
 
-        private$.workers <- as.integer( val )
+        if( private$.workers == workers ){
+          return()
+        }
+
+        private$.workers <- as.integer( workers )
+
+        # Create the new content while the old still exists
+        .ptrs <- private$.deploy()
+
+        # Destroy old content
+        private$.destroy()
+
+        # Update
+        private$.ptrs <- .ptrs
+
+        # Alert
+        private$.alert.content()
       }
     }
   )
@@ -160,13 +182,8 @@ pipe <- R6Class(
         }
       }
 
-      # TODO ====
-      # Nicer out-of-bounds error
-
       # Src also must be accessed by $obj, because it needs to be signalled that
       # there is a duplicate holder of it's contents
-
-      # Hell
       if( is.null( dst.perm ) ){
         private$.eps.out$dst$obj <- obj.subset( private$.eps$src$obj, src.perm )
       }else{
@@ -312,7 +329,7 @@ pipe <- R6Class(
       # Context
       if( src.level == 3L || dst.level == 3L ){
         if( !is.null( context ) ){
-          if( !is.null( context$level ) ){
+          if( context$level ){
             if( context$level != 3L ){
               stop( "Pipe requires an L3 context" )
             }
@@ -320,15 +337,13 @@ pipe <- R6Class(
             if( context$device != device ){
               stop( "Pipe context is not on the correct device" )
             }
-          }else{
-            warning( "Context supported but inactive" )
           }
         }
       }
 
       # Stream
       if( !is.null( stream ) ){
-        if( !is.null( stream$level ) ){
+        if( stream$level ){
           if( src.level == 3L || dst.level == 3L ){
             if( stream$level != 3L ){
               stop( "Pipe requires an L3 stream" )
@@ -338,8 +353,6 @@ pipe <- R6Class(
               stop( "Stream is not on the correct device" )
             }
           }
-        }else{
-          # warning( "Stream supported but inactive" )
         }
       }
 

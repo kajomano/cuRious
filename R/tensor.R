@@ -15,6 +15,8 @@
 tensor <- R6Class(
   "cuR.tensor",
   inherit = .alert.send,
+
+  # public ====
   public = list(
     initialize = function( data   = NULL,
                            level  = NULL,
@@ -100,7 +102,7 @@ tensor <- R6Class(
 
       # Initial data
       if( is.null( data ) ){
-        private$.ptrs$tensor <- private$.create.ptr()
+        private$.ptrs$tensor <- private$.create.tensor()
         self$clear()
       }else{
         if( copy ){
@@ -109,7 +111,7 @@ tensor <- R6Class(
               private$.ptrs$tensor <- data$obj
               private$.refs <- TRUE
             }else{
-              private$.ptrs$tensor <- private$.create.ptr()
+              private$.ptrs$tensor <- private$.create.tensor()
               private$.push( data )
             }
           }else if( is.obj( data ) ){
@@ -117,12 +119,12 @@ tensor <- R6Class(
               private$.ptrs$tensor <- data
               private$.refs <- TRUE
             }else{
-              private$.ptrs$tensor <- private$.create.ptr()
+              private$.ptrs$tensor <- private$.create.tensor()
               private$.push( data )
             }
           }
         }else{
-          private$.ptrs$tensor <- private$.create.ptr()
+          private$.ptrs$tensor <- private$.create.tensor()
           self$clear()
         }
       }
@@ -145,7 +147,7 @@ tensor <- R6Class(
 
     pull = function(){
       self$check.destroyed()
-      private$.temp( level = 0L )
+      private$.deploy( level = 0L )$tensor
     },
 
     clear = function(){
@@ -160,21 +162,12 @@ tensor <- R6Class(
       invisible( TRUE )
     },
 
-    destroy = function(){
-      if( !is.null( private$.ptrs ) ){
-        private$.destroy( expression( private$.destroy.ptr() ) )
-      }
-
-      invisible( TRUE )
-    },
-
     sever = function(){
       self$check.destroyed()
 
       if( private$.level == 0L ){
         if( private$.refs ){
-          private$.ptrs$tensor <- .Call( "cuR_object_duplicate",
-                                         private$.ptrs$tensor )
+          private$.ptrs$tensor <- .Call( "cuR_object_duplicate", private$.ptrs$tensor )
           private$.refs <- FALSE
           private$.alert.content()
         }
@@ -184,6 +177,7 @@ tensor <- R6Class(
     }
   ),
 
+  # private ====
   private = list(
     .dims    = NULL,
     .type    = NULL,
@@ -191,32 +185,23 @@ tensor <- R6Class(
     # External R references
     .refs    = FALSE,
 
-    .create.ptr = function( level = private$.level, device = private$.device ){
+    .create.tensor = function(){
       if( prod( private$.dims ) > 2^32-1 ){
         # TODO ====
         # Use long int or the correct R type to remove this constraint
         stop( "Object is too large" )
       }
 
-      if( !level ){
+      if( !private$.level ){
         obj.create( private$.dims, private$.type )
       }else{
-        if( level == 3L ){
-          .cuda.device.set( device )
+        if( private$.level == 3L ){
+          .cuda.device.set( private$.device )
         }
 
         .Call( "cuR_tensor_create",
-               level,
-               private$.dims,
-               private$.type )
-      }
-    },
-
-    .destroy.ptr = function(){
-      if( private$.level ){
-        .Call( "cuR_tensor_destroy",
-               private$.ptrs$tensor,
                private$.level,
+               private$.dims,
                private$.type )
       }
     },
@@ -257,20 +242,60 @@ tensor <- R6Class(
       }
     },
 
-    .temp = function( level = private$.level, device = private$.device ){
-      tmp.tensor <- tensor$new( NULL,
-                                level,
-                                private$.dims,
-                                private$.type,
-                                device )
+    .deploy.tensor = function( level ){
+      .tensor <- tensor$new( NULL,
+                             level,
+                             private$.dims,
+                             private$.type,
+                             private$.device )
 
-      transfer( self, tmp.tensor )
+      transfer( self, .tensor )
 
-      tmp <- tmp.tensor$ptrs$tensor
-      tmp
+      .tensor.ptr <- .tensor$ptrs$tensor
+      .tensor.ptr
+    },
+
+    .deploy.L0 = function(){
+      list( tensor = private$.deploy.tensor( 0L ) )
+    },
+
+    .deploy.L1 = function(){
+      list( tensor = private$.deploy.tensor( 1L ) )
+    },
+
+    .deploy.L2 = function(){
+      list( tensor = private$.deploy.tensor( 2L ) )
+    },
+
+    .deploy.L3 = function(){
+      list( tensor = private$.deploy.tensor( 3L ) )
+    },
+
+    .destroy.tensor = function(){
+        .Call( "cuR_tensor_destroy",
+               private$.ptrs$tensor,
+               private$.level,
+               private$.type )
+    },
+
+    .destroy.L0 = function(){
+      return()
+    },
+
+    .destroy.L1 = function(){
+      private$.destroy.tensor()
+    },
+
+    .destroy.L2 = function(){
+      private$.destroy.tensor()
+    },
+
+    .destroy.L3 = function(){
+      private$.destroy.tensor()
     }
   ),
 
+  # active ====
   active = list(
     obj = function( val ){
       self$check.destroyed()
@@ -326,65 +351,6 @@ tensor <- R6Class(
     type = function( val ){
       self$check.destroyed()
       if( missing( val ) ) return( private$.type )
-    },
-
-    level = function( level ){
-      self$check.destroyed()
-
-      if( missing( level ) ){
-        return( private$.level )
-      }else{
-        level <- check.level( level )
-
-        if( private$.level == level ){
-          return()
-        }
-
-        # Create a placeholder and copy
-        tmp <- private$.temp( level = level )
-
-        # Free old memory
-        private$.destroy.ptr()
-
-        # Update
-        private$.ptrs$tensor <- tmp
-        private$.refs  <- FALSE
-        private$.level <- level
-
-        # Both context and content changed
-        private$.alert()
-      }
-    },
-
-    device = function( device ){
-      self$check.destroyed()
-
-      if( missing( device) ){
-        return( private$.device )
-      }else{
-        device <- check.device( device )
-
-        if( private$.device == device ){
-          return()
-        }
-
-        private$.device <- device
-
-        if( private$.level == 3L ){
-          # Create a placeholder and copy
-          tmp <- private$.temp( device = device )
-
-          # Free old memory
-          private$.destroy.ptr()
-
-          # Update
-          private$.ptrs$tensor <- tmp
-
-          private$.alert()
-        }else{
-          private$.alert.context()
-        }
-      }
     }
   )
 )

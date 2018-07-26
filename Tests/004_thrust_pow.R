@@ -28,3 +28,7 @@ test <- function( verbose = FALSE ){
 
   test.thr.equality( tens.B.3$pull(), tens.B.0$pull() )
 }
+
+clear <- function(){
+  tens.B.3$push( mat.A )
+}

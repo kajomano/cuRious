@@ -1,6 +1,6 @@
 source( "./Tests/test_utils.R" )
 
-verbose <- 1
+verbose <- 2
 
 test.files <- dir( "./Tests", "^[0-9]", full.names = TRUE )
 test.files <- test.files[ test.files != "./Tests/000_all.R" ]
@@ -16,7 +16,7 @@ lapply( test.files, function( test.file ){
   # Test L0 call
   L0$run()
 
-  context$deploy( 3 )
+  context$level <- 3L
 
   # Test L3 call - sync
   L3$run()
@@ -26,18 +26,29 @@ lapply( test.files, function( test.file ){
     stop( "Non-identical results across levels" )
   }
 
+  stream$level <- 3L
+
+  # Test L3 call - async
+  clear()
+  L3$run()
+  stream$sync()
+
+  # Test equality
+  if( !test( verbose > 1 ) ){
+    stop( "Non-identical results across levels (async)" )
+  }
+
   # Benchmark
   # ----------------------------------------------------------------------------
   if( verbose > 0 ){
     mult <- 100
     source( test.file, local = TRUE )
 
-    context$deploy( 3 )
+    context$level <- 3L
 
     bench.sync  <- microbenchmark( L3$run(), times = 100 )
 
-    stream$deploy( 3 )
-    context$deploy( 3 )
+    stream$level <- 3L
 
     bench.async <- microbenchmark( L3$run(), times = 100 )
 
@@ -53,8 +64,5 @@ lapply( test.files, function( test.file ){
   }
 
   # Cleanup
-  rm( list = ls() )
-  gc()
+  # clean()
 })
-
-clean()

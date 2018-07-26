@@ -10,24 +10,20 @@ thrust.context <- R6Class(
   "cuR.thrust.context",
   inherit = fusion.context,
   private = list(
-    .deploy.L1 = function(){
-      stop( "Not yet implemented" )
+    .deploy.L0 = function(){
+      list( alloc = NULL )
     },
 
     .deploy.L3 = function(){
-      super$.deploy.L3(
-        expression(
-          list( alloc = .Call( "cuR_thrust_allocator_create" ) )
-        )
-      )
+      list( alloc = .Call( "cuR_thrust_allocator_create" ) )
     },
 
-    .destroy = function(){
-      super$.destroy(
-        expression(
-          .Call( "cuR_thrust_allocator_destroy", private$.ptrs$alloc )
-        )
-      )
+    .destroy.L0 = function(){
+      return()
+    },
+
+    .destroy.L3 = function(){
+      .Call( "cuR_thrust_allocator_destroy", private$.ptrs$alloc )
     }
   )
 )

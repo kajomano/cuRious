@@ -1,97 +1,19 @@
 # fusion.context ====
 fusion.context <- R6Class(
   "cuR.fusion.context",
-  inherit = .alert.send.recv,
+  inherit = .alert.send,
   public = list(
     initialize = function( stream = NULL, level = NULL, device = NULL ){
       if( !is.null( stream ) ){
-        check.stream( stream )
-        private$.attach.stream( stream )
+        private$.stream <- check.stream( stream )
       }
 
-      # TODO ====
-      # The argument order changed, change it in inherited classes too
-
-      if( is.null( device ) ){
-        if( !is.null( stream ) ){
-          self$device <- stream$device
-        }else{
-          self$device <- cuda.device.default.get()
-        }
-      }else{
-        self$device <- device
-      }
-
-      if( is.null( level ) ){
-        if( !is.null( stream ) ){
-          self$level <- stream$level
-        }else{
-          self$level <- 0L
-        }
-      }else{
-        self$level <- level
-      }
-    },
-
-    # deploy = function( level ){
-    #   if( is.null( level ) ){
-    #     stop( "No deployment target level" )
-    #   }
-    #
-    #   if( !( level %in% c( 1L, 3L ) ) ){
-    #     stop( "Invalid deployment target level" )
-    #   }
-    #
-    #   if( !self$is.destroyed ){
-    #     if( private$.level != level ){
-    #       stop( "Context is already deployed to a different level" )
-    #     }else{
-    #       return()
-    #     }
-    #   }
-    #
-    #   if( length( private$.context.changed ) && level == 3L ){
-    #     if( private$.device != private$.stream$device ){
-    #       stop( "Not matching device with stream device" )
-    #     }
-    #
-    #     private$.context.changed <- NULL
-    #   }
-    #
-    #   if( level == 1L ){
-    #     private$.deploy.L1()
-    #   }else if( level == 3L ){
-    #     private$.deploy.L3()
-    #   }
-    #
-    #   invisible( self )
-    # },
-
-    destroy = function(){
-      private$.destroy()
-      invisible( self )
-    },
-
-    alert.context = function( name ){
-      self$destroy()
-      super$alert.context( name )
+      super$initialize( level, device )
     }
   ),
 
   private = list(
-    .stream = NULL,
-
-    .attach.stream = function( stream ){
-      if( !is.null( private$.stream ) ){
-        private$.unsubscribe( private$.stream, "stream" )
-      }
-
-      if( !is.null( stream ) ){
-        private$.subscribe( stream, "stream" )
-      }
-
-      private$.stream <- stream
-    }
+    .stream = NULL
   ),
 
   active = list(
@@ -148,7 +70,9 @@ fusion <- R6Class(
     },
 
     destroy = function(){
-      self$check.destroyed()
+      if( is.null( private$.eps ) ){
+        return( invisible( TRUE ) )
+      }
 
       for( ep.name in names( private$.eps ) ){
         private$.unsubscribe( private$.eps[[ep.name]], ep.name )
@@ -166,6 +90,10 @@ fusion <- R6Class(
       }
 
       invisible( TRUE )
+    },
+
+    is.destroyed = function(){
+      return( is.null( private$.eps ) )
     }
   ),
 
@@ -176,7 +104,6 @@ fusion <- R6Class(
     # These fields need to be filled in the .update.context() function
     .fun     = NULL,
     .params  = list(),
-
     .device  = NULL,
 
     .sever   = TRUE,
@@ -220,7 +147,7 @@ fusion <- R6Class(
           stop( "Subroutine requires an L1 or L3 context" )
         }
 
-        if( is.null( context$level ) ){
+        if( !context$level ){
           stop( "Subroutine requires an L1 or L3 context" )
         }
 
@@ -237,11 +164,7 @@ fusion <- R6Class(
 
       # Stream
       if( !is.null( stream ) ){
-        if( !is.null( stream$level ) ){
-          if( level == 0L ){
-            warning( "An active stream is given to a synchronous subroutine" )
-          }
-
+        if( stream$level ){
           if( level == 3L ){
             if( stream$level != 3L ){
               stop( "Pipe requires an L3 stream" )
@@ -251,21 +174,17 @@ fusion <- R6Class(
               stop( "Stream is not on the correct device" )
             }
           }
-        }else{
-          # TODO ====
-          # Im bothered by the warnings, but also dont want to accidentally
-          # forget something
-          # warning( "Stream supported but inactive" )
         }
       }
 
       private$.device <- device
 
       private$.fun <- switch(
-        as.character( level ),
-        `0`= private$.call.L0,
-        `1`= private$.call.L1,
-        `3`= private$.call.L3
+        level + 1L,
+        private$.call.L0,
+        private$.call.L1,
+        private$.call.L2,
+        private$.call.L3
       )
 
       private$.sever <- as.logical( level )
@@ -286,18 +205,16 @@ fusion <- R6Class(
       stop( "L1 call not implemented" )
     },
 
+    .call.L2 = function( ... ){
+      stop( "L2 call not implemented" )
+    },
+
     .call.L3 = function( ... ){
       stop( "L3 call not implemented" )
     }
   ),
 
   active = list(
-    is.destroyed = function( val ){
-      if( missing( val ) ){
-        return( is.null( private$.eps ) )
-      }
-    },
-
     context = function( val ){
       if( missing( val ) ){
         return( private$.context )

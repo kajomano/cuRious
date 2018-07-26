@@ -7,48 +7,40 @@ stream <- R6Class(
   "cuR.stream",
   inherit = .alert.send,
   public = list(
-    initialize = function( device = cuda.device.default.get() ){
-      self$device <- device
-    },
-
-    deploy = function( level ){
-      if( is.null( level ) ){
-        stop( "No deployment target level" )
-      }
-
-      if( !( level %in% c( 1L, 3L ) ) ){
-        stop( "Invalid deployment target level" )
-      }
-
-      if( level == 1L ){
-        private$.deploy.L1( expression(
-          list( queue  = .Call( "cuR_stream_queue_create", 1L, FALSE ) )
-        ) )
-      }else{
-        private$.deploy.L3( expression(
-          list( queue  = .Call( "cuR_stream_queue_create", 1L, TRUE ) )
-        ) )
-      }
-
-      invisible( self )
-    },
-
-    destroy = function(){
-      private$.destroy( expression( {
-        .Call( "cuR_stream_queue_destroy", private$.ptrs$queue )
-      } ) )
-
-      invisible( self )
-    },
-
     sync = function(){
-      if( is.null( private$.ptrs ) ){
-        return( invisible( self ) )
+      self$check.destroyed()
+
+      if( private$.level ){
+        .Call( "cuR_stream_queue_sync", private$.ptrs$queue )
       }
 
-      .Call( "cuR_stream_queue_sync", private$.ptrs$queue )
-
       invisible( self )
+    }
+  ),
+
+  private = list(
+    .deploy.L0 = function(){
+      list( queue = NULL )
+    },
+
+    .deploy.L1 = function(){
+      list( queue  = .Call( "cuR_stream_queue_create", 1L, FALSE ) )
+    },
+
+    .deploy.L3 = function(){
+      list( queue  = .Call( "cuR_stream_queue_create", 1L, TRUE ) )
+    },
+
+    .destroy.L0 = function(){
+      return()
+    },
+
+    .destroy.L1 = function(){
+      .Call( "cuR_stream_queue_destroy", private$.ptrs$queue )
+    },
+
+    .destroy.L3 = function(){
+      .Call( "cuR_stream_queue_destroy", private$.ptrs$queue )
     }
   )
 )

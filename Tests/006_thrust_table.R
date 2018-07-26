@@ -42,3 +42,9 @@ test <- function( verbose = FALSE ){
     test.thr.equality( tens.s.3$pull(), tens.s.0$pull() )
   )
 }
+
+clear <- function(){
+  tens.p.3$clear()
+  tens.w.3$clear()
+  tens.s.3$clear()
+}

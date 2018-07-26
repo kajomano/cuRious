@@ -3,6 +3,22 @@
 .container <- R6Class(
   "cuR.container",
   public = list(
+    initialize = function( level = NULL, device = NULL ){
+      if( is.null( device ) ){
+        private$.device <- cuda.device.default.get()
+      }else{
+        private$.device <- check.device( device )
+      }
+
+      if( is.null( level ) ){
+        private$.level <- 0L
+      }else{
+        private$.level <- check.level( level )
+      }
+
+      private$.ptrs <- private$.deploy()
+    },
+
     destroy = function(){
       private$.destroy()
       invisible( TRUE )
@@ -12,6 +28,7 @@
       if( is.null( private$.ptrs ) ){
         stop( "Container contents are destroyed" )
       }
+
       invisible( TRUE )
     },
 
@@ -25,7 +42,7 @@
     .device = NULL,
     .level  = NULL,
 
-    .deploy= function( level = private$.level ){
+    .deploy = function( level = private$.level ){
       if( level == 3L ){
         .cuda.device.set( private$.device )
       }
@@ -139,6 +156,10 @@
           return()
         }
 
+        # Pre-setting the device instead of giving it as an argument works
+        # because removing something from a device (destroy) does no longer
+        # need the correct device set. If this changes, move the device
+        # into an argument as in level
         private$.device <- device
 
         if( private$.level == 3L ){

@@ -31,3 +31,7 @@ test <- function( verbose = FALSE ){
 
   test.thr.equality( tens.x.3$pull(), tens.x.0$pull() )
 }
+
+clear <- function(){
+  tens.x.3$push( vect.x )
+}

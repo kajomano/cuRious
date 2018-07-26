@@ -1,21 +1,7 @@
-# Script to use with nvprof
-# I had a lot of trouble with nvvp and especially nvprof giving all kinds of
-# strange segfaults and errors on linux. Turns out, you need to have sudo
-# privileges when running nvprof, but then nothing is there on the PATH. The
-# following worked:
-# sudo /usr/local/cuda/bin/nvprof /usr/lib/R/bin/Rscript ./007_NVVP_streaming.R
+source( "./Tests/test_utils.R" )
 
-print( paste(
-  "sudo",
-  "/usr/local/cuda/bin/nvvp",
-  paste0( R.home(), "/bin/Rscript" ),
-  paste0( getwd(), "/NVVP/007_NVVP_streaming.R" )
-) )
-
-library( cuRious )
-
-# Base matrix size
-n <- 1000
+n       <- 1000
+times   <- 100
 
 mat.in    <- matrix( round( rnorm( 10*n*n ) ), nrow = n, ncol = 10*n )
 mat.proc  <- t( diag( 1, n, n ) )
@@ -35,13 +21,13 @@ tens.out.1     <- tensor$new( mat.proc, 3L, copy = FALSE )
 tens.out.2     <- tensor$new( mat.proc, 3L, copy = FALSE )
 
 # Streams
-stream.in      <- stream$new( 3L )
-stream.out     <- stream$new( 3L )
-stream.proc    <- stream$new( 3L )
+stream.in      <- stream$new()
+stream.out     <- stream$new()
+stream.proc    <- stream$new()
 
 # Pipe contexts
-pipe.cont.in   <- pipe.context$new( stream.in )
-pipe.cont.out  <- pipe.context$new( stream.out )
+pipe.cont.in   <- pipe.context$new( stream.in,  3L )
+pipe.cont.out  <- pipe.context$new( stream.out, 3L )
 
 # Pipes
 pipes.in.L0.L2 <- lapply( 1:10, function( i ){
@@ -65,7 +51,7 @@ pipes.out.L2.L0 <- lapply( 1:10, function(i){
 })
 
 # cuBLAS contexts
-cublas.cont <- cublas.context$new( stream.proc )
+cublas.cont <- cublas.context$new( stream.proc, 3L )
 
 # GEMM fusions
 gemms <- list(
@@ -100,7 +86,6 @@ proc <- function(){
       gemms[[i %% 2 + 1]]$run()
       gemms[[i %% 2 + 1]]$run()
       gemms[[i %% 2 + 1]]$run()
-      gemms[[i %% 2 + 1]]$run()
     }
 
     stream.in$sync()
@@ -109,8 +94,21 @@ proc <- function(){
   }
 }
 
-proc()
-proc()
-proc()
+bench.cuda.sync    <- microbenchmark( proc(), times = times )
+tens.out.cuda.sync <- tensor$new( tens.out )
 
-print("Finished")
+stream.in$level   <- 3L
+stream.out$level  <- 3L
+stream.proc$level <- 3L
+
+bench.cuda.async    <- microbenchmark( proc(), times = times )
+tens.out.cuda.async <- tensor$new( tens.out )
+
+if( !identical( tens.out.cuda.sync$pull(), tens.out.cuda.async$pull() ) ){
+  stop( "Non-identical results" )
+}
+
+print( paste0( "sync: ", min( bench.cuda.sync$time ) / 10^6, " ms" ) )
+print( paste0( "async: ", min( bench.cuda.async$time ) / 10^6, " ms" ) )
+
+clean()

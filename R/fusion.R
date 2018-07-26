@@ -6,6 +6,14 @@ fusion.context <- R6Class(
     initialize = function( stream = NULL, level = NULL, device = NULL ){
       if( !is.null( stream ) ){
         private$.stream <- check.stream( stream )
+
+        if( is.null( level ) ){
+          level <- stream$level
+        }
+
+        if( is.null( device ) ){
+          device <- stream$device
+        }
       }
 
       super$initialize( level, device )

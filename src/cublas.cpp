@@ -240,6 +240,15 @@ SEXP cuR_cublas_sgemm( SEXP A_ptr_r,
     n = B_dims[1];
   }
 
+  printf( "m: %d\n", m );
+  printf( "n: %d\n", n );
+  printf( "k: %d\n", k );
+
+  printf( "A_dims0: %d\n", A_dims[0] );
+  printf( "B_dims0: %d\n", B_dims[0] );
+
+  printf( "m: %d\n", m );
+
   if( stream_q_ptr ){
     stream_q_ptr -> dispatch( [=]( void* stream_ptr ){
       cuR_cublas_recover_stream( stream_ptr, handle_ptr );

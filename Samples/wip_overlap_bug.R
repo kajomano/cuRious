@@ -7,6 +7,4 @@ print( paste(
 
 library( cuRious )
 
-.Call( "cuR_wip_overlap_bug" )
-
-print("Finished")
+invisible( .Call( "cuR_wip_overlap_bug" ) )

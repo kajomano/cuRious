@@ -182,9 +182,9 @@ cublas.sgemv <- R6Class(
       res <- ( alpha * A.tensor ) %*% x.tensor + ( beta * y.tensor )
 
       if( is.null( y.range ) ){
-        private$.eps.out$y$obj.unsafe <- res
+        private$.eps.out$y$obj.unsafe <- res[, 1 ]
       }else{
-        private$.eps.out$y$obj.unsafe[ y.range ] <- res
+        private$.eps.out$y$obj.unsafe[ y.range ] <- res[, 1 ]
       }
 
       invisible( TRUE )

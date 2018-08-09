@@ -1,34 +1,26 @@
 library( cuRious )
 library( microbenchmark )
 
-stream <- cuRious::stream$new()
-microbenchmark( stream$sync() )
+# TODO ====
+# L0 produces dim match error
+# L3 need ot be checked against L0, need to be rewritten for all cublas calls
 
-# context <- cuRious::pipe.context$new( 4, stream )
-#
-# src <- cuRious::tensor$new( 1.0, 3L )
-# dst <- cuRious::tensor$new( src, 0L, copy = FALSE )
-#
-# pip <- cuRious::pipe$new( src, dst, context = context )
-#
-# pip$run()
-#
-# src$ptrs$tensor
-# dst$ptrs$tensor
+level <- 3L
 
-# clean()
+tens.A <- cuRious::tensor$new( matrix( as.numeric(1:6), ncol = 3, nrow = 2 ), level )
+tens.x <- cuRious::tensor$new( as.numeric(1:2), level )
+tens.y <- cuRious::tensor$new( as.numeric(1:3), level )
 
-# src.tensor,
-# dst.tensor,
-# src.level,
-# dst.level,
-# type,
-# dims,
-# src.dims        = NULL,
-# dst.dims        = NULL,
-# src.perm.tensor = NULL,
-# dst.perm.tensor = NULL,
-# src.span.off    = NULL,
-# dst.span.off    = NULL,
-# context.workers = NULL,
-# stream.queue    = NULL
+context <- cuRious::cublas.context$new( level = level )
+
+sgemv   <- cuRious::cublas.sgemv$new( tens.A,
+                                      tens.x,
+                                      tens.y,
+                                      A.tp    = TRUE,
+                                      alpha   = 1,
+                                      beta    = 0,
+                                      context = context )
+
+sgemv$run()
+
+print( tens.y$pull() )

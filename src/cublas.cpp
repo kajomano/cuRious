@@ -104,14 +104,16 @@ SEXP cuR_cublas_sgemv( SEXP A_ptr_r,
   // Transpose
   cublasOperation_t op_A;
   int m, n;
+  m = A_dims[0];
+  n = A_dims[1];
   if( Rf_asLogical( A_tp_r ) == 1 ){
     op_A = CUBLAS_OP_T;
-    m = A_dims[1];
-    n = A_dims[0];
+    // m = A_dims[1];
+    // n = A_dims[0];
   }else{
     op_A = CUBLAS_OP_N;
-    m = A_dims[0];
-    n = A_dims[1];
+    // m = A_dims[0];
+    // n = A_dims[1];
   }
 
   if( stream_q_ptr ){
@@ -120,6 +122,11 @@ SEXP cuR_cublas_sgemv( SEXP A_ptr_r,
       cublasSgemv( *handle_ptr, op_A, m, n, &alpha, A_ptr, A_dims[0], x_ptr, 1, &beta, y_ptr, 1 );
     });
   }else{
+    printf( "<%p>\n", (void*)A_ptr );
+    printf( "%d\n", A_dims[0] );
+    printf( "%d\n", m );
+    printf( "%d\n", n );
+
     cublasTry( cublasSgemv( *handle_ptr, op_A, m, n, &alpha, A_ptr, A_dims[0], x_ptr, 1, &beta, y_ptr, 1 ) );
     cudaTry( cudaDeviceSynchronize() );
   }

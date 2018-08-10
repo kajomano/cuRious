@@ -5,7 +5,7 @@ library( microbenchmark )
 # L0 produces dim match error
 # L3 need ot be checked against L0, need to be rewritten for all cublas calls
 
-level <- 3L
+level <- 0L
 
 tens.A <- cuRious::tensor$new( matrix( as.numeric(1:6), ncol = 3, nrow = 2 ), level )
 tens.x <- cuRious::tensor$new( as.numeric(1:2), level )

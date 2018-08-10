@@ -1,0 +1,11 @@
+STARTED           (1) Unified way of handling dimensions, where 1D arrays
+                      are not row/or column vectors. The system should naturally
+                      be expandable to 3D arrays.
+
+NOT STARTED       (2) Error messages from within device code and other threads.
+
+NOT STARTED       (3) Subsetting on rows, both perm and span where applicable.
+                      The system should naturally be expandable to 3D arrays.
+
+NOT STARTED       (4) L1 implementation to BLAS, Thrust and other future
+                      subroutines (for example, using openBlas).

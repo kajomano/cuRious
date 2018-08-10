@@ -1,5 +1,5 @@
 # .Calls: src/tensor.cpp
-#
+# Tensor class (wrapper) ====
 # cuRious currently supports 1D and 2D tensors. Scalar values can be
 # easily passed to the GPU as function arguments, no need to use the tensor
 # framework for them.
@@ -11,7 +11,16 @@
 
 # Tensors implement reference counting if the content is accessed by $obj
 
-# Tensor class ====
+is.tensor <- function( tensor ){
+  "cuR.tensor" %in% class( tensor )
+}
+
+check.tensor <- function( tensor ){
+  if( !is.tensor( tensor ) ) stop( "Not a tensor" )
+  invisible( tensor )
+}
+
+# Tensor ====
 tensor <- R6Class(
   "cuR.tensor",
   inherit = .alert.send,
@@ -137,7 +146,7 @@ tensor <- R6Class(
     push = function( data ){
       self$check.destroyed()
 
-      private$.match( data )
+      private$.check.match( data )
 
       self$sever()
       private$.push( data )
@@ -167,7 +176,7 @@ tensor <- R6Class(
 
       if( private$.level == 0L ){
         if( private$.refs ){
-          private$.ptrs$tensor <- .Call( "cuR_object_duplicate", private$.ptrs$tensor )
+          private$.ptrs$tensor <- .obj.duplicate( private$.ptrs$tensor )
           private$.refs <- FALSE
           private$.alert.content()
         }
@@ -193,7 +202,7 @@ tensor <- R6Class(
       }
 
       if( !private$.level ){
-        obj.create( private$.dims, private$.type )
+        .obj.create( private$.dims, private$.type )
       }else{
         if( private$.level == 3L ){
           .cuda.device.set( private$.device )
@@ -206,7 +215,7 @@ tensor <- R6Class(
       }
     },
 
-    .match = function( data ){
+    .check.match = function( data ){
       if( is.tensor( data ) ){
         dims <- data$dims
         type <- data$type
@@ -214,15 +223,15 @@ tensor <- R6Class(
         dims <- obj.dims( data )
         type <- obj.type( data )
       }else{
-        stop( "Invalid data format" )
+        stop( "Invalid data" )
       }
 
       if( !identical( dims, private$.dims ) ){
-        stop( "Dims do not match" )
+        stop( "Dims mismatch" )
       }
 
       if( type != private$.type ){
-        stop( "Types do not match" )
+        stop( "Type mismatch" )
       }
     },
 
@@ -310,8 +319,8 @@ tensor <- R6Class(
       if( missing( val ) ){
         return( private$.ptrs$tensor )
       }else{
-        val <- check.obj( val )
-        private$.match( val )
+        check.obj( val )
+        private$.check.match( val )
 
         private$.ptrs$tensor <- val
         private$.alert.content()
@@ -325,27 +334,26 @@ tensor <- R6Class(
         stop( "Not surfaced, direct object access denied" )
       }
 
-      # This access is not be registered, the given object
+      # This access is not registered, the given object
       # will not be protected
 
       if( missing( val ) ){
         return( private$.ptrs$tensor )
       }else{
-        val <- check.obj( val )
-        private$.match( val )
+        check.obj( val )
+        private$.check.match( val )
 
         private$.ptrs$tensor <- val
         private$.alert.content()
       }
     },
 
+    # TODO ====
+    # allow for dim overwrites
+
     dims = function( val ){
       self$check.destroyed()
       if( missing( val ) ) return( private$.dims )
-    },
-
-    l = function( val ){
-      if( missing( val ) ) return( as.integer( prod( self$dims ) ) )
     },
 
     type = function( val ){

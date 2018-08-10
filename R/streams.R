@@ -1,8 +1,15 @@
 # .Calls: src/streams.cpp
-
 # CUDA and thread streams ====
-# This class is a variation of the fusion context, but alas not inheriting from
-# it
+is.stream <- function( stream ){
+  "cuR.stream" %in% class( stream )
+}
+
+check.stream <- function( stream ){
+  if( !is.stream( stream ) ) stop( "Invalid stream" )
+  invisible( stream )
+}
+
+# Stream ====
 stream <- R6Class(
   "cuR.stream",
   inherit = .alert.send,

@@ -1,7 +1,7 @@
 Package: cuRious
 Type: Package
 Title: A simple R interface to CUDA
-Version: 0.4.0
+Version: 0.4.5
 Author: Marton Kajo
 Maintainer: Marton Kajo <kajomano@hotmail.com>
 Description: An R interface to some Nvidia CUDA functionality, including libraries such as cuBLAS and Thrust.

@@ -1,5 +1,5 @@
 # .Calls: src/tensor.cpp
-# Tensor class (wrapper) ====
+# Tensor class ====
 # cuRious currently supports 1D and 2D tensors. Scalar values can be
 # easily passed to the GPU as function arguments, no need to use the tensor
 # framework for them.
@@ -9,7 +9,8 @@
 # Level 2: C array  ( pinned host memory, float,  int, bool )
 # Level 3: C array  (      device memory, float,  int, bool )
 
-# Tensors implement reference counting if the content is accessed by $obj
+# Tensors implement reference counting if the content is accessed by $obj, but
+# not if accessed by $obj.unsafe, or through $ptrs
 
 is.tensor <- function( tensor ){
   "cuR.tensor" %in% class( tensor )
@@ -97,14 +98,18 @@ tensor <- R6Class(
         }
 
         if( !is.null( dims ) ){
-          if( !identical( check.dims( dims ), private$.dims ) ){
-            stop( "Data dims and supported dims do not match" )
+          dims <- check.dims( dims )
+
+          if( !identical( dims, private$.dims ) ){
+            if( prod( dims ) != prod( private$.dims ) ){
+              stop( "Dims mismatch on init" )
+            }
           }
         }
 
         if( !is.null( type ) ){
           if( check.type( type ) != private$.type ){
-            stop( "Data type and supported type does not match" )
+            stop( "Type mismatch on init" )
           }
         }
       }
@@ -135,6 +140,15 @@ tensor <- R6Class(
         }else{
           private$.ptrs$tensor <- private$.create.tensor()
           self$clear()
+        }
+      }
+
+      # Recut
+      if( !identical( dims, private$.dims ) ){
+        private$.dims <- dims
+
+        if( private$.level == 0L ){
+          .obj.recut( private$.ptrs$tensor, dims )
         }
       }
     },
@@ -306,7 +320,7 @@ tensor <- R6Class(
 
   # active ====
   active = list(
-    obj = function( val ){
+    obj = function( obj ){
       self$check.destroyed()
 
       if( private$.level != 0L ){
@@ -316,18 +330,18 @@ tensor <- R6Class(
       # Protected
       private$.refs <- TRUE
 
-      if( missing( val ) ){
+      if( missing( obj ) ){
         return( private$.ptrs$tensor )
       }else{
-        check.obj( val )
-        private$.check.match( val )
+        check.obj( obj )
+        private$.check.match( obj )
 
-        private$.ptrs$tensor <- val
+        private$.ptrs$tensor <- obj
         private$.alert.content()
       }
     },
 
-    obj.unsafe = function( val ){
+    obj.unsafe = function( obj ){
       self$check.destroyed()
 
       if( private$.level != 0L ){
@@ -335,30 +349,47 @@ tensor <- R6Class(
       }
 
       # This access is not registered, the given object
-      # will not be protected
+      # will not be protected!!!
 
-      if( missing( val ) ){
+      if( missing( obj ) ){
         return( private$.ptrs$tensor )
       }else{
-        check.obj( val )
-        private$.check.match( val )
+        check.obj( obj )
+        private$.check.match( obj )
 
-        private$.ptrs$tensor <- val
+        private$.ptrs$tensor <- obj
         private$.alert.content()
       }
     },
 
-    # TODO ====
-    # allow for dim overwrites
-
-    dims = function( val ){
+    dims = function( dims ){
       self$check.destroyed()
-      if( missing( val ) ) return( private$.dims )
+
+      if( missing( dims ) ){
+        return( private$.dims )
+      }else{
+        dims <- check.dims( dims )
+
+        if( prod( dims ) != prod( private$.dims ) ){
+          stop( "Dims mismatch on recut" )
+        }
+
+        if( !identical( dims, private$.dims ) ){
+          private$.dims <- dims
+
+          if( private$.level == 0L ){
+            .obj.recut( private$.ptrs$tensor, dims )
+          }
+        }
+      }
     },
 
     type = function( val ){
       self$check.destroyed()
-      if( missing( val ) ) return( private$.type )
+
+      if( missing( val ) ){
+        return( private$.type )
+      }
     }
   )
 )

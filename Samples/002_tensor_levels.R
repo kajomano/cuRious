@@ -54,7 +54,7 @@ library( cuRious )
 
 # The level of a tensor can be set at initialization, or changed through the
 # $level active binding. Let's move some data to the device:
-tens <- tensor$new( rnorm( 10 ), level = 3L )
+tens <- cuRious::tensor$new( rnorm( 10 ), level = 3L )
 
 # The tensor ptr is an actual pointer pointing to device memory:
 print( tens$ptrs$tensor )

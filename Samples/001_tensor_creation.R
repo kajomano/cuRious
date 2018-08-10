@@ -5,7 +5,7 @@ library( microbenchmark )
 # the form of numeric, integer or boolean vectors or matrices.
 
 # Let's create a simple tensor:
-tens <- tensor$new(
+tens <- cuRious::tensor$new(
   # The data argument can contain the original data with which the tensor will
   # be initialized. Data can be either a simple R matrix or vector (object from
   # now on), or another tensor. If unset, the tensor will be initialized with
@@ -61,13 +61,13 @@ tens$push( 1 )
 # vice-versa.
 
 # Tensor creation from an R object:
-tens.wrap <- tensor$new( 1:2 )
+tens.wrap <- cuRious::tensor$new( 1:2 )
 
 # Copying only the handle:
 tens.copy <- tens.wrap
 
 # Properly duplicating the data:
-tens.dupl <- tensor$new( tens.wrap )
+tens.dupl <- cuRious::tensor$new( tens.wrap )
 
 # Let's change the content of the tensor:
 tens.copy$push( 3:4 )

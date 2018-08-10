@@ -103,15 +103,13 @@ SEXP cuR_cublas_sgemv( SEXP A_ptr_r,
 
   // Transpose
   cublasOperation_t op_A;
-  int m, n;
+  int m = A_dims[0];
+  int n = A_dims[1];
+
   if( Rf_asLogical( A_tp_r ) == 1 ){
     op_A = CUBLAS_OP_T;
-    m = A_dims[1];
-    n = A_dims[0];
   }else{
     op_A = CUBLAS_OP_N;
-    m = A_dims[0];
-    n = A_dims[1];
   }
 
   if( stream_q_ptr ){
@@ -221,23 +219,20 @@ SEXP cuR_cublas_sgemm( SEXP A_ptr_r,
 
   // Transposes
   cublasOperation_t op_A, op_B;
-  int m, n, k;
+  int m = A_dims[0];
+  int k = A_dims[1];
+  int n = B_dims[1];
+
   if( Rf_asLogical( A_tp_r ) == 1 ){
     op_A = CUBLAS_OP_T;
-    m = A_dims[1];
-    k = A_dims[0];
   }else{
     op_A = CUBLAS_OP_N;
-    m = A_dims[0];
-    k = A_dims[1];
   }
 
   if( Rf_asLogical( B_tp_r ) == 1 ){
     op_B = CUBLAS_OP_T;
-    n = B_dims[0];
   }else{
     op_B = CUBLAS_OP_N;
-    n = B_dims[1];
   }
 
   if( stream_q_ptr ){

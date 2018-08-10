@@ -1,0 +1,15 @@
+NOT STARTED       (1) Unified way of handling dimensions. Dimension checks
+                   +  should be independent of pseudo-transposes. The system
+                   +  should naturally be expandable to 3D arrays.
+                   +
+NOT STARTED       (2) In-place pseudo-transposes for non-full rank arrays.
+
+NOT STARTED       (3) Subsetting on rows, both perm and span where applicable.
+                      The system should naturally be expandable to 3D arrays.
+
+NOT STARTED       (4) Error messages from within device code and other threads.
+
+NOT STARTED       (5) L1 implementation to BLAS, Thrust and other future
+                      subroutines (for example, using openBlas).
+
+NOT STARTED       (6) Double precision numerical tensors.

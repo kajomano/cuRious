@@ -23,12 +23,12 @@ library( microbenchmark )
 # by default, the same as any other context. To make them active at creation, a
 # deployment level needs to be set. As we are going to use this context for L0-
 # L0 transfers, level 1 suffices for now:
-pip.cont <- pipe.context$new()$deploy( 1 )
+pip.cont <- cuRious::pipe.context$new( NULL, 1L )
 
 # A simple pipe transfer:
-src <- tensor$new( matrix( 1:6, 2, 3 ) )
-dst <- tensor$new( src, copy = FALSE )
-pip <- pipe$new( src, dst, context = pip.cont )
+src <- cuRious::tensor$new( matrix( 1:6, 2, 3 ) )
+dst <- cuRious::tensor$new( src, copy = FALSE )
+pip <- cuRious::pipe$new( src, dst, context = pip.cont )
 
 pip$run()
 

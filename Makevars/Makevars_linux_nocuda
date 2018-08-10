@@ -5,7 +5,7 @@
 
 ### Define variables
 ## R related
-R_INC     = /usr/share/R/include
+R_INC     = $(R_HOME)/include
 
 ### Define objects
 h_srcs    = $(wildcard *.h)

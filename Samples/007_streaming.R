@@ -38,51 +38,51 @@ mat.in    <- matrix( round( rnorm( 10*n*n ) ), nrow = n, ncol = 10*n )
 mat.proc  <- t( diag( 1, n, n ) )
 
 # Tensors
-tens.in        <- tensor$new( mat.in )
-tens.out       <- tensor$new( mat.in, copy = FALSE )
+tens.in        <- cuRious::tensor$new( mat.in )
+tens.out       <- cuRious::tensor$new( mat.in, copy = FALSE )
 
-tens.proc      <- tensor$new( mat.proc )
+tens.proc      <- cuRious::tensor$new( mat.proc )
 
-tens.in.stage  <- tensor$new( mat.proc, copy = FALSE )
-tens.in.1      <- tensor$new( mat.proc, copy = FALSE )
-tens.in.2      <- tensor$new( mat.proc, copy = FALSE )
+tens.in.stage  <- cuRious::tensor$new( mat.proc, copy = FALSE )
+tens.in.1      <- cuRious::tensor$new( mat.proc, copy = FALSE )
+tens.in.2      <- cuRious::tensor$new( mat.proc, copy = FALSE )
 
-tens.out.stage <- tensor$new( mat.proc, copy = FALSE )
-tens.out.1     <- tensor$new( mat.proc, copy = FALSE )
-tens.out.2     <- tensor$new( mat.proc, copy = FALSE )
+tens.out.stage <- cuRious::tensor$new( mat.proc, copy = FALSE )
+tens.out.1     <- cuRious::tensor$new( mat.proc, copy = FALSE )
+tens.out.2     <- cuRious::tensor$new( mat.proc, copy = FALSE )
 
 # Streams
-stream.in      <- stream$new()
-stream.out     <- stream$new()
-stream.proc    <- stream$new()
+stream.in      <- cuRious::stream$new()
+stream.out     <- cuRious::stream$new()
+stream.proc    <- cuRious::stream$new()
 
 # Pipe contexts
-pipe.cont.in   <- pipe.context$new( stream.in )
-pipe.cont.out  <- pipe.context$new( stream.out )
+pipe.cont.in   <- cuRious::pipe.context$new( stream.in )
+pipe.cont.out  <- cuRious::pipe.context$new( stream.out )
 
 # Pipes
 pipes.in.L0.L2 <- lapply( 1:10, function( i ){
   span <- c( (1+(i-1)*n), (i*n) )
-  pipe$new( tens.in, tens.in.stage, src.span = span, context = pipe.cont.in )
+  cuRious::pipe$new( tens.in, tens.in.stage, src.span = span, context = pipe.cont.in )
 })
 
 pipes.in.L2.L3 <- list(
-  pipe$new( tens.in.stage, tens.in.1, context = pipe.cont.in ),
-  pipe$new( tens.in.stage, tens.in.2, context = pipe.cont.in )
+  cuRious::pipe$new( tens.in.stage, tens.in.1, context = pipe.cont.in ),
+  cuRious::pipe$new( tens.in.stage, tens.in.2, context = pipe.cont.in )
 )
 
 pipes.out.L3.L2 <- list(
-  pipe$new( tens.out.1, tens.out.stage, context = pipe.cont.out ),
-  pipe$new( tens.out.2, tens.out.stage, context = pipe.cont.out )
+  cuRious::pipe$new( tens.out.1, tens.out.stage, context = pipe.cont.out ),
+  cuRious::pipe$new( tens.out.2, tens.out.stage, context = pipe.cont.out )
 )
 
 pipes.out.L2.L0 <- lapply( 1:10, function(i){
   span <- c( (1+(i-1)*n), (i*n) )
-  pipe$new( tens.out.stage, tens.out, dst.span = span, context = pipe.cont.out )
+  cuRious::pipe$new( tens.out.stage, tens.out, dst.span = span, context = pipe.cont.out )
 })
 
 # cuBLAS contexts
-cublas.cont <- cublas.context$new( stream.proc )
+cublas.cont <- cuRious::cublas.context$new( stream.proc )
 
 # GEMM fusions
 gemms <- list(
@@ -125,7 +125,7 @@ proc <- function(){
 
 # Let's run the processing on the native R implementation (L0):
 bench.R    <- microbenchmark( proc(), times = 10 )
-tens.out.R <- tensor$new( tens.out )
+tens.out.R <- cuRious::tensor$new( tens.out )
 
 # Same process on the device, but not parallelized with data transfers:
 tens.proc$level      <- 3L
@@ -144,7 +144,7 @@ pipe.cont.out$level  <- 3L
 cublas.cont$level    <- 3L
 
 bench.cuda.sync    <- microbenchmark( proc(), times = 100 )
-tens.out.cuda.sync <- tensor$new( tens.out )
+tens.out.cuda.sync <- cuRious::tensor$new( tens.out )
 
 # And finally, parallel data transfers:
 stream.in$level   <- 3L
@@ -152,7 +152,7 @@ stream.out$level  <- 3L
 stream.proc$level <- 3L
 
 bench.cuda.async    <- microbenchmark( proc(), times = 100 )
-tens.out.cuda.async <- tensor$new( tens.out )
+tens.out.cuda.async <- cuRious::tensor$new( tens.out )
 
 # Let's see the benchmarking results:
 print( bench.R )

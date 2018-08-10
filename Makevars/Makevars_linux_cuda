@@ -6,7 +6,7 @@
 
 ### Define variables
 ## R related
-R_INC     = /usr/share/R/include
+R_INC     = $(R_HOME)/include
 
 ## CUDA related
 CUDA_HOME = /usr/local/cuda

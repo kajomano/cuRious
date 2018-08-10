@@ -16,17 +16,17 @@ mat.A <- matrix( as.double( 1:(m*k) ), ncol = k )
 mat.B <- matrix( as.double( 1:(k*n) ), ncol = n )
 mat.C <- matrix( as.double( 1:(m*n) ), ncol = n )
 
-A <- tensor$new( mat.A, 3L )
-B <- tensor$new( mat.B, 3L )
-C <- tensor$new( mat.C, 3L )
+A <- cuRious::tensor$new( mat.A, 3L )
+B <- cuRious::tensor$new( mat.B, 3L )
+C <- cuRious::tensor$new( mat.C, 3L )
 
 # Cublas operations are fusions, thus requiring a fusion context to function:
-context <- cublas.context$new()$deploy( 3 )
+context <- cuRious::cublas.context$new( NULL, 3L )
 
 # Let's create a GEMM operation. Following the same logic as pipes, cublas lib-
 # rary calls are wrapped in persistent cublas objects to minimize call overhead
 # on frequently reused operations:
-gemm <- cublas.sgemm$new( A, B, C, context = context )
+gemm <- cuRious::cublas.sgemm$new( A, B, C, context = context )
 
 # Let's mutliply the two matrices, the result ending up in C. We can check if we
 # got a correct result: they should be equal, as we used whole numbers.
@@ -40,16 +40,16 @@ print( mat.A %*% mat.B + mat.C )
 # benchmark the speedup gained by using the gpu, or to debug an application.
 
 # Let's benchmark the operation, and compare it to the R implementation:
-A.0 <- tensor$new( matrix( rnorm( 10^6 ), 10^3, 10^3 ) )
-B.0 <- tensor$new( A.0 )
-C.0 <- tensor$new( A.0 )
+A.0 <- cuRious::tensor$new( matrix( rnorm( 10^6 ), 10^3, 10^3 ) )
+B.0 <- cuRious::tensor$new( A.0 )
+C.0 <- cuRious::tensor$new( A.0 )
 
-A.3 <- tensor$new( A.0, 3L )
-B.3 <- tensor$new( A.3 )
-C.3 <- tensor$new( A.3 )
+A.3 <- cuRious::tensor$new( A.0, 3L )
+B.3 <- cuRious::tensor$new( A.3 )
+C.3 <- cuRious::tensor$new( A.3 )
 
-gemm.0 <- cublas.sgemm$new( A.0, B.0, C.0 )
-gemm.3 <- cublas.sgemm$new( A.3, B.3, C.3, context = context )
+gemm.0 <- cuRious::cublas.sgemm$new( A.0, B.0, C.0 )
+gemm.3 <- cuRious::cublas.sgemm$new( A.3, B.3, C.3, context = context )
 
 print( microbenchmark( gemm.0$run(), times = 10 ) )
 print( microbenchmark( gemm.3$run(), times = 10 ) )

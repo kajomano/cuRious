@@ -11,18 +11,18 @@ library( microbenchmark )
 
 # Let's create a stream. Streams are also created undeployed by default, if no
 # deployment target is set:
-stream <- stream$new()$deploy( 1 )
+stream <- cuRious::stream$new( 1L )
 
 # Pipe contexts
-pip.cont.sync  <- pipe.context$new()$deploy( 1 )
-pip.cont.async <- pipe.context$new( stream = stream )$deploy( 1 )
+pip.cont.sync  <- cuRious::pipe.context$new( NULL, 1L )
+pip.cont.async <- cuRious::pipe.context$new( stream, 1L )
 
 # A synchronous and an asynchronous transfer:
-src <- tensor$new( rnorm( 10^6 ) )
-dst <- tensor$new( src, copy = FALSE )
+src <- cuRious::tensor$new( rnorm( 10^6 ) )
+dst <- cuRious::tensor$new( src, copy = FALSE )
 
-pip.sync  <- pipe$new( src, dst, context = pip.cont.sync )
-pip.async <- pipe$new( src, dst, context = pip.cont.async )
+pip.sync  <- cuRious::pipe$new( src, dst, context = pip.cont.sync )
+pip.async <- cuRious::pipe$new( src, dst, context = pip.cont.async )
 
 print( microbenchmark( pip.sync$run(),  times = 100 ) )
 print( microbenchmark( pip.async$run(), times = 100 ) )

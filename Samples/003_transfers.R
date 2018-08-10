@@ -6,8 +6,8 @@ library( cuRious )
 # will see shortly.
 
 # A simple transfer invocation:
-src <- tensor$new( matrix( 1:6, 2, 3 ) )
-dst <- tensor$new( src, copy = FALSE )
+src <- cuRious::tensor$new( matrix( 1:6, 2, 3 ) )
+dst <- cuRious::tensor$new( src, copy = FALSE )
 
 transfer( src, dst )
 

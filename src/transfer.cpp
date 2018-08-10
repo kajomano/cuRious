@@ -5,9 +5,6 @@
 #include "transfer.h"
 #include "streams.h"
 
-#include <typeinfo>
-#include <cstring>
-
 // Very simple logic for now
 int cuR_transfer_task_span( int dims_0, int dims_1, sd_queue* worker_q_ptr ){
   const int thread_split = 2;

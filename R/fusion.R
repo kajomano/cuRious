@@ -48,8 +48,13 @@ fusion <- R6Class(
         }
       }
 
-      private$.add.ep( context, "context" )
-      private$.add.ep( context$stream, "stream" )
+      private$.eps$context <- context
+      private$.subscribe( context, "context" )
+
+      if( !is.null( context$stream ) ){
+        private$.eps$stream <- context$stream
+        private$.subscribe( context$stream, "stream" )
+      }
     },
 
     run = function(){
@@ -106,8 +111,12 @@ fusion <- R6Class(
   ),
 
   private = list(
+    # Stored container handles (endpoints)
     .eps     = NULL,
     .eps.out = NULL,
+
+    # Stored dimension objects
+    .tens.dims = NULL,
 
     # These fields need to be filled in the .update.context() function
     .fun     = NULL,
@@ -116,14 +125,14 @@ fusion <- R6Class(
 
     .sever   = TRUE,
 
-    .add.ep  = function( ep, ep.name, output = FALSE ){
-      if( !is.null( ep ) ){
-        private$.eps[[ep.name]] <- ep
-        private$.subscribe( ep, ep.name )
+    .add.tens.ep = function( tens, tens.dims, tens.name, output = FALSE ){
+      private$.eps[[tens.name]] <- tens
+      private$.subscribe( tens, tens.name )
 
-        if( output ){
-          private$.eps.out[[ep.name]] <- ep
-        }
+      private$.tens.dims[[tens.name]] <- tens.dims
+
+      if( output ){
+        private$.eps.out[[tens.name]] <- tens
       }
     },
 
@@ -189,20 +198,36 @@ fusion <- R6Class(
 
       private$.fun <- switch(
         level + 1L,
-        private$.call.L0,
+        private$.call.L0.wrapper,
         private$.call.L1,
         private$.call.L2,
         private$.call.L3
       )
 
-      private$.sever <- as.logical( level )
+      # TODO ====
+      # Test this, this was private$.sever <- as.logical( level ) before
+
+      private$.sever <- !as.logical( level )
     },
 
     .update.content = function( names ){
-      lapply( names, function( ep.name ){
+      for( ep.name in names ){
         ptrs.names <- paste0( ep.name, ".", names( private$.eps[[ ep.name ]]$ptrs ) )
         private$.params[ ptrs.names ] <- private$.eps[[ ep.name ]]$ptrs
+      }
+    },
+
+    .call.L0.wrapper = function( ... ){
+      # TODO ====
+      # ITT
+
+      current.dims <- sapply( names( private$.tens.dims ), function( ep.name ){
+        stop( "TODO" )
       })
+
+      private$.call.L0()
+
+      # Restore current dims
     },
 
     .call.L0 = function( ... ){

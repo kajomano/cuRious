@@ -16,8 +16,10 @@ check.level <- function( level ){
   invisible( as.integer( level ) )
 }
 
+.max.array.rank <- 2L
+
 is.dims <- function( dims ){
-  if( !is.numeric( dims ) || length( dims ) != 2 ){
+  if( !is.numeric( dims ) || length( dims ) != .max.array.rank ){
     return( FALSE )
   }
 
@@ -31,6 +33,39 @@ is.dims <- function( dims ){
 check.dims <- function( dims ){
   if( !is.dims( dims ) ) stop( "Invalid dims" )
   invisible( as.integer( dims ) )
+}
+
+is.span <- function( span ){
+  if( !is.list( span ) || length( span ) < 1L || length( span ) > .max.array.rank ){
+    return( FALSE )
+  }
+
+  for( range in span ){
+    if( !is.null( range ) ){
+      if( !is.numeric( range ) || length( range ) != 2L ){
+        return( FALSE )
+      }
+
+      if( range[[1]] < 1L ||
+          range[[2]] < range[[1]] ||
+          any( as.logical( range %% 1 ) ) ){
+        return( FALSE )
+      }
+    }
+  }
+
+  TRUE
+}
+
+check.span <- function( span ){
+  if( !is.span( span ) ) stop( "Invalid span" )
+  invisible( lapply( span, function( range ){
+    if( !is.null( range ) ){
+      as.integer( range )
+    }else{
+      NULL
+    }
+  }))
 }
 
 types <- c( n = "numeric", i = "integer", l = "logical" )

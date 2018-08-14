@@ -115,8 +115,11 @@ fusion <- R6Class(
     .eps     = NULL,
     .eps.out = NULL,
 
-    # Stored dimension objects
-    .tens.dims = NULL,
+    # TODO ====
+    # Tensor dims storage
+
+    # # Stored dimension objects
+    # .tens.dims = NULL,
 
     # These fields need to be filled in the .update.context() function
     .fun     = NULL,
@@ -125,16 +128,16 @@ fusion <- R6Class(
 
     .sever   = TRUE,
 
-    .add.tens.ep = function( tens, tens.dims, tens.name, output = FALSE ){
-      private$.eps[[tens.name]] <- tens
-      private$.subscribe( tens, tens.name )
-
-      private$.tens.dims[[tens.name]] <- tens.dims
-
-      if( output ){
-        private$.eps.out[[tens.name]] <- tens
-      }
-    },
+    # .add.tens.ep = function( tens, tens.dims, tens.name, output = FALSE ){
+    #   private$.eps[[tens.name]] <- tens
+    #   private$.subscribe( tens, tens.name )
+    #
+    #   private$.tens.dims[[tens.name]] <- tens.dims
+    #
+    #   if( output ){
+    #     private$.eps.out[[tens.name]] <- tens
+    #   }
+    # },
 
     .update.context = function( ... ){
 

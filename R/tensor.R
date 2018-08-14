@@ -35,67 +35,46 @@ tensor <- R6Class(
                            copy   = TRUE,
                            device = NULL
     ){
-      # If data is not given
+      # If data is not supported
       if( is.null( data ) ){
-        if( is.null( dims ) ){
-          private$.dims <- c( 1L, 1L )
-        }else{
-          private$.dims <- check.dims( dims )
-        }
+        if( is.null( dims ) )   dims   <- c( 1L, 1L )
+        if( is.null( type ) )   type   <- "n"
+        if( is.null( level ) )  level  <- 0L
+        if( is.null( device ) ) device <- cuda.device.default.get()
 
-        if( is.null( type ) ){
-          private$.type <- "n"
-        }else{
-          private$.type <- check.type( type )
-        }
+      # If data is supported as an object
+      }else if( is.obj( data ) ){
+        if( is.null( dims ) )   dims   <- obj.dims( data )
+        if( is.null( type ) )   type   <- obj.type( data )
+        if( is.null( level ) )  level  <- 0L
+        if( is.null( device ) ) device <- cuda.device.default.get()
 
-        if( is.null( level ) ){
-          private$.level <- 0L
-        }else{
-          private$.level <- check.level( level )
-        }
-
-        if( is.null( device ) ){
-          private$.device <- cuda.device.default.get()
-        }else{
-          private$.device <- check.device( device )
-        }
-
-      # If data is supported
+      # If data is supported as an object
+      }else if( is.tensor( data ) ){
+        if( is.null( dims ) )   dims   <- data$dims
+        if( is.null( type ) )   type   <- data$type
+        if( is.null( level ) )  level  <- data$level
+        if( is.null( device ) ) device <- data$device
       }else{
-        if( is.obj( data ) ){
-          private$.dims <- obj.dims( data )
-          private$.type <- obj.type( data )
+        stop( "Invalid data argument on init" )
+      }
 
-          if( is.null( level ) ){
-            private$.level <- 0L
-          }else{
-            private$.level <- check.level( level )
-          }
+      # ITT =====
+      stop( "ITT" )
+        # ------------------
 
-          if( is.null( device ) ){
-            private$.device <- cuda.device.default.get()
-          }else{
-            private$.device <- check.device( device )
-          }
-        }else if( is.tensor( data ) ){
-          private$.dims  <- data$dims
-          private$.type  <- data$type
+        private$.dims   <- check.dims( dims )
+        private$.type   <- check.type( type )
+        private$.level  <- check.level( level )
+        private$.device <- check.device( device )
 
-          if( is.null( level ) ){
-            private$.level <- data$level
-          }else{
-            private$.level <- check.level( level )
-          }
 
-          if( is.null( device ) ){
-            private$.device <- data$device
-          }else{
-            private$.device <- check.device( device )
-          }
-        }else{
-          stop( "Invalid data format" )
-        }
+
+
+        private$.dims <- obj.dims( data )
+        private$.type <- obj.type( data )
+
+
 
         if( !is.null( dims ) ){
           dims <- check.dims( dims )
@@ -148,6 +127,7 @@ tensor <- R6Class(
         private$.dims <- dims
 
         if( private$.level == 0L ){
+          self$sever()
           .obj.recut( private$.ptrs$tensor, dims )
         }
       }
@@ -187,6 +167,8 @@ tensor <- R6Class(
 
     sever = function(){
       self$check.destroyed()
+
+      print( "Sever request" )
 
       if( private$.level == 0L ){
         if( private$.refs ){
@@ -371,13 +353,14 @@ tensor <- R6Class(
         dims <- check.dims( dims )
 
         if( prod( dims ) != prod( private$.dims ) ){
-          stop( "Dims mismatch on recut" )
+          stop( "Length mismatch on redim" )
         }
 
         if( !identical( dims, private$.dims ) ){
           private$.dims <- dims
 
           if( private$.level == 0L ){
+            self$sever()
             .obj.recut( private$.ptrs$tensor, dims )
           }
         }
@@ -389,6 +372,8 @@ tensor <- R6Class(
 
       if( missing( val ) ){
         return( private$.type )
+      }else{
+        stop( "Tensor type not directly settable" )
       }
     }
   )

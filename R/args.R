@@ -36,7 +36,7 @@ check.dims <- function( dims ){
 }
 
 is.span <- function( span ){
-  if( !is.list( span ) || length( span ) < 1L || length( span ) > .max.array.rank ){
+  if( !is.list( span ) || length( span ) > .max.array.rank ){
     return( FALSE )
   }
 

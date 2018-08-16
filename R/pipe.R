@@ -96,18 +96,67 @@ pipe <- R6Class(
   public = list(
     initialize = function( src,
                            dst,
-                           src.perm = NULL,
-                           dst.perm = NULL,
-                           src.span = NULL,
-                           dst.span = NULL,
-                           context  = NULL ){
+                           src.perms = NULL,
+                           dst.perms = NULL,
+                           context   = NULL ){
       # Sanity checks
-      check.tensor( src )
-      check.tensor( dst )
+      src.span <- tensor.span$new( src )
+      dst.span <- tensor.span$new( dst )
 
-      if( src$type != dst$type ){
+      if( src.span$tensor$type != dst$tensor$type ){
         stop( "Tensor types do not match" )
       }
+
+      if( length( src.perms ) > .max.array.rank ){
+        stop( "Invalid src.perms argument" )
+      }
+
+      src.perm.spans <- lapply( 1:.max.array.rank, function( rank ){
+        if( length( src.perms ) < rank ){
+          return( NULL )
+        }
+
+        if( is.null( src.perms[[rank]] ) ){
+          return( NULL )
+        }
+
+        src.perm.span <- tensor.span$new( src.perms[[rank]] )
+
+        if( src.perm.span$tensor$type != "i" ||
+            src.perm.span$rank != 1 ||
+            src.span$span.dims[[rank]] < src.perm.span$span.dims[[1]] ){
+          stop( "Invalid src.perm" )
+        }
+
+        src.perm.span
+      })
+
+      if( length( dst.perms ) > .max.array.rank ){
+        stop( "Invalid dst.perms argument" )
+      }
+
+      dst.perm.spans <- lapply( 1:.max.array.rank, function( rank ){
+        if( length( dst.perms ) < rank ){
+          return( NULL )
+        }
+
+        if( is.null( dst.perms[[rank]] ) ){
+          return( NULL )
+        }
+
+        dst.perm.span <- tensor.span$new( dst.perms[[rank]] )
+
+        if( dst.perm.span$tensor$type != "i" ||
+            dst.perm.span$rank != 1 ||
+            dst.span$span.dims[[rank]] < dst.perm.span$span.dims[[1]] ){
+          stop( "Invalid dst.perm" )
+        }
+
+        dst.perm.span
+      })
+
+      # ITT
+      stop( "ITT" )
 
       # Dim checks
       src.dims <- .tensor.dims$new( src )

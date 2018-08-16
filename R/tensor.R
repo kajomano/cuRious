@@ -21,6 +21,9 @@ check.tensor <- function( tensor ){
   invisible( tensor )
 }
 
+# TODO ====
+# Add ability to create tensors from tensor.span-s
+
 # Tensor ====
 tensor <- R6Class(
   "cuR.tensor",
@@ -49,88 +52,75 @@ tensor <- R6Class(
         if( is.null( level ) )  level  <- 0L
         if( is.null( device ) ) device <- cuda.device.default.get()
 
+        private$.dims <- obj.dims( data )
+        private$.type <- obj.type( data )
+
       # If data is supported as an object
       }else if( is.tensor( data ) ){
         if( is.null( dims ) )   dims   <- data$dims
         if( is.null( type ) )   type   <- data$type
         if( is.null( level ) )  level  <- data$level
         if( is.null( device ) ) device <- data$device
+
+        private$.dims <- data$dims
+        private$.type <- data$type
+
       }else{
         stop( "Invalid data argument on init" )
       }
 
-      # ITT =====
-      stop( "ITT" )
-        # ------------------
+      # Arg checks
+      dims   <- check.dims( dims )
+      type   <- check.type( type )
+      level  <- check.level( level )
+      device <- check.device( device )
 
-        private$.dims   <- check.dims( dims )
-        private$.type   <- check.type( type )
-        private$.level  <- check.level( level )
-        private$.device <- check.device( device )
-
-
-
-
-        private$.dims <- obj.dims( data )
-        private$.type <- obj.type( data )
-
-
-
-        if( !is.null( dims ) ){
-          dims <- check.dims( dims )
-
-          if( !identical( dims, private$.dims ) ){
-            if( prod( dims ) != prod( private$.dims ) ){
-              stop( "Dims mismatch on init" )
-            }
-          }
+      # Match checks
+      if( !is.null( private$.dims ) ){
+        if( prod( private$.dims ) != prod( dims ) ){
+          stop( "Dims mismatch on init" )
         }
-
-        if( !is.null( type ) ){
-          if( check.type( type ) != private$.type ){
-            stop( "Type mismatch on init" )
-          }
-        }
+      }else{
+        private$.dims <- dims
       }
 
+      if( !is.null( private$.type ) ){
+        if( private$.type != type ){
+          stop( "Type mismatch on init" )
+        }
+      }else{
+        private$.type <- type
+      }
+
+      private$.level  <- level
+      private$.device <- device
+
       # Initial data
-      if( is.null( data ) ){
+      if( is.null( data ) || !copy ){
         private$.ptrs$tensor <- private$.create.tensor()
         self$clear()
       }else{
-        if( copy ){
-          if( is.tensor( data ) ){
-            if( data$level == 0L && private$.level == 0L ){
-              private$.ptrs$tensor <- data$obj
-              private$.refs <- TRUE
-            }else{
-              private$.ptrs$tensor <- private$.create.tensor()
-              private$.push( data )
-            }
-          }else if( is.obj( data ) ){
-            if( private$.level == 0L ){
-              private$.ptrs$tensor <- data
-              private$.refs <- TRUE
-            }else{
-              private$.ptrs$tensor <- private$.create.tensor()
-              private$.push( data )
-            }
+        if( is.tensor( data ) ){
+          if( data$level == 0L && private$.level == 0L ){
+            private$.ptrs$tensor <- data$obj
+            private$.refs <- TRUE
+          }else{
+            private$.ptrs$tensor <- private$.create.tensor()
+            private$.push( data )
           }
-        }else{
-          private$.ptrs$tensor <- private$.create.tensor()
-          self$clear()
+        }else if( is.obj( data ) ){
+          if( private$.level == 0L ){
+            private$.ptrs$tensor <- data
+            private$.refs <- TRUE
+          }else{
+            private$.ptrs$tensor <- private$.create.tensor()
+            private$.push( data )
+          }
         }
       }
 
       # Recut
-      if( !identical( dims, private$.dims ) ){
-        private$.dims <- dims
-
-        if( private$.level == 0L ){
-          self$sever()
-          .obj.recut( private$.ptrs$tensor, dims )
-        }
-      }
+      self$dims <- dims
     },
 
     # Push takes objects or tensors, pull returns only objects

@@ -99,7 +99,8 @@ pipe <- R6Class(
                            src.perms = NULL,
                            dst.perms = NULL,
                            context   = NULL ){
-      # Sanity checks
+
+      # Sanity and dim checks
       src.span <- tensor.span$new( src )
       dst.span <- tensor.span$new( dst )
 
@@ -110,6 +111,12 @@ pipe <- R6Class(
       if( length( src.perms ) > .max.array.rank ){
         stop( "Invalid src.perms argument" )
       }
+
+      # ITT
+      stop( "ITT" )
+
+      #  -----------------------
+
 
       src.perm.spans <- lapply( 1:.max.array.rank, function( rank ){
         if( length( src.perms ) < rank ){
@@ -128,6 +135,7 @@ pipe <- R6Class(
           stop( "Invalid src.perm" )
         }
 
+        src.dims[[rank]] <- src.perm.span$span.dims[[1]]
         src.perm.span
       })
 
@@ -152,28 +160,17 @@ pipe <- R6Class(
           stop( "Invalid dst.perm" )
         }
 
+        dst.dims[[rank]] <- dst.perm.span$span.dims[[1]]
         dst.perm.span
       })
 
-      # ITT
-      stop( "ITT" )
-
-      # Dim checks
-      src.dims <- .tensor.dims$new( src )
-      dst.dims <- .tensor.dims$new( dst )
-
-      src.dims$check.perm( src.perm )
-      dst.dims$check.perm( dst.perm )
-      src.dims$check.span( src.span )
-      dst.dims$check.span( dst.span )
-
-      if( !identical( src.dims$dims, dst.dims$dims ) ){
-        stop( "Dimensions do not match" )
+      if( !identical( src.dims, dst.dims ) ){
+        stop( "Non-matching dimensions in pipe" )
       }
 
       # Assignments
-      private$.add.ep( src, "src" )
-      private$.add.ep( dst, "dst", TRUE )
+      private$.add.ep( src.span, "src" )
+      private$.add.ep( dst.span, "dst", TRUE )
 
       private$.params$type         <- src$type
       private$.params$src.dims     <- src.dims$dims.orig

@@ -34,7 +34,7 @@ tensor.span <- R6Class(
       # Span
       if( is.null( span ) ){
         private$.span <- lapply( 1:.max.array.rank, function( rank ){
-          c( 1, private$.dims[[rank]] )
+          c( 1L, private$.dims[[rank]] )
         })
       }else{
         span <- check.span( span )
@@ -49,7 +49,7 @@ tensor.span <- R6Class(
           dim <- private$.dims[[rank]]
 
           if( is.null( range ) ){
-            range <- c( 1, dim )
+            range <- c( 1L, dim )
           }else{
             # No need to check the other possibilities, as check.span
             # establishes that range[[1]] < range[[2]]
@@ -65,7 +65,12 @@ tensor.span <- R6Class(
 
       # Span.dims
       private$.span.dims <- sapply( 1:.max.array.rank, function( rank ){
-        private$.span[[rank]][[2]] - private$.span[[rank]][[1]]
+        private$.span[[rank]][[2]] - private$.span[[rank]][[1]] + 1L
+      })
+
+      # Span.offs
+      private$.span.offs <- sapply( 1:.max.array.rank, function( rank ){
+        private$.span[[rank]][[1]] - 1L
       })
 
       # Rank
@@ -137,6 +142,7 @@ tensor.span <- R6Class(
 
     .span      = NULL,
     .span.dims = NULL,
+    .span.offs = NULL,
 
     .rank      = NULL
 
@@ -173,7 +179,15 @@ tensor.span <- R6Class(
       if( missing( span.dims ) ){
         return( private$.span.dims )
       }else{
-        stop( "Tensor span dims is not directly settable" )
+        stop( "Tensor span dims are not directly settable" )
+      }
+    },
+
+    span.offs = function( span.offs ){
+      if( missing( span.offs ) ){
+        return( private$.span.offs )
+      }else{
+        stop( "Tensor span offs are not directly settable" )
       }
     },
 

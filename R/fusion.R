@@ -112,8 +112,8 @@ fusion <- R6Class(
 
   private = list(
     # Stored container handles (endpoints)
-    .eps     = NULL,
-    .eps.out = NULL,
+    .eps      = NULL,
+    .eps.out  = NULL,
 
     # TODO ====
     # Tensor dims storage
@@ -128,16 +128,22 @@ fusion <- R6Class(
 
     .sever   = TRUE,
 
-    # .add.tens.ep = function( tens, tens.dims, tens.name, output = FALSE ){
-    #   private$.eps[[tens.name]] <- tens
-    #   private$.subscribe( tens, tens.name )
-    #
-    #   private$.tens.dims[[tens.name]] <- tens.dims
-    #
-    #   if( output ){
-    #     private$.eps.out[[tens.name]] <- tens
-    #   }
-    # },
+    .add.tensor.ep = function( tensor.span, tensor.name, output = FALSE ){
+      if( !is.null( tensor.span ) ){
+        # Endpoint lists and alerts
+        private$.eps[[tensor.name]] <- tensor.span$tensor
+        private$.subscribe( tensor.span$tensor, tensor.name )
+
+        if( output ){
+          private$.eps.out[[tensor.name]] <- tensor.span$tensor
+        }
+      }
+
+      # Params
+      private$.params[[ paste0( tensor.name, ".dims" ) ]]      <- tensor.span$dims
+      private$.params[[ paste0( tensor.name, ".span.dims" ) ]] <- tensor.span$span.dims
+      private$.params[[ paste0( tensor.name, ".span.offs" ) ]] <- tensor.span$span.offs
+    },
 
     .update.context = function( ... ){
 
@@ -201,7 +207,7 @@ fusion <- R6Class(
 
       private$.fun <- switch(
         level + 1L,
-        private$.call.L0.wrapper,
+        private$.call.L0,
         private$.call.L1,
         private$.call.L2,
         private$.call.L3
@@ -218,19 +224,6 @@ fusion <- R6Class(
         ptrs.names <- paste0( ep.name, ".", names( private$.eps[[ ep.name ]]$ptrs ) )
         private$.params[ ptrs.names ] <- private$.eps[[ ep.name ]]$ptrs
       }
-    },
-
-    .call.L0.wrapper = function( ... ){
-      # TODO ====
-      # ITT
-
-      current.dims <- sapply( names( private$.tens.dims ), function( ep.name ){
-        stop( "TODO" )
-      })
-
-      private$.call.L0()
-
-      # Restore current dims
     },
 
     .call.L0 = function( ... ){

@@ -112,11 +112,7 @@ pipe <- R6Class(
         stop( "Invalid src.perms argument" )
       }
 
-      # ITT
-      stop( "ITT" )
-
-      #  -----------------------
-
+      src.dims <- tensor.span$span.dims
 
       src.perm.spans <- lapply( 1:.max.array.rank, function( rank ){
         if( length( src.perms ) < rank ){
@@ -129,9 +125,7 @@ pipe <- R6Class(
 
         src.perm.span <- tensor.span$new( src.perms[[rank]] )
 
-        if( src.perm.span$tensor$type != "i" ||
-            src.perm.span$rank != 1 ||
-            src.span$span.dims[[rank]] < src.perm.span$span.dims[[1]] ){
+        if( src.perm.span$tensor$type != "i" || src.perm.span$rank != 1 ){
           stop( "Invalid src.perm" )
         }
 
@@ -139,9 +133,7 @@ pipe <- R6Class(
         src.perm.span
       })
 
-      if( length( dst.perms ) > .max.array.rank ){
-        stop( "Invalid dst.perms argument" )
-      }
+      dst.dims <- tensor.span$span.dims
 
       dst.perm.spans <- lapply( 1:.max.array.rank, function( rank ){
         if( length( dst.perms ) < rank ){
@@ -154,9 +146,7 @@ pipe <- R6Class(
 
         dst.perm.span <- tensor.span$new( dst.perms[[rank]] )
 
-        if( dst.perm.span$tensor$type != "i" ||
-            dst.perm.span$rank != 1 ||
-            dst.span$span.dims[[rank]] < dst.perm.span$span.dims[[1]] ){
+        if( dst.perm.span$tensor$type != "i" || dst.perm.span$rank != 1 ){
           stop( "Invalid dst.perm" )
         }
 
@@ -172,16 +162,10 @@ pipe <- R6Class(
       private$.add.ep( src.span, "src" )
       private$.add.ep( dst.span, "dst", TRUE )
 
-      private$.params$type         <- src$type
-      private$.params$src.dims     <- src.dims$dims.orig
-      private$.params$dst.dims     <- src.dims$dims.orig
-      private$.params$dims         <- src.dims$dims
-
-      private$.params$src.span.off <- src.dims$span.off
-      private$.params$dst.span.off <- dst.dims$span.off
-
-      private$.add.ep( src.perm, "src.perm" )
-      private$.add.ep( dst.perm, "dst.perm" )
+      for( rank in 1:.max.array.rank ){
+        private$.add.ep( src.perm.spans, paste0( "src.perm.", rank ) )
+        private$.add.ep( dst.perm.spans, paste0( "dst.perm.", rank ) )
+      }
 
       super$initialize( context )
     }

@@ -140,6 +140,7 @@ fusion <- R6Class(
       }
 
       # Params
+      private$.params[[ paste0( tensor.name, ".type" ) ]]      <- tensor.span$type
       private$.params[[ paste0( tensor.name, ".dims" ) ]]      <- tensor.span$dims
       private$.params[[ paste0( tensor.name, ".span.dims" ) ]] <- tensor.span$span.dims
       private$.params[[ paste0( tensor.name, ".span.offs" ) ]] <- tensor.span$span.offs

@@ -158,8 +158,6 @@ tensor <- R6Class(
     sever = function(){
       self$check.destroyed()
 
-      print( "Sever request" )
-
       if( private$.level == 0L ){
         if( private$.refs ){
           private$.ptrs$tensor <- .obj.duplicate( private$.ptrs$tensor )

@@ -159,12 +159,12 @@ pipe <- R6Class(
       }
 
       # Assignments
-      private$.add.ep( src.span, "src" )
-      private$.add.ep( dst.span, "dst", TRUE )
+      private$.add.tensor.ep( src.span, "src" )
+      private$.add.tensor.ep( dst.span, "dst", TRUE )
 
       for( rank in 1:.max.array.rank ){
-        private$.add.ep( src.perm.spans, paste0( "src.perm.", rank ) )
-        private$.add.ep( dst.perm.spans, paste0( "dst.perm.", rank ) )
+        private$.add.tensor.ep( src.perm.spans[[rank]], paste0( "src.perm.", rank ) )
+        private$.add.tensor.ep( dst.perm.spans[[rank]], paste0( "dst.perm.", rank ) )
       }
 
       super$initialize( context )
@@ -174,55 +174,101 @@ pipe <- R6Class(
   private = list(
     .call.L0 = function( src.tensor,
                          dst.tensor,
+                         src.dims,
+                         src.span.dims,
+                         src.span.offs,
+                         dst.dims,
+                         dst.span.dims,
+                         dst.span.offs,
                          src.level,
                          dst.level,
-                         type,
-                         dims,
-                         src.dims        = NULL,
-                         dst.dims        = NULL,
-                         src.perm.tensor = NULL,
-                         dst.perm.tensor = NULL,
-                         src.span.off,
-                         dst.span.off ){
+                         src.perm.1.tensor    = NULL,
+                         dst.perm.1.tensor    = NULL,
+                         src.perm.2.tensor    = NULL,
+                         dst.perm.2.tensor    = NULL,
+                         src.perm.1.dims      = NULL,
+                         src.perm.1.span.dims = NULL,
+                         src.perm.1.span.offs = NULL,
+                         dst.perm.1.dims      = NULL,
+                         dst.perm.1.span.dims = NULL,
+                         dst.perm.1.span.offs = NULL,
+                         src.perm.2.dims      = NULL,
+                         src.perm.2.span.dims = NULL,
+                         src.perm.2.span.offs = NULL,
+                         dst.perm.2.dims      = NULL,
+                         dst.perm.2.span.dims = NULL,
+                         dst.perm.2.span.offs = NULL,
+                         ... ){
 
-      src.perm <- NULL
-      dst.perm <- NULL
+      # Save original and set stored dims
+      src.dims.orig <- private$.eps$src$dims
+      dst.dims.orig <- private$.eps$dst$dims
 
-      if( src.span.off != 1L || obj.dims( src.tensor )[[2]] != dims[[2]] ){
-        src.perm <- src.span.off:( src.span.off + dims[[2]] - 1 )
-      }
+      src.perm.1.dims.orig <- private$.eps$src.perm.1$dims
+      src.perm.2.dims.orig <- private$.eps$src.perm.2$dims
+      dst.perm.1.dims.orig <- private$.eps$dst.perm.1$dims
+      dst.perm.2.dims.orig <- private$.eps$dst.perm.2$dims
 
-      if( dst.span.off != 1L || obj.dims( dst.tensor )[[2]] != dims[[2]] ){
-        dst.perm <- dst.span.off:( dst.span.off + dims[[2]] - 1 )
-      }
+      private$.eps$src$dims <- src.dims
+      private$.eps$dst$dims <- dst.dims
 
-      if( !is.null( src.perm.tensor ) ){
-        if( !is.null( src.perm ) ){
-          src.perm <- src.perm.tensor[ src.perm ]
-        }else{
-          src.perm <- src.perm.tensor
-        }
-      }
+      private$.eps$src.perm.1$dims <- src.perm.1.dims
+      private$.eps$src.perm.2$dims <- src.perm.2.dims
+      private$.eps$dst.perm.1$dims <- dst.perm.1.dims
+      private$.eps$dst.perm.2$dims <- dst.perm.2.dims
 
-      if( !is.null( dst.perm.tensor ) ){
-        if( !is.null( dst.perm ) ){
-          dst.perm <- dst.perm.tensor[ dst.perm ]
-        }else{
-          dst.perm <- dst.perm.tensor
-        }
-      }
+      # Spans
 
-      # Src also must be accessed by $obj, because it needs to be signalled that
-      # there is a duplicate holder of it's contents
-      if( is.null( dst.perm ) ){
-        private$.eps.out$dst$obj <- obj.subset( private$.eps$src$obj, src.perm )
-      }else{
-        if( dims[[1]] == 1L ){
-          private$.eps.out$dst$obj[ dst.perm ] <- obj.subset( private$.eps$src$obj, src.perm )
-        }else{
-          private$.eps.out$dst$obj[, dst.perm ] <- obj.subset( private$.eps$src$obj, src.perm )
-        }
-      }
+      # ITT ====
+      stop( "ITT" )
+
+      # src.perm <- NULL
+      # dst.perm <- NULL
+      #
+      # if( src.span.off != 1L || obj.dims( src.tensor )[[2]] != dims[[2]] ){
+      #   src.perm <- src.span.off:( src.span.off + dims[[2]] - 1 )
+      # }
+      #
+      # if( dst.span.off != 1L || obj.dims( dst.tensor )[[2]] != dims[[2]] ){
+      #   dst.perm <- dst.span.off:( dst.span.off + dims[[2]] - 1 )
+      # }
+      #
+      # if( !is.null( src.perm.tensor ) ){
+      #   if( !is.null( src.perm ) ){
+      #     src.perm <- src.perm.tensor[ src.perm ]
+      #   }else{
+      #     src.perm <- src.perm.tensor
+      #   }
+      # }
+      #
+      # if( !is.null( dst.perm.tensor ) ){
+      #   if( !is.null( dst.perm ) ){
+      #     dst.perm <- dst.perm.tensor[ dst.perm ]
+      #   }else{
+      #     dst.perm <- dst.perm.tensor
+      #   }
+      # }
+      #
+      # # Src also must be accessed by $obj, because it needs to be signalled that
+      # # there is a duplicate holder of it's contents
+      # if( is.null( dst.perm ) ){
+      #   private$.eps.out$dst$obj <- obj.subset( private$.eps$src$obj, src.perm )
+      # }else{
+      #   if( dims[[1]] == 1L ){
+      #     private$.eps.out$dst$obj[ dst.perm ] <- obj.subset( private$.eps$src$obj, src.perm )
+      #   }else{
+      #     private$.eps.out$dst$obj[, dst.perm ] <- obj.subset( private$.eps$src$obj, src.perm )
+      #   }
+      # }
+
+      # Restore original dims
+      private$.eps$src$dims <- src.dims.orig
+      private$.eps$dst$dims <- dst.dims.orig
+
+      private$.eps$src.perm.1$dims <- src.perm.1.dims.orig
+      private$.eps$src.perm.2$dims <- src.perm.2.dims.orig
+      private$.eps$dst.perm.1$dims <- dst.perm.1.dims.orig
+      private$.eps$dst.perm.2$dims <- dst.perm.2.dims.orig
     },
 
     .call.L03 = function( src.tensor,
@@ -262,25 +308,25 @@ pipe <- R6Class(
       # accessed values if used multiple times
       src        <- private$.eps$src
       dst        <- private$.eps$dst
+
+      context    <- private$.eps$context
+      stream     <- private$.eps$stream
+
+      # Transfer steps and levels
       src.level  <- src$level
       dst.level  <- dst$level
 
       src.device <- src$device
       dst.device <- dst$device
 
-      src.perm   <- private$.eps$src.perm
-      dst.perm   <- private$.eps$dst.perm
+      # Transfer levels
+      transfer.deep    <- ( src.level == 3L && dst.level == 3L )
+      transfer.shallow <- ( src.level != 3L && dst.level != 3L )
+      # transfer.cross   <- ( !transfer.deep  && !transfer.shallow )
 
-      context    <- private$.eps$context
-      stream     <- private$.eps$stream
-
-      # Multi-step pipes are no longer valid:
+      # Multi-step transfers are no longer valid:
       # L0-L3 and back
       # L3-L3 cross device
-
-      # Deep transfers are L3-L3 transfers
-      transfer.deep <- ( src.level == 3L && dst.level == 3L )
-
       if( transfer.deep && src.device != dst.device ){
         stop( "Cross-device pipes are not allowed" )
       }
@@ -295,7 +341,7 @@ pipe <- R6Class(
       if( src.level == 0L && dst.level == 0L ){
         if( is.null( context ) ){
           native.call <- TRUE
-        }else if( is.null( context$level ) ){
+        }else if( context$level ){
           native.call <- TRUE
         }
       }
@@ -310,48 +356,34 @@ pipe <- R6Class(
         device = -1
       }
 
-      # Source permutation
-      if( !is.null( src.perm ) ){
-        src.perm.level  <- src.perm$level
+      # Permutations
+      perms <- private$.eps[ paste0(
+        c( "src", "dst" ),
+        ".perm.",
+        rep( 1:.max.array.rank, each = 2 ) ) ]
 
-        if( transfer.deep ){
-          if( src.perm.level != 3L ){
-            stop( "Source permutation tensor is not on L3" )
-          }
+      for( perm in perms ){
+        if( !is.null( perm ) ){
+          perm.level  <- perm$level
 
-          if( src.perm$device != device ){
-            stop( "Source permutation tensor is not on the correct device" )
-          }
-        }else if( native.call ){
-          if( src.perm.level != 0L ){
-            stop( "Source permutation tensor is not on L0" )
-          }
-        }else{
-          if( src.perm.level == 3L ){
-            stop( "Source permutation tensor is not on the correct level" )
-          }
-        }
-      }
+          if( transfer.deep ){
+            if( perm.level != 3L ){
+              stop( "Permutation tensor is not on L3" )
+            }
 
-      # Destination permutation
-      if( !is.null( dst.perm ) ){
-        dst.perm.level  <- dst.perm$level
-
-        if( transfer.deep ){
-          if( dst.perm.level != 3L ){
-            stop( "Destination permutation tensor is not on L3" )
-          }
-
-          if( dst.perm$device != device ){
-            stop( "Destination permutation tensor is not on the correct device" )
-          }
-        }else if( native.call ){
-          if( dst.perm.level != 0L ){
-            stop( "Destination permutation tensor is not on L0" )
-          }
-        }else{
-          if( dst.perm.level == 3L ){
-            stop( "Destination permutation tensor is not on the correct level" )
+            if( perm$device != device ){
+              stop( "Permutation tensor is not on the correct device" )
+            }
+          }else if( native.call ){
+            if( perm.level != 0L ){
+              stop( "Permutation tensor is not on L0" )
+            }
+          }else if( shallow.transfer ){
+            if( perm.level == 3L ){
+              stop( "Permutation tensor is not in host memory" )
+            }
+          }else{
+            stop( "Permutation is not allowed on cross device-host transfers" )
           }
         }
       }

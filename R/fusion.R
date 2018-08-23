@@ -46,14 +46,14 @@ fusion <- R6Class(
             sub( "^(cuR\\.[^\\.]*).*", "\\1", class( context )[[1]] ) ){
           stop( "Context does not match this fusion" )
         }
-      }
 
-      private$.eps$context <- context
-      private$.subscribe( context, "context" )
+        private$.eps$context <- context
+        private$.subscribe( context, "context" )
 
-      if( !is.null( context$stream ) ){
-        private$.eps$stream <- context$stream
-        private$.subscribe( context$stream, "stream" )
+        if( !is.null( context$stream ) ){
+          private$.eps$stream <- context$stream
+          private$.subscribe( context$stream, "stream" )
+        }
       }
     },
 
@@ -75,6 +75,8 @@ fusion <- R6Class(
         private$.update.content( private$.content.changed )
         private$.content.changed <- NULL
       }
+
+      browser()
 
       .cuda.device.set( private$.device )
       res <- do.call( private$.fun, private$.params )
@@ -130,20 +132,20 @@ fusion <- R6Class(
 
     .add.tensor.ep = function( tensor.span, tensor.name, output = FALSE ){
       if( !is.null( tensor.span ) ){
-        # Endpoint lists and alerts
+          # Endpoint lists and alerts
         private$.eps[[tensor.name]] <- tensor.span$tensor
         private$.subscribe( tensor.span$tensor, tensor.name )
 
         if( output ){
           private$.eps.out[[tensor.name]] <- tensor.span$tensor
         }
-      }
 
-      # Params
-      private$.params[[ paste0( tensor.name, ".type" ) ]]      <- tensor.span$type
-      private$.params[[ paste0( tensor.name, ".dims" ) ]]      <- tensor.span$dims
-      private$.params[[ paste0( tensor.name, ".span.dims" ) ]] <- tensor.span$span.dims
-      private$.params[[ paste0( tensor.name, ".span.offs" ) ]] <- tensor.span$span.offs
+        # Params
+        private$.params[[ paste0( tensor.name, ".type" ) ]]      <- tensor.span$type
+        private$.params[[ paste0( tensor.name, ".dims" ) ]]      <- tensor.span$dims
+        private$.params[[ paste0( tensor.name, ".span.dims" ) ]] <- tensor.span$span.dims
+        private$.params[[ paste0( tensor.name, ".span.offs" ) ]] <- tensor.span$span.offs
+      }
     },
 
     .update.context = function( ... ){
@@ -214,10 +216,7 @@ fusion <- R6Class(
         private$.call.L3
       )
 
-      # TODO ====
-      # Test this, this was private$.sever <- as.logical( level ) before
-
-      private$.sever <- !as.logical( level )
+      private$.sever <- as.logical( level )
     },
 
     .update.content = function( names ){

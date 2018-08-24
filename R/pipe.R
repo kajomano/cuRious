@@ -123,6 +123,10 @@ pipe <- R6Class(
           return( NULL )
         }
 
+        if( rank > src.span$rank ){
+          stop( "Out of rank src.perm" )
+        }
+
         src.perm.span <- tensor.span$new( src.perms[[rank]] )
 
         if( src.perm.span$tensor$type != "i" || src.perm.span$rank != 1 ){
@@ -142,6 +146,10 @@ pipe <- R6Class(
 
         if( is.null( dst.perms[[rank]] ) ){
           return( NULL )
+        }
+
+        if( rank > src.span$rank ){
+          stop( "Out of rank dst.perm" )
         }
 
         dst.perm.span <- tensor.span$new( dst.perms[[rank]] )
@@ -173,66 +181,108 @@ pipe <- R6Class(
 
   private = list(
     .call.L0 = function( src.tensor,
-                         dst.tensor,
-                         src.dims,
-                         src.span.dims,
-                         src.span.offs,
-                         dst.dims,
-                         dst.span.dims,
-                         dst.span.offs,
+                         src.wrap,
                          src.level,
+                         dst.tensor,
+                         dst.wrap,
                          dst.level,
                          src.perm.1.tensor    = NULL,
-                         dst.perm.1.tensor    = NULL,
+                         src.perm.1.wrap      = NULL,
                          src.perm.2.tensor    = NULL,
+                         src.perm.2.wrap      = NULL,
+                         dst.perm.1.tensor    = NULL,
+                         dst.perm.1.wrap      = NULL,
                          dst.perm.2.tensor    = NULL,
-                         src.perm.1.dims      = NULL,
-                         src.perm.1.span.dims = NULL,
-                         src.perm.1.span.offs = NULL,
-                         dst.perm.1.dims      = NULL,
-                         dst.perm.1.span.dims = NULL,
-                         dst.perm.1.span.offs = NULL,
-                         src.perm.2.dims      = NULL,
-                         src.perm.2.span.dims = NULL,
-                         src.perm.2.span.offs = NULL,
-                         dst.perm.2.dims      = NULL,
-                         dst.perm.2.span.dims = NULL,
-                         dst.perm.2.span.offs = NULL,
-                         ... ){
+                         dst.perm.2.wrap      = NULL,
+                         context.workers      = NULL,
+                         stream.queue         = NULL ){
 
-      # Save original and set stored dims
-      src.dims.orig <- private$.eps$src$dims
-      dst.dims.orig <- private$.eps$dst$dims
+      # Save original and set stored dims, set spans
+      src.dims.orig         <- private$.eps$src$dims
+      private$.eps$src$dims <- src.wrap[, 1]
 
-      src.perm.1.dims.orig <- private$.eps$src.perm.1$dims
-      src.perm.2.dims.orig <- private$.eps$src.perm.2$dims
-      dst.perm.1.dims.orig <- private$.eps$dst.perm.1$dims
-      dst.perm.2.dims.orig <- private$.eps$dst.perm.2$dims
+      dst.dims.orig         <- private$.eps$dst$dims
+      private$.eps$dst$dims <- dst.wrap[, 1]
 
-      private$.eps$src$dims <- src.dims
-      private$.eps$dst$dims <- dst.dims
+      if( !is.null( src.perm.1.tensor ) ){
+        src.perm.1.dims.orig         <- private$.eps$src.perm.1$dims
+        private$.eps$src.perm.1$dims <- src.perm.1.wrap[, 1]
+      }
 
-      private$.eps$src.perm.1$dims <- src.perm.1.dims
-      private$.eps$src.perm.2$dims <- src.perm.2.dims
-      private$.eps$dst.perm.1$dims <- dst.perm.1.dims
-      private$.eps$dst.perm.2$dims <- dst.perm.2.dims
+      if( !is.null( src.perm.2.tensor ) ){
+        src.perm.2.dims.orig         <- private$.eps$src.perm.2$dims
+        private$.eps$src.perm.2$dims <- src.perm.2.wrap[, 1]
+      }
 
-      # Spans
+      if( !is.null( dst.perm.1.tensor ) ){
+        dst.perm.1.dims.orig         <- private$.eps$dst.perm.1$dims
+        private$.eps$dst.perm.1$dims <- dst.perm.1.wrap[, 1]
+      }
 
-      # ITT ====
-      stop( "ITT" )
+      if( !is.null( dst.perm.2.tensor ) ){
+        dst.perm.2.dims.orig         <- private$.eps$dst.perm.2$dims
+        private$.eps$dst.perm.2$dims <- dst.perm.2.wrap[, 1]
+      }
 
-      # src.perm <- NULL
-      # dst.perm <- NULL
-      #
-      # if( src.span.off != 1L || obj.dims( src.tensor )[[2]] != dims[[2]] ){
-      #   src.perm <- src.span.off:( src.span.off + dims[[2]] - 1 )
-      # }
-      #
-      # if( dst.span.off != 1L || obj.dims( dst.tensor )[[2]] != dims[[2]] ){
-      #   dst.perm <- dst.span.off:( dst.span.off + dims[[2]] - 1 )
-      # }
-      #
+      # Spans and perms
+      src.span.1 <- NULL
+      src.span.2 <- NULL
+      dst.span.1 <- NULL
+      dst.span.2 <- NULL
+
+      if( src.wrap[ 1, 1 ] != src.wrap[ 1, 3 ] ){
+        src.span.1 <- ( src.wrap[ 1, 2 ] + 1L ):( src.wrap[ 1, 2 ] + src.wrap[ 1, 3 ] )
+      }
+
+      if( src.wrap[ 2, 1 ] != src.wrap[ 2, 3 ] ){
+        src.span.2 <- ( src.wrap[ 2, 2 ] + 1L ):( src.wrap[ 2, 2 ] + src.wrap[ 2, 3 ] )
+      }
+
+      if( dst.wrap[ 1, 1 ] != dst.wrap[ 1, 3 ] ){
+        dst.span.1 <- ( dst.wrap[ 1, 2 ] + 1L ):( dst.wrap[ 1, 2 ] + dst.wrap[ 1, 3 ] )
+      }
+
+      if( dst.wrap[ 2, 1 ] != dst.wrap[ 2, 3 ] ){
+        dst.span.2 <- ( dst.wrap[ 2, 2 ] + 1L ):( dst.wrap[ 2, 2 ] + dst.wrap[ 2, 3 ] )
+      }
+
+      src.perm.1 <- NULL
+      src.perm.2 <- NULL
+      dst.perm.1 <- NULL
+      dst.perm.2 <- NULL
+
+      if( !is.null( src.perm.1.tensor ) ){
+        if( src.perm.1.wrap[ 1, 1 ] != src.perm.1.wrap[ 1, 3 ] ){
+          src.perm.1 <- src.perm.1.tensor[ ( src.perm.1.wrap[ 1, 2 ] + 1L ):( src.perm.1.wrap[ 1, 2 ] + src.perm.1.wrap[ 1, 3 ] ) ]
+        }else{
+          src.perm.1 <- src.perm.1.tensor
+        }
+      }
+
+      if( !is.null( src.perm.2.tensor ) ){
+        if( src.perm.2.wrap[ 1, 1 ] != src.perm.2.wrap[ 1, 3 ] ){
+          src.perm.2 <- src.perm.2.tensor[ ( src.perm.2.wrap[ 1, 2 ] + 1L ):( src.perm.2.wrap[ 1, 2 ] + src.perm.2.wrap[ 1, 3 ] ) ]
+        }else{
+          src.perm.2 <- src.perm.2.tensor
+        }
+      }
+
+      if( !is.null( dst.perm.1.tensor ) ){
+        if( dst.perm.1.wrap[ 1, 1 ] != dst.perm.1.wrap[ 1, 3 ] ){
+          dst.perm.1 <- dst.perm.1.tensor[ ( dst.perm.1.wrap[ 1, 2 ] + 1L ):( dst.perm.1.wrap[ 1, 2 ] + dst.perm.1.wrap[ 1, 3 ] ) ]
+        }else{
+          dst.perm.1 <- dst.perm.1.tensor
+        }
+      }
+
+      if( !is.null( dst.perm.2.tensor ) ){
+        if( dst.perm.2.wrap[ 1, 1 ] != dst.perm.2.wrap[ 1, 3 ] ){
+          dst.perm.2 <- dst.perm.2.tensor[ ( dst.perm.2.wrap[ 1, 2 ] + 1L ):( dst.perm.2.wrap[ 1, 2 ] + dst.perm.2.wrap[ 1, 3 ] ) ]
+        }else{
+          dst.perm.2 <- dst.perm.2.tensor
+        }
+      }
+
       # if( !is.null( src.perm.tensor ) ){
       #   if( !is.null( src.perm ) ){
       #     src.perm <- src.perm.tensor[ src.perm ]
@@ -265,10 +315,21 @@ pipe <- R6Class(
       private$.eps$src$dims <- src.dims.orig
       private$.eps$dst$dims <- dst.dims.orig
 
-      private$.eps$src.perm.1$dims <- src.perm.1.dims.orig
-      private$.eps$src.perm.2$dims <- src.perm.2.dims.orig
-      private$.eps$dst.perm.1$dims <- dst.perm.1.dims.orig
-      private$.eps$dst.perm.2$dims <- dst.perm.2.dims.orig
+      if( !is.null( src.perm.1.tensor ) ){
+        private$.eps$src.perm.1$dims <- src.perm.1.dims.orig
+      }
+
+      if( !is.null( src.perm.2.tensor ) ){
+        private$.eps$src.perm.2$dims <- src.perm.2.dims.orig
+      }
+
+      if( !is.null( dst.perm.1.tensor ) ){
+        private$.eps$dst.perm.1$dims <- dst.perm.1.dims.orig
+      }
+
+      if( !is.null( dst.perm.2.tensor ) ){
+        private$.eps$dst.perm.2$dims <- dst.perm.2.dims.orig
+      }
     },
 
     .call.L03 = function( src.tensor,

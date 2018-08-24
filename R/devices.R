@@ -1,5 +1,30 @@
 # .Calls: src/devices.cpp
 
+is.device <- function( device ){
+  device.count <- cuda.device.count()
+
+  if( device.count == -1 ){
+    lower.bound = -1
+  }else{
+    lower.bound = 0
+  }
+
+  if( !is.numeric( device ) || length( device ) != 1 ){
+    return( FALSE )
+  }
+
+  if( device < lower.bound || device >= device.count || as.logical( device %% 1 ) ){
+    return( FALSE )
+  }
+
+  TRUE
+}
+
+check.device <- function( device ){
+  if( !is.device( device ) ) stop( "Invalid device" )
+  invisible( as.integer( device ) )
+}
+
 # CUDA devices ====
 cuda.device.count <- function(){
   .Call( "cuR_device_count" )

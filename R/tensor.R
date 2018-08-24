@@ -22,7 +22,7 @@ check.tensor <- function( tensor ){
 }
 
 # TODO ====
-# Add ability to create tensors from tensor.span-s
+# Add ability to create tensors from tensor.ranged-s
 
 # Tensor ====
 tensor <- R6Class(

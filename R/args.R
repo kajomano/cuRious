@@ -1,10 +1,13 @@
 # Argument sanity checks ====
 is.level <- function( level ){
-  if( !is.numeric( level ) || length( level ) != 1 ){
+  if( !is.numeric( level ) ||
+      length( level ) != 1 ){
     return( FALSE )
   }
 
-  if( level < 0 || level > 3 || as.logical( level %% 1 ) ){
+  if( level < 0 ||
+      level > 3 ||
+      as.logical( level %% 1 ) ){
     return( FALSE )
   }
 
@@ -18,12 +21,35 @@ check.level <- function( level ){
 
 .max.array.rank <- 2L
 
-is.dims <- function( dims ){
-  if( !is.numeric( dims ) || length( dims ) != .max.array.rank ){
+is.rank <- function( rank ){
+  if( !is.numeric( rank ) ||
+      length( rank ) != 1 ){
     return( FALSE )
   }
 
-  if( any( dims < 1 ) || any( as.logical( dims %% 1 ) ) ){
+  if( rank < 1 ||
+      rank > .max.array.rank ||
+      as.logical( rank %% 1 ) ){
+    return( FALSE )
+  }
+
+  TRUE
+}
+
+check.rank <- function( rank ){
+  if( !is.rank( rank ) ) stop( "Invalid rank" )
+  invisible( as.integer( rank ) )
+}
+
+is.dims <- function( dims ){
+  if( !is.numeric( dims ) ||
+      length( dims ) > .max.array.rank ||
+      length( dims ) == 0 ){
+    return( FALSE )
+  }
+
+  if( any( dims < 1 ) ||
+      any( as.logical( dims %% 1 ) ) ){
     return( FALSE )
   }
 
@@ -35,14 +61,17 @@ check.dims <- function( dims ){
   invisible( as.integer( dims ) )
 }
 
-is.span <- function( span ){
-  if( !is.list( span ) || length( span ) > .max.array.rank ){
+is.ranges <- function( ranges ){
+  if( !is.list( ranges ) ||
+      length( ranges ) > .max.array.rank ||
+      length( ranges ) == 0 ){
     return( FALSE )
   }
 
-  for( range in span ){
+  for( range in ranges ){
     if( !is.null( range ) ){
-      if( !is.numeric( range ) || length( range ) != 2L ){
+      if( !is.numeric( range ) ||
+          length( range ) != 2L ){
         return( FALSE )
       }
 
@@ -57,9 +86,10 @@ is.span <- function( span ){
   TRUE
 }
 
-check.span <- function( span ){
-  if( !is.span( span ) ) stop( "Invalid span" )
-  invisible( lapply( span, function( range ){
+check.ranges <- function( ranges ){
+  if( !is.ranges( ranges ) ) stop( "Invalid ranges" )
+
+  invisible( lapply( ranges, function( range ){
     if( !is.null( range ) ){
       as.integer( range )
     }else{
@@ -68,39 +98,14 @@ check.span <- function( span ){
   }))
 }
 
-types <- c( n = "numeric", i = "integer", l = "logical" )
+.types <- c( n = "numeric", i = "integer", l = "logical" )
 
 is.type <- function( type ){
-  !is.na( pmatch( type, types )[[1]] )
+  !is.na( pmatch( type, .types )[[1]] )
 }
 
 check.type <- function( type ){
   if( !is.type( type ) ) stop( "Invalid type" )
-  type <- names( match.arg( type, types, T ) )[[1]]
+  type <- names( match.arg( type, .types, T ) )[[1]]
   invisible( type )
-}
-
-is.device <- function( device ){
-  device.count <- cuda.device.count()
-
-  if( device.count == -1 ){
-    lower.bound = -1
-  }else{
-    lower.bound = 0
-  }
-
-  if( !is.numeric( device ) || length( device ) != 1 ){
-    return( FALSE )
-  }
-
-  if( device < lower.bound || device >= device.count || as.logical( device %% 1 ) ){
-    return( FALSE )
-  }
-
-  TRUE
-}
-
-check.device <- function( device ){
-  if( !is.device( device ) ) stop( "Invalid device" )
-  invisible( as.integer( device ) )
 }

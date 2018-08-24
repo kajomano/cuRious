@@ -130,19 +130,19 @@ fusion <- R6Class(
 
     .sever   = TRUE,
 
-    .add.tensor.ep = function( tensor.span, tensor.name, output = FALSE ){
-      if( !is.null( tensor.span ) ){
+    .add.tensor.ep = function( tensor.ranged, tensor.name, output = FALSE ){
+      if( !is.null( tensor.ranged ) ){
           # Endpoint lists and alerts
-        private$.eps[[tensor.name]] <- tensor.span$tensor
-        private$.subscribe( tensor.span$tensor, tensor.name )
+        private$.eps[[tensor.name]] <- tensor.ranged$tensor
+        private$.subscribe( tensor.ranged$tensor, tensor.name )
 
         if( output ){
-          private$.eps.out[[tensor.name]] <- tensor.span$tensor
+          private$.eps.out[[tensor.name]] <- tensor.ranged$tensor
         }
 
         # Params
-        private$.params[[ paste0( tensor.name, ".type" ) ]] <- tensor.span$type
-        private$.params[[ paste0( tensor.name, ".wrap" ) ]] <- tensor.span$wrap
+        private$.params[[ paste0( tensor.name, ".type" ) ]] <- tensor.ranged$type
+        private$.params[[ paste0( tensor.name, ".wrap" ) ]] <- tensor.ranged$wrap
       }
     },
 

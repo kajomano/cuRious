@@ -101,10 +101,10 @@ pipe <- R6Class(
                            context   = NULL ){
 
       # Sanity and dim checks
-      src.span <- tensor.span$new( src, rank = .max.array.rank )
-      dst.span <- tensor.span$new( dst, rank = .max.array.rank )
+      src.ranged <- tensor.ranged$new( src, rank = .max.array.rank )
+      dst.ranged <- tensor.ranged$new( dst, rank = .max.array.rank )
 
-      if( src.span$tensor$type != dst$tensor$type ){
+      if( src.ranged$tensor$type != dst$tensor$type ){
         stop( "Tensor types do not match" )
       }
 
@@ -112,50 +112,50 @@ pipe <- R6Class(
         stop( "Overlong src.perms argument" )
       }
 
-      src.dims <- tensor.span$span.dims
+      src.dims <- src.ranged$spans
 
-      src.perm.spans <- lapply( 1:.max.array.rank, function( rank ){
-        if( length( src.perms ) < rank ){
+      src.perm.ranges <- lapply( 1:.max.array.rank, function( r ){
+        if( length( src.perms ) < r ){
           return( NULL )
         }
 
-        if( is.null( src.perms[[rank]] ) ){
+        if( is.null( src.perms[[r]] ) ){
           return( NULL )
         }
 
-        src.perm.span <- tensor.span$new( src.perms[[rank]], rank = 1 )
+        src.perm.ranged <- tensor.ranged$new( src.perms[[r]], rank = 1 )
 
-        if( src.perm.span$tensor$type != "i" ){
+        if( src.perm.ranged$tensor$type != "i" ){
           stop( "Invalid src.perm type" )
         }
 
-        src.dims[[rank]] <- src.perm.span$spans
-        src.perm.span
+        src.dims[[r]] <- src.perm.ranged$spans
+        src.perm.ranged
       })
 
       if( length( dst.perms ) > .max.array.rank ){
         stop( "Overlong dst.perms argument" )
       }
 
-      dst.dims <- tensor.span$span.dims
+      dst.dims <- dst.ranged$spans
 
-      dst.perm.spans <- lapply( 1:.max.array.rank, function( rank ){
-        if( length( dst.perms ) < rank ){
+      dst.perm.ranges <- lapply( 1:.max.array.rank, function( r ){
+        if( length( dst.perms ) < r ){
           return( NULL )
         }
 
-        if( is.null( dst.perms[[rank]] ) ){
+        if( is.null( dst.perms[[r]] ) ){
           return( NULL )
         }
 
-        dst.perm.span <- tensor.span$new( dst.perms[[rank]], rank = 1 )
+        dst.perm.ranged <- tensor.ranged$new( dst.perms[[r]], rank = 1 )
 
-        if( dst.perm.span$tensor$type != "i" ){
+        if( dst.perm.ranged$tensor$type != "i" ){
           stop( "Invalid dst.perm type" )
         }
 
-        dst.dims[[rank]] <- dst.perm.span$spans
-        dst.perm.span
+        dst.dims[[r]] <- dst.perm.ranged$spans
+        dst.perm.ranged
       })
 
       if( !identical( dst.dims, dst.dims ) ){
@@ -163,12 +163,12 @@ pipe <- R6Class(
       }
 
       # Assignments
-      private$.add.tensor.ep( src.span, "src" )
-      private$.add.tensor.ep( dst.span, "dst", TRUE )
+      private$.add.tensor.ep( src.ranged, "src" )
+      private$.add.tensor.ep( dst.ranged, "dst", TRUE )
 
-      for( rank in 1:.max.array.rank ){
-        private$.add.tensor.ep( src.perm.spans[[rank]], paste0( "src.perm.", rank ) )
-        private$.add.tensor.ep( dst.perm.spans[[rank]], paste0( "dst.perm.", rank ) )
+      for( r in 1:.max.array.rank ){
+        private$.add.tensor.ep( src.perm.ranges[[r]], paste0( "src.perm.", r ) )
+        private$.add.tensor.ep( dst.perm.ranges[[r]], paste0( "dst.perm.", r ) )
       }
 
       super$initialize( context )

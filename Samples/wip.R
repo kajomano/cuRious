@@ -27,8 +27,8 @@ pip <- pipe$new( src.ranged,
                  list( src.perm.1.ranged, src.perm.2.ranged ),
                  list( dst.perm.1.ranged, dst.perm.2.ranged ) )
 
-# pip$run()
-#
+pip$run()
+
 # test1 <- array( 1:3 )
 # test2 <- array( 1:6, c( 3, 3 ) )
 #

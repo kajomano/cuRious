@@ -53,6 +53,7 @@ tensor <- R6Class(
         if( is.null( device ) ) device <- cuda.device.default.get()
 
         private$.dims <- obj.dims( data )
+        private$.l    <- prod( private$.dims )
         private$.type <- obj.type( data )
 
       # If data is supported as an object
@@ -63,6 +64,7 @@ tensor <- R6Class(
         if( is.null( device ) ) device <- data$device
 
         private$.dims <- data$dims
+        private$.l    <- prod( private$.dims )
         private$.type <- data$type
 
       }else{
@@ -77,11 +79,12 @@ tensor <- R6Class(
 
       # Match checks
       if( !is.null( private$.dims ) ){
-        if( prod( private$.dims ) != prod( dims ) ){
+        if( private$.l != prod( dims ) ){
           stop( "Dims mismatch on init" )
         }
       }else{
         private$.dims <- dims
+        private$.l    <- prod( private$.dims )
       }
 
       if( !is.null( private$.type ) ){
@@ -149,7 +152,7 @@ tensor <- R6Class(
       .Call( "cuR_tensor_clear",
              private$.ptrs$tensor,
              private$.level,
-             private$.dims,
+             private$.l,
              private$.type )
 
       invisible( TRUE )
@@ -173,13 +176,16 @@ tensor <- R6Class(
   # private ====
   private = list(
     .dims    = NULL,
+
+    # Unchanging
+    .l       = NULL,
     .type    = NULL,
 
     # External R references
     .refs    = FALSE,
 
     .create.tensor = function(){
-      if( prod( private$.dims ) > 2^32-1 ){
+      if( private$.l > 2^32-1 ){
         # TODO ====
         # Use long int or the correct R type to remove this constraint
         stop( "Object is too large" )
@@ -194,7 +200,7 @@ tensor <- R6Class(
 
         .Call( "cuR_tensor_create",
                private$.level,
-               private$.dims,
+               private$.l,
                private$.type )
       }
     },
@@ -340,7 +346,7 @@ tensor <- R6Class(
       }else{
         dims <- check.dims( dims )
 
-        if( prod( dims ) != prod( private$.dims ) ){
+        if( prod( dims ) != private$.l ){
           stop( "Length mismatch on redim" )
         }
 

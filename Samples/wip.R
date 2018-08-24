@@ -2,20 +2,15 @@ library( cuRious )
 
 vect <- as.numeric( 1:36 )
 
-# TODO ====
-# This causes a crash if it goes to 11, but not if to 10
-for( i in 1:11 ){
-  src <- tensor$new( vect )
-  dst <- tensor$new( src, copy = FALSE )
-  # src$dims <- c( 6, 6 )
-  # dst$dims <- c( 9, 4 )
-}
+src <- tensor$new( vect )
+dst <- tensor$new( src, copy = FALSE )
+src$dims <- c( 6, 6 )
+dst$dims <- c( 9, 4 )
 
 # TODO ====
 # This does not cause an error
 src.ranged <- tensor.ranged$new( src, list( c( 1, 5 ), c( 1, 3 ) ) )
 src.ranged$rank <- 1
-
 
 dst.ranged <- tensor.ranged$new( dst, list( c( 1, 5 ), c( 2, 4 ) ) )
 

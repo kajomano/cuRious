@@ -45,11 +45,10 @@ void cuR_tensor_fin_3( SEXP ptr_r ){
 #endif
 
 extern "C"
-SEXP cuR_tensor_create( SEXP level_r, SEXP dims_r, SEXP type_r ){
+SEXP cuR_tensor_create( SEXP level_r, SEXP l_r, SEXP type_r ){
   int level       = Rf_asInteger( level_r );
   const char type = CHAR( STRING_ELT( type_r, 0 ) )[0];
-  int* dims       = INTEGER( dims_r );
-  int l           = dims[0] * dims[1];
+  int l           = Rf_asInteger( l_r );
 
   void* ptr;
   SEXP ptr_r;
@@ -202,11 +201,10 @@ SEXP cuR_tensor_destroy( SEXP ptr_r, SEXP level_r, SEXP type_r ){
 
 
 extern "C"
-SEXP cuR_tensor_clear( SEXP ptr_r, SEXP level_r, SEXP dims_r, SEXP type_r ){
+SEXP cuR_tensor_clear( SEXP ptr_r, SEXP level_r, SEXP l_r, SEXP type_r ){
   int level       = Rf_asInteger( level_r );
   const char type = CHAR( STRING_ELT( type_r, 0 ) )[0];
-  int* dims       = INTEGER( dims_r );
-  int l           = dims[0] * dims[1];
+  int l           = Rf_asInteger( l_r );
 
   switch( level ){
   case 0:

@@ -7,11 +7,7 @@ dst <- tensor$new( src, copy = FALSE )
 src$dims <- c( 6, 6 )
 dst$dims <- c( 9, 4 )
 
-# TODO ====
-# This does not cause an error
 src.ranged <- tensor.ranged$new( src, list( c( 1, 5 ), c( 1, 3 ) ) )
-src.ranged$rank <- 1
-
 dst.ranged <- tensor.ranged$new( dst, list( c( 1, 5 ), c( 2, 4 ) ) )
 
 src.perm.1 <- tensor$new( 1:10 )

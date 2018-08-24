@@ -101,15 +101,15 @@ pipe <- R6Class(
                            context   = NULL ){
 
       # Sanity and dim checks
-      src.span <- tensor.span$new( src )
-      dst.span <- tensor.span$new( dst )
+      src.span <- tensor.span$new( src, rank = .max.array.rank )
+      dst.span <- tensor.span$new( dst, rank = .max.array.rank )
 
       if( src.span$tensor$type != dst$tensor$type ){
         stop( "Tensor types do not match" )
       }
 
       if( length( src.perms ) > .max.array.rank ){
-        stop( "Invalid src.perms argument" )
+        stop( "Overlong src.perms argument" )
       }
 
       src.dims <- tensor.span$span.dims
@@ -123,19 +123,19 @@ pipe <- R6Class(
           return( NULL )
         }
 
-        if( rank > src.span$rank ){
-          stop( "Out of rank src.perm" )
+        src.perm.span <- tensor.span$new( src.perms[[rank]], rank = 1 )
+
+        if( src.perm.span$tensor$type != "i" ){
+          stop( "Invalid src.perm type" )
         }
 
-        src.perm.span <- tensor.span$new( src.perms[[rank]] )
-
-        if( src.perm.span$tensor$type != "i" || src.perm.span$rank != 1 ){
-          stop( "Invalid src.perm" )
-        }
-
-        src.dims[[rank]] <- src.perm.span$span.dims[[1]]
+        src.dims[[rank]] <- src.perm.span$spans
         src.perm.span
       })
+
+      if( length( dst.perms ) > .max.array.rank ){
+        stop( "Overlong dst.perms argument" )
+      }
 
       dst.dims <- tensor.span$span.dims
 
@@ -148,21 +148,17 @@ pipe <- R6Class(
           return( NULL )
         }
 
-        if( rank > src.span$rank ){
-          stop( "Out of rank dst.perm" )
+        dst.perm.span <- tensor.span$new( dst.perms[[rank]], rank = 1 )
+
+        if( dst.perm.span$tensor$type != "i" ){
+          stop( "Invalid dst.perm type" )
         }
 
-        dst.perm.span <- tensor.span$new( dst.perms[[rank]] )
-
-        if( dst.perm.span$tensor$type != "i" || dst.perm.span$rank != 1 ){
-          stop( "Invalid dst.perm" )
-        }
-
-        dst.dims[[rank]] <- dst.perm.span$span.dims[[1]]
+        dst.dims[[rank]] <- dst.perm.span$spans
         dst.perm.span
       })
 
-      if( !identical( src.dims, dst.dims ) ){
+      if( !identical( dst.dims, dst.dims ) ){
         stop( "Non-matching dimensions in pipe" )
       }
 
@@ -196,6 +192,9 @@ pipe <- R6Class(
                          dst.perm.2.wrap      = NULL,
                          context.workers      = NULL,
                          stream.queue         = NULL ){
+
+      # ITT ====
+      stop( "ITT" )
 
       # Save original and set stored dims, set spans
       src.dims.orig         <- private$.eps$src$dims

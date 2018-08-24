@@ -23,7 +23,7 @@ check.tensor.ranged <- function( tensor.ranged ){
 tensor.ranged <- R6Class(
   "cuR.tensor.ranged",
   public = list(
-    initialize = function( tensor, ranges = NULL ){
+    initialize = function( tensor, ranges = NULL, rank = length( tensor$dims ) ){
       if( is.tensor( tensor ) ){
         private$.tensor <- tensor
       }else if( is.tensor.ranged( tensor ) ){
@@ -36,24 +36,45 @@ tensor.ranged <- R6Class(
         stop( "Invalid (ranged) tensor argument" )
       }
 
-      private$.dims <- c( tensor$dims, rep( 1L, times = .max.array.rank - length( tensor$dims ) ) )
+      rank <- check.rank( rank )
+
+      if( max( which( tensor$dims > 1 ) ) > rank ){
+        stop( "True tensor rank is bigger than rank given" )
+      }
+
+      if( length( tensor$dims ) > rank ){
+        private$.dims <- tensor$dims[ 1:rank ]
+      }else{
+        private$.dims <- c( tensor$dims, rep( 1L, times = rank - length( tensor$dims ) ) )
+      }
 
       # Ranges
       if( is.null( ranges ) ){
-        private$.ranges <- lapply( 1:.max.array.rank, function( rank ){
-          c( 1L, private$.dims[[rank]] )
+        private$.ranges <- lapply( 1:rank, function( r ){
+          c( 1L, private$.dims[[r]] )
         })
       }else{
         ranges <- check.ranges( ranges )
 
-        private$.ranges <- lapply( 1:.max.array.rank, function( rank ){
-          if( length( ranges ) < rank ){
+        if( length( ranges ) > rank ){
+          for( r in ( rank + 1 ):length( ranges ) ){
+            range <- ranges[[r]]
+            if( !is.null( range ) ){
+              if( !identical( range, c( 1L, 1L ) ) ){
+                stop( "Mismatch in ranges and rank" )
+              }
+            }
+          }
+        }
+
+        private$.ranges <- lapply( 1:rank, function( r ){
+          if( length( ranges ) < r ){
             range <- NULL
           }else{
-            range <- ranges[[rank]]
+            range <- ranges[[r]]
           }
 
-          dim <- private$.dims[[rank]]
+          dim <- private$.dims[[r]]
 
           if( is.null( range ) ){
             range <- c( 1L, dim )
@@ -71,19 +92,14 @@ tensor.ranged <- R6Class(
       }
 
       # Offs
-      private$.offs <- sapply( 1:.max.array.rank, function( rank ){
-        private$.ranges[[rank]][[1]] - 1L
+      private$.offs <- sapply( 1:rank, function( r ){
+        private$.ranges[[r]][[1]] - 1L
       })
 
       # Spans
-      private$.spans <- sapply( 1:.max.array.rank, function( rank ){
-        private$.ranges[[rank]][[2]] - private$.ranges[[rank]][[1]] + 1L
+      private$.spans <- sapply( 1:rank, function( r ){
+        private$.ranges[[r]][[2]] - private$.ranges[[r]][[1]] + 1L
       })
-
-      # Rank for now
-      # Last position where dim > 1
-      # private$.rank <- which.max( private$.dims > 1 )
-      private$.rank <- .max.array.rank
     }
   ),
 
@@ -97,10 +113,7 @@ tensor.ranged <- R6Class(
 
     # Calculated
     .offs   = NULL,
-    .spans  = NULL,
-
-    # Function set
-    .rank   = NULL
+    .spans  = NULL
   ),
 
   active = list(
@@ -141,35 +154,6 @@ tensor.ranged <- R6Class(
         return( private$.offs )
       }else{
         stop( "Tensor offsets are not directly settable" )
-      }
-    },
-
-    rank = function( rank ){
-      if( missing( rank ) ){
-        return( private$.rank )
-      }else{
-        rank <- check.rank( rank )
-
-        if( private$.rank > rank ){
-          if( which.max( private$.dims > 1 ) > rank ){
-            stop( "Tensor rank is bigger than required" )
-          }
-
-          private$.dims   <- private$.dims[ 1:rank ]
-          private$.ranges <- private$.ranges[ 1:rank ]
-          private$.offs   <- private$.offs[ 1:rank ]
-          private$.spans  <- private$.spans[ 1:rank ]
-          private$.rank   <- rank
-
-        }else if( private$.rank < rank ){
-          pad <- ( rank - private$.rank )
-
-          private$.dims   <- c( private$.dims, rep( 1L, times = pad ) )
-          private$.ranges <- c( private$.ranges, lapply( 1:pad, function( ... ){ c( 1, 1 ) } ) )
-          private$.offs   <- c( private$.offs, rep( 0L, times = pad ) )
-          private$.spans  <- c( private$.spans, rep( 1L, times = pad ) )
-          private$.rank   <- rank
-        }
       }
     },
 

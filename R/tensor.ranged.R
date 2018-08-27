@@ -175,3 +175,35 @@ tensor.ranged <- R6Class(
     }
   )
 )
+
+# Utility functions ====
+# Create a list of R-like subset vectors from wrap
+.sub <- function( wrap, obj = NULL ){
+  subs <- lapply( 1:nrow( wrap ), function( dim ){
+    if( wrap[ dim, 1 ] != wrap[ dim, 3 ] ){
+      ( wrap[ dim, 2 ] + 1L ):( wrap[ dim, 2 ] + wrap[ dim, 3 ] )
+    }else{
+      TRUE
+    }
+  })
+
+  # Shortcut for no subset
+  if( all( is.logical( subs ) ) ){
+    subs <- list()
+  }
+
+  if( is.null( obj ) ){
+    return( subs )
+  }
+
+  .sub.obj( subs, obj )
+}
+
+# Subset an object with the results of .sub
+.sub.obj <- function( subs, obj, assign = NULL ){
+  if( is.null( assign ) ){
+    do.call( `[`, c( list( obj ), subs ) )
+  }else{
+    do.call( `[<-`, c( list( obj ), subs, list( assign ) ) )
+  }
+}

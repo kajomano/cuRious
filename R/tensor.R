@@ -344,13 +344,13 @@ tensor <- R6Class(
       if( missing( dims ) ){
         return( private$.dims )
       }else{
-        dims <- check.dims( dims )
-
-        if( prod( dims ) != private$.l ){
-          stop( "Length mismatch on redim" )
-        }
-
         if( !identical( dims, private$.dims ) ){
+          dims <- check.dims( dims )
+
+          if( prod( dims ) != private$.l ){
+            stop( "Length mismatch on redim" )
+          }
+
           private$.dims <- dims
 
           if( private$.level == 0L ){

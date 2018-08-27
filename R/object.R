@@ -13,7 +13,7 @@ is.obj <- function( obj ){
   }
 
   # Dim check
-  if( length( dim( obj ) ) && dim( obj ) > .max.array.rank ){
+  if( !length( obj ) || length( dim( obj ) ) > .max.array.rank ){
     return( FALSE )
   }
 

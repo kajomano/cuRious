@@ -76,8 +76,6 @@ fusion <- R6Class(
         private$.content.changed <- NULL
       }
 
-      browser()
-
       .cuda.device.set( private$.device )
       res <- do.call( private$.fun, private$.params )
 
@@ -117,20 +115,15 @@ fusion <- R6Class(
     .eps      = NULL,
     .eps.out  = NULL,
 
-    # TODO ====
-    # Tensor dims storage
-
-    # # Stored dimension objects
-    # .tens.dims = NULL,
-
     # These fields need to be filled in the .update.context() function
     .fun     = NULL,
     .params  = list(),
     .device  = NULL,
 
+    # Tensor sever request suppression when on L0
     .sever   = TRUE,
 
-    .add.tensor.ep = function( tensor.ranged, tensor.name, output = FALSE ){
+    .ep.tensor.add = function( tensor.ranged, tensor.name, output = FALSE ){
       if( !is.null( tensor.ranged ) ){
           # Endpoint lists and alerts
         private$.eps[[tensor.name]] <- tensor.ranged$tensor

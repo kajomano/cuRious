@@ -131,11 +131,9 @@ tensor <- R6Class(
     # tensor. If you need a new tensor while also data being pulled into it,
     # create a new tensor with data = this tensor.
     push = function( data ){
-      self$check.destroyed()
+      self$sever()
 
       private$.check.match( data )
-
-      self$sever()
       private$.push( data )
 
       invisible( TRUE )

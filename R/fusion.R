@@ -125,15 +125,18 @@ fusion <- R6Class(
 
     .ep.tensor.add = function( tensor.ranged, tensor.name, output = FALSE ){
       if( !is.null( tensor.ranged ) ){
-          # Endpoint lists and alerts
+
+        # General endpoints and alert subscription
         private$.eps[[tensor.name]] <- tensor.ranged$tensor
         private$.subscribe( tensor.ranged$tensor, tensor.name )
 
+        # Output endpoints for sever()
         if( output ){
           private$.eps.out[[tensor.name]] <- tensor.ranged$tensor
         }
 
         # Params
+        private$.params[[ tensor.name ]]                    <- tensor.ranged$tensor
         private$.params[[ paste0( tensor.name, ".type" ) ]] <- tensor.ranged$type
         private$.params[[ paste0( tensor.name, ".wrap" ) ]] <- tensor.ranged$wrap
       }

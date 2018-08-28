@@ -104,7 +104,7 @@ pipe <- R6Class(
       src.ranged <- tensor.ranged$new( src, rank = .max.array.rank )
       dst.ranged <- tensor.ranged$new( dst, rank = .max.array.rank )
 
-      if( src.ranged$tensor$type != dst$tensor$type ){
+      if( src.ranged$tensor$type != dst.ranged$tensor$type ){
         stop( "Tensor types do not match" )
       }
 
@@ -158,7 +158,7 @@ pipe <- R6Class(
         dst.perm.ranged
       })
 
-      if( !identical( dst.dims, dst.dims ) ){
+      if( !identical( src.dims, dst.dims ) ){
         stop( "Non-matching dimensions in pipe" )
       }
 
@@ -176,141 +176,91 @@ pipe <- R6Class(
   ),
 
   private = list(
-    .call.L0 = function( src.tensor,
+    .call.L0 = function( src,
+                         src.tensor,
                          src.wrap,
                          src.level,
+                         dst,
                          dst.tensor,
                          dst.wrap,
                          dst.level,
+                         src.perm.1        = NULL,
                          src.perm.1.tensor = NULL,
                          src.perm.1.wrap   = NULL,
+                         src.perm.2        = NULL,
                          src.perm.2.tensor = NULL,
                          src.perm.2.wrap   = NULL,
+                         dst.perm.1        = NULL,
                          dst.perm.1.tensor = NULL,
                          dst.perm.1.wrap   = NULL,
+                         dst.perm.2        = NULL,
                          dst.perm.2.tensor = NULL,
                          dst.perm.2.wrap   = NULL,
                          context.workers   = NULL,
                          stream.queue      = NULL ){
 
-      # Save original and set stored dims, set spans
-      src.dims.orig         <- private$.eps$src$dims
-      private$.eps$src$dims <- src.wrap[, 1]
+      # Dimension resets
+      src$dims <- src.wrap[, 1]
+      dst$dims <- dst.wrap[, 1]
 
-      # dst.dims.orig         <- private$.eps$dst$dims
-      # private$.eps$dst$dims <- dst.wrap[, 1]
+      src.perm.1$dims <- src.perm.1.wrap[, 1]
+      src.perm.2$dims <- src.perm.2.wrap[, 1]
+      dst.perm.1$dims <- dst.perm.1.wrap[, 1]
+      dst.perm.2$dims <- dst.perm.2.wrap[, 1]
 
-      # if( !is.null( src.perm.1.tensor ) ){
-      #   src.perm.1.dims.orig         <- private$.eps$src.perm.1$dims
-      #   private$.eps$src.perm.1$dims <- src.perm.1.wrap[, 1]
-      # }
-      #
-      # if( !is.null( src.perm.2.tensor ) ){
-      #   src.perm.2.dims.orig         <- private$.eps$src.perm.2$dims
-      #   private$.eps$src.perm.2$dims <- src.perm.2.wrap[, 1]
-      # }
-      #
-      # if( !is.null( dst.perm.1.tensor ) ){
-      #   dst.perm.1.dims.orig         <- private$.eps$dst.perm.1$dims
-      #   private$.eps$dst.perm.1$dims <- dst.perm.1.wrap[, 1]
-      # }
-      #
-      # if( !is.null( dst.perm.2.tensor ) ){
-      #   dst.perm.2.dims.orig         <- private$.eps$dst.perm.2$dims
-      #   private$.eps$dst.perm.2$dims <- dst.perm.2.wrap[, 1]
-      # }
+      # Spans
+      src.span <- .sub( src.wrap )
+      dst.span <- .sub( dst.wrap )
 
-      # # Spans
-      # src.span <- .sub( src.wrap )
-      # dst.span <- .sub( dst.wrap )
-      #
-      # # Permutations
-      # src.perm <- list( TRUE, TRUE )
-      # dst.perm <- list( TRUE, TRUE )
-      #
-      # if( !is.null( src.perm.1.tensor ) ){
-      #   src.perm[[1]] <- .sub( src.perm.1.wrap, src.perm.1.tensor )
-      # }
-      #
-      # if( !is.null( src.perm.2.tensor ) ){
-      #   src.perm[[2]] <- .sub( src.perm.2.wrap, src.perm.2.tensor )
-      # }
-      #
-      # if( !is.null( dst.perm.1.tensor ) ){
-      #   dst.perm[[1]] <- .sub( dst.perm.1.wrap, dst.perm.1.tensor )
-      # }
-      #
-      # if( !is.null( dst.perm.2.tensor ) ){
-      #   dst.perm[[2]] <- .sub( dst.perm.2.wrap, dst.perm.2.tensor )
-      # }
-      #
-      # # Shortcuts for no permutations
-      # if( all( is.logical( src.perm ) ) ){
-      #   src.perm <- list()
-      # }
-      #
-      # if( all( is.logical( dst.perm ) ) ){
-      #   dst.perm <- list()
-      # }
+      # Permutations
+      src.perm <- list( TRUE, TRUE )
+      dst.perm <- list( TRUE, TRUE )
 
-      # ITT ====
-      # stop( "ITT" )
-      # browser()
+      if( !is.null( src.perm.1 ) ){
+        src.perm[[1]] <- .sub( src.perm.1.wrap, src.perm.1.tensor )
+      }
+
+      if( !is.null( src.perm.2 ) ){
+        src.perm[[2]] <- .sub( src.perm.2.wrap, src.perm.2.tensor )
+      }
+
+      if( !is.null( dst.perm.1 ) ){
+        dst.perm[[1]] <- .sub( dst.perm.1.wrap, dst.perm.1.tensor )
+      }
+
+      if( !is.null( dst.perm.2 ) ){
+        dst.perm[[2]] <- .sub( dst.perm.2.wrap, dst.perm.2.tensor )
+      }
+
+      # Shortcuts for no permutations
+      if( is.null( src.perm.1 ) && is.null( src.perm.2 ) ){
+        src.perm <- list()
+      }
+
+      if( is.null( dst.perm.1 ) && is.null( dst.perm.2 ) ){
+        dst.perm <- list()
+      }
 
       # Call
-      # private$.eps$dst$obj <-
-      #   .sub.obj(
-      #     dst.span,
-      #     dst.tensor,
-      #     .sub.obj(
-      #       dst.perm,
-      #       .sub.obj(
-      #         dst.span,
-      #         dst.tensor
-      #       ),
-      #       .sub.obj(
-      #         src.perm,
-      #         .sub.obj(
-      #           src.span,
-      #           src.tensor
-      #         )
-      #       )
-      #     )
-      #   )
-
-
-      # private$.eps$dst$obj <-
-      #   do.call( `[<-`, c( list( dst.tensor ),
-      #                      dst.span,
-      #                      do.call( `[<-`, c( list( do.call( `[`, c( list( dst.tensor ), dst.span ) ) ),
-      #                                         dst.perm,
-      #                                         ) ) ) )
-      #
-      #
-      #            list( test, 2:3,   do.call( `[<-`, list(    do.call( `[`, list( test, 2:3 ) )   , 1, 0 ) )   ) )
-
-      # test[ 2:3 ][ 1 ] <- 0
-      # do.call( `[<-`, list( test, 2:3,   do.call( `[<-`, list(    do.call( `[`, list( test, 2:3 ) )   , 1, 0 ) )   ) )
-
-      # Restore original dims
-      private$.eps$src$dims <- src.dims.orig
-      # private$.eps$dst$dims <- dst.dims.orig
-
-      # if( !is.null( src.perm.1.tensor ) ){
-      #   private$.eps$src.perm.1$dims <- src.perm.1.dims.orig
-      # }
-      #
-      # if( !is.null( src.perm.2.tensor ) ){
-      #   private$.eps$src.perm.2$dims <- src.perm.2.dims.orig
-      # }
-      #
-      # if( !is.null( dst.perm.1.tensor ) ){
-      #   private$.eps$dst.perm.1$dims <- dst.perm.1.dims.orig
-      # }
-      #
-      # if( !is.null( dst.perm.2.tensor ) ){
-      #   private$.eps$dst.perm.2$dims <- dst.perm.2.dims.orig
-      # }
+      dst$obj <-
+        .sub.obj(
+          dst.span,
+          dst.tensor,
+          .sub.obj(
+            dst.perm,
+            .sub.obj(
+              dst.span,
+              dst.tensor
+            ),
+            .sub.obj(
+              src.perm,
+              .sub.obj(
+                src.span,
+                src$obj      # Need to signal to the tensor that the value might
+              )              # reside somewhere else
+            )
+          )
+        )
     },
 
     .call.L03 = function( src.tensor,

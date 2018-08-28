@@ -6,7 +6,7 @@ vect <- as.numeric( 1:36 )
 src <- tensor$new( vect )
 dst <- tensor$new( src, copy = FALSE )
 src$dims <- c( 6, 6 )
-dst$dims <- c( 9, 4 )
+dst$dims <- c( 6, 6 ) # 9, 4
 
 src.ranged <- tensor.ranged$new( src, list( c( 1, 5 ), c( 1, 3 ) ) )
 dst.ranged <- tensor.ranged$new( dst, list( c( 1, 5 ), c( 2, 4 ) ) )
@@ -31,9 +31,22 @@ pip <- pipe$new( src.ranged,
                  list( src.perm.1.ranged, src.perm.2.ranged ),
                  list( dst.perm.1.ranged, dst.perm.2.ranged ) )
 
+# pip <- pipe$new( src.ranged,
+#                  dst.ranged )
+
 # pip$run()
+#
+# src$clear()
+# src$obj.unsafe
+# dst$obj.unsafe
+
 
 print( microbenchmark( pip$run() ) )
+
+
+
+
+
 
 # dst$dims <- c( 9, 4 )
 # dst$obj.unsafe

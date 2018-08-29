@@ -1,30 +1,30 @@
 library( cuRious )
 library( microbenchmark )
 
-vect <- as.numeric( 1:36 )
+vect <- as.numeric( 1:360000 )
 
 src <- tensor$new( vect )
 dst <- tensor$new( src, copy = FALSE )
-src$dims <- c( 6, 6 )
-dst$dims <- c( 6, 6 ) # 9, 4
+src$dims <- c( 600, 600 )
+dst$dims <- c( 600, 600 ) # 9, 4
 
-src.ranged <- tensor.ranged$new( src, list( c( 1, 5 ), c( 1, 3 ) ) )
-dst.ranged <- tensor.ranged$new( dst, list( c( 1, 5 ), c( 2, 4 ) ) )
+src.ranged <- tensor.ranged$new( src, list( c( 101, 500 ), c( 101, 300 ) ) )
+dst.ranged <- tensor.ranged$new( dst, list( c( 101, 500 ), c( 201, 400 ) ) )
 
-src.perm.1 <- tensor$new( 1:10 )
-src.perm.2 <- tensor$new( 1:10 )
+src.perm.1 <- tensor$new( 1:1000 )
+src.perm.2 <- tensor$new( 1:1000 )
 
-dst.perm.1 <- tensor$new( 1:10 )
-dst.perm.2 <- tensor$new( 1:10 )
+dst.perm.1 <- tensor$new( 1:1000 )
+dst.perm.2 <- tensor$new( 1:1000 )
 
-src.perm.1.ranged <- tensor.ranged$new( src.perm.1, list( c( 1, 5 ) ) )
-src.perm.2.ranged <- tensor.ranged$new( src.perm.2, list( c( 1, 3 ) ) )
+src.perm.1.ranged <- tensor.ranged$new( src.perm.1, list( c( 1, 400 ) ) )
+src.perm.2.ranged <- tensor.ranged$new( src.perm.2, list( c( 1, 200 ) ) )
 
-dst.perm.1.ranged <- tensor.ranged$new( dst.perm.1, list( c( 1, 5 ) ) )
-dst.perm.2.ranged <- tensor.ranged$new( dst.perm.2, list( c( 1, 3 ) ) )
+dst.perm.1.ranged <- tensor.ranged$new( dst.perm.1, list( c( 1, 400 ) ) )
+dst.perm.2.ranged <- tensor.ranged$new( dst.perm.2, list( c( 1, 200 ) ) )
 
-src$dims <- c( 36, 1 )
-dst$dims <- c( 36, 1 )
+src$dims <- c( 360000, 1 )
+dst$dims <- c( 360000, 1 )
 
 pip <- pipe$new( src.ranged,
                  dst.ranged,
@@ -42,10 +42,6 @@ pip <- pipe$new( src.ranged,
 
 
 print( microbenchmark( pip$run() ) )
-
-
-
-
 
 
 # dst$dims <- c( 9, 4 )

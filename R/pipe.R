@@ -171,6 +171,9 @@ pipe <- R6Class(
         private$.ep.tensor.add( dst.perm.ranges[[r]], paste0( "dst.perm.", r ) )
       }
 
+
+      private$.params$type <- src.ranged$tensor$type
+
       super$initialize( context )
     }
   ),
@@ -184,6 +187,7 @@ pipe <- R6Class(
                          dst.tensor,
                          dst.wrap,
                          dst.level,
+                         type              = NULL,
                          src.perm.1        = NULL,
                          src.perm.1.tensor = NULL,
                          src.perm.1.wrap   = NULL,
@@ -263,34 +267,46 @@ pipe <- R6Class(
         )
     },
 
-    .call.L03 = function( src.tensor,
-                          dst.tensor,
+    .call.L03 = function( src,
+                          src.tensor,
+                          src.wrap,
                           src.level,
+                          dst,
+                          dst.tensor,
+                          dst.wrap,
                           dst.level,
                           type,
-                          dims,
-                          src.dims        = NULL,
-                          dst.dims        = NULL,
-                          src.perm.tensor = NULL,
-                          dst.perm.tensor = NULL,
-                          src.span.off,
-                          dst.span.off,
-                          context.workers = NULL,
-                          stream.queue    = NULL ){
+                          src.perm.1        = NULL,
+                          src.perm.1.tensor = NULL,
+                          src.perm.1.wrap   = NULL,
+                          src.perm.2        = NULL,
+                          src.perm.2.tensor = NULL,
+                          src.perm.2.wrap   = NULL,
+                          dst.perm.1        = NULL,
+                          dst.perm.1.tensor = NULL,
+                          dst.perm.1.wrap   = NULL,
+                          dst.perm.2        = NULL,
+                          dst.perm.2.tensor = NULL,
+                          dst.perm.2.wrap   = NULL,
+                          context.workers,
+                          stream.queue ){
 
       .Call( "cuR_transfer",
              src.tensor,
-             dst.tensor,
+             src.wrap,
              src.level,
+             dst.tensor,
+             dst.wrap,
              dst.level,
              type,
-             dims,
-             src.dims,
-             dst.dims,
-             src.perm.tensor,
-             dst.perm.tensor,
-             src.span.off,
-             dst.span.off,
+             src.perm.1.tensor,
+             src.perm.1.wrap,
+             src.perm.2.tensor,
+             src.perm.2.wrap,
+             dst.perm.1.tensor,
+             dst.perm.1.wrap,
+             dst.perm.2.tensor,
+             dst.perm.2.wrap,
              context.workers,
              stream.queue )
     },

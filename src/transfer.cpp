@@ -710,20 +710,26 @@ void cuR_transfer_device_host( t* src_ptr,
 // -----------------------------------------------------------------------------
 extern "C"
 SEXP cuR_transfer( SEXP src_ptr_r,
-                   SEXP dst_ptr_r,
+                   SEXP src_wrap_r,
                    SEXP src_level_r,
+                   SEXP dst_ptr_r,
+                   SEXP dst_wrap_r,
                    SEXP dst_level_r,
                    SEXP type_r,
-                   SEXP dims_r,
-                   SEXP src_dims_r,       // Optional*
-                   SEXP dst_dims_r,       // Optional**
-                   SEXP src_perm_ptr_r,   // Optional*
-                   SEXP dst_perm_ptr_r,   // Optional**
-                   SEXP src_span_off_r,   // Optional
-                   SEXP dst_span_off_r,   // Optional
-                   SEXP worker_q_ptr_r,   // Optional
-                   SEXP stream_q_ptr_r ){ // Optional
 
+                   SEXP src_perm_1_ptr_r,  // Optional
+                   SEXP src_perm_1_wrap_r, // Optional
+                   SEXP src_perm_2_ptr_r,  // Optional
+                   SEXP src_perm_2_wrap_r, // Optional
+                   SEXP dst_perm_1_ptr_r,  // Optional
+                   SEXP dst_perm_1_wrap_r, // Optional
+                   SEXP dst_perm_2_ptr_r,  // Optional
+                   SEXP dst_perm_2_wrap_r, // Optional
+
+                   SEXP worker_q_ptr_r,    // Optional
+                   SEXP stream_q_ptr_r ){  // Optional
+
+  // ITT
   // Arg conversions (except src_ptr, dst_ptr)
   int src_level     = Rf_asInteger( src_level_r );
   int dst_level     = Rf_asInteger( dst_level_r );
